@@ -1,10 +1,21 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_lang as ink;
+use ink_prelude;
+
 
 #[ink::contract]
 mod d_protocol_stack {
 
+    pub struct MessageDetail{
+        name: ink_prelude::string::String,
+        age: u32,
+        phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
+    }
+
+    // use serde_json::json;
+    // use serde_json_wasm::{from_str, to_string};
+    
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
@@ -53,8 +64,28 @@ mod d_protocol_stack {
         
         /// Submit message from routers
         #[ink(message)]
-        pub fn submit_message(&mut self){
+        pub fn submit_message(& self) -> ink_prelude::string::String{
+            let data = r#"
+                {
+                    "name": "John Doe",
+                    "age": 43,
+                    "phones": [
+                        "+44 1234567",
+                        "+44 2345678"
+                    ]
+                }"#;
 
+            ink_prelude::string::String::from(data)
+
+            // // Parse the string of data into serde_json::Value.
+            // let v: std::result::Result<MessageDetail, serde_json_wasm::de::Error>  = from_str(data);
+            
+            // // v?.to_string()
+            // if let Ok(val) = v {
+            //     val.to_string()
+            // }else{
+            //     "error!".to_string()
+            // }
         }
 
         /// message verification
@@ -69,7 +100,7 @@ mod d_protocol_stack {
 
         /// node selection
         fn select(&self) {
-            
+
         }
     }
 
