@@ -3,18 +3,18 @@
 use ink_lang as ink;
 
 #[ink::contract]
-mod cross_chain {
+mod d_protocol_stack {
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    pub struct CrossChain {
+    pub struct DProtocalStack {
         /// Stores a single `bool` value on the storage.
         value: bool,
     }
 
-    impl CrossChain {
+    impl DProtocalStack {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
@@ -42,6 +42,35 @@ mod cross_chain {
         pub fn get(&self) -> bool {
             self.value
         }
+
+        /// Interface for Sending information from Polkadot
+        #[ink(message)]
+        pub fn send_message(&mut self){
+
+        }
+
+        /// Interface for receiving information from other ecosystem
+        
+        /// Submit message from routers
+        #[ink(message)]
+        pub fn submit_message(&mut self){
+
+        }
+
+        /// message verification
+        fn message_verification(&mut self){
+
+        }
+
+        /// node evaluation
+        fn node_evaluation(&mut self){
+
+        }
+
+        /// node selection
+        fn select(&self) {
+            
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -58,14 +87,14 @@ mod cross_chain {
         /// We test if the default constructor does its job.
         #[ink::test]
         fn default_works() {
-            let cross_chain = CrossChain::default();
+            let cross_chain = DProtocalStack::default();
             assert_eq!(cross_chain.get(), false);
         }
 
         /// We test a simple use case of our contract.
         #[ink::test]
         fn it_works() {
-            let mut cross_chain = CrossChain::new(false);
+            let mut cross_chain = DProtocalStack::new(false);
             assert_eq!(cross_chain.get(), false);
             cross_chain.flip();
             assert_eq!(cross_chain.get(), true);
