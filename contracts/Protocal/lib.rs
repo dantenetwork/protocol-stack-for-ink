@@ -7,6 +7,8 @@ use ink_prelude;
 #[ink::contract]
 mod d_protocol_stack {
 
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
         name: ink_prelude::string::String,
         age: u32,
@@ -23,13 +25,17 @@ mod d_protocol_stack {
     pub struct DProtocalStack {
         /// Stores a single `bool` value on the storage.
         value: bool,
+        account: AccountId,
     }
 
     impl DProtocalStack {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+            Self { 
+                value: init_value,
+                account: Self::env().caller(),
+             }
         }
 
         /// Constructor that initializes the `bool` value to `false`.
@@ -61,21 +67,10 @@ mod d_protocol_stack {
         }
 
         /// Interface for receiving information from other ecosystem
-        
         /// Submit message from routers
         #[ink(message)]
-        pub fn submit_message(& self) -> ink_prelude::string::String{
-            let data = r#"
-                {
-                    "name": "John Doe",
-                    "age": 43,
-                    "phones": [
-                        "+44 1234567",
-                        "+44 2345678"
-                    ]
-                }"#;
-
-            ink_prelude::string::String::from(data)
+        pub fn submit_message(& self, msg: MessageDetail) -> MessageDetail{
+            msg
 
             // // Parse the string of data into serde_json::Value.
             // let v: std::result::Result<MessageDetail, serde_json_wasm::de::Error>  = from_str(data);
