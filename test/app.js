@@ -12,7 +12,7 @@ const res = await api.query.contracts.contractInfoOf("5HkV3zDUqdCe4qT1Z8DhkNwGX5
 
 const abiFile = fs.readFileSync('./abi/metadata.json');
 const abi = new Abi(JSON.parse(abiFile), api.registry.getChainProperties());
-const contract = new ContractPromise(api, JSON.parse(abiFile), "5HkV3zDUqdCe4qT1Z8DhkNwGX5hKen9cCbGBu6U7uGVMZ7t1");
+// const contract = new ContractPromise(api, JSON.parse(abiFile), "5HkV3zDUqdCe4qT1Z8DhkNwGX5hKen9cCbGBu6U7uGVMZ7t1");
 // console.log(contract);
 
 // const now = await api.query.timestamp.now();
@@ -28,13 +28,14 @@ const storage_deposit_limit = 3000n * 1000000n;
 
 // const callValue = await contract.query.get({ value, gasLimit } );
 
-const callValue = await contract
-  .call('get', { value, gasLimit })
-  .send("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
-// console.log(abi.findMessage('get'));
+// console.log(contract.query.get({gasLimit, storage_deposit_limit, value}));
 
-// const callValue = await api.tx.contracts
-//   .call("5H5irMCWNwcsZy3pXua9bpbSrmDq4oUGdShzQ2q7LJoPSPE4", value, gasLimit, storage_deposit_limit, abi.findMessage('get'))
-//   .send("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+// const callValue = await contract
+//   .exec('get');
+console.log(abi.findMessage('get'));
+
+const callValue = await api.tx.contracts
+  .call("5H5irMCWNwcsZy3pXua9bpbSrmDq4oUGdShzQ2q7LJoPSPE4", value, gasLimit, storage_deposit_limit, abi.findMessage('get'))
+  .signAndSend();
 
 console.log(callValue);
