@@ -8,12 +8,24 @@ const res = await api.query.contracts.contractInfoOf("5CNcbf4FDSgzJ7pBMpe1gxRknd
 // console.log(await api.query.contracts.nonce());
 console.log(res.registry);
 
-// const keyring = new Keyring({ type: 'sr25519' });
+const abiFile = fs.readFileSync('./abi/metadata.json');
+const abi = new Abi(JSON.parse(abiFile), api.registry.getChainProperties());
+console.log(abi);
+const contract = new ContractPromise(api, abi, "5H5irMCWNwcsZy3pXua9bpbSrmDq4oUGdShzQ2q7LJoPSPE4");
 
-// // (Advanced, development-only) add with an implied dev seed and hard derivation
-// const nika = keyring.addFromUri('//Nika', { name: 'Nika default' });
 
-// const nikaInfo = await api.query.system.account(nika.address);
-// console.log(`${nika.meta}, ${nikaInfo.data.free.toString(10)}`);
+// Read from the contract via an RPC call
+const value = 0; // only useful on isPayable messages
+// NOTE the apps UI specified these in mega units
+const gasLimit = 3000n * 1000000n;
 
-// console.log(keyring.pairs);
+// const callValue = await contract.query.get({ value, gasLimit } );
+
+const callValue = await contract
+  .read('get', { value, gasLimit })
+  .send("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+// const callValue = await api.tx.contracts
+//   .call("5H5irMCWNwcsZy3pXua9bpbSrmDq4oUGdShzQ2q7LJoPSPE4", ivalue, igasLimit, abi.get())
+//   .send("5H5irMCWNwcsZy3pXua9bpbSrmDq4oUGdShzQ2q7LJoPSPE4");
+
+console.log(callValue);
