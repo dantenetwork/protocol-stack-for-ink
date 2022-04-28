@@ -2,3 +2,4 @@
 /package-lock.json
 /abi/
 /.secret/
+.env
