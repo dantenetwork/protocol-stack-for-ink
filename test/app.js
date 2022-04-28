@@ -20,7 +20,7 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), "5E1Hksz3SAnMsu75
 // console.log(`${now}: balance of ${balance.free} and a nonce of ${nonce}`);
 
 // Read from the contract via an RPC call
-const value = 500000; // only useful on isPayable messages
+const value = 0; // only useful on isPayable messages
 // NOTE the apps UI specified these in mega units
 const gasLimit = 3n * 1000000n;
 
@@ -39,9 +39,9 @@ sender.decodePkcs8("NewNika123456");
 
 console.log(sender);
 
-// const callValue = await contract.query['get'](sender.publicKey, {gasLimit, storage_deposit_limit, value});
+const callValue = await contract.query['get'](sender.address, {gasLimit, value});
 
-// console.log(callValue);
+console.log(callValue);
 
 // const callValue = await contract.query.get({ value, gasLimit } );
 
@@ -51,8 +51,8 @@ console.log(sender);
 //   .exec('get');
 // console.log(abi.findMessage('get'));
 
-const callValue = await api.tx.contracts
-  .query("5E1Hksz3SAnMsu75TBzMkrdS1QB1mqF6sbdymTFsyH65S3SY", value, gasLimit, storage_deposit_limit, abi.findMessage('get').toU8a([]))
-  .send(sender.address);
+// const callValue = await api.tx.contracts
+//   .query("5E1Hksz3SAnMsu75TBzMkrdS1QB1mqF6sbdymTFsyH65S3SY", value, gasLimit, storage_deposit_limit, abi.findMessage('get').toU8a([]))
+//   .send(sender.address);
 
-console.log(callValue.toHuman());
+// console.log(callValue.toHuman());
