@@ -83,6 +83,23 @@ mod d_protocol_stack {
             // }
         }
 
+        #[ink(message)]
+        pub fn call_to_contracts(&self, callee_account: AccountId) -> bool{
+            let my_return_value: bool =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                .call_type(
+                    ink_env::call::Call::new()
+                        .callee(callee_account)
+                        .gas_limit(0)
+                        .transferred_value(0))
+                .exec_input(
+                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0x2F, 0x86, 0x5B, 0xD9]))
+                )
+                .returns::<bool>()
+                .fire()
+                .unwrap();
+            my_return_value
+        }
+
         /// message verification
         fn message_verification(&mut self){
 
