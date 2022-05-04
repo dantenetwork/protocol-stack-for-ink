@@ -6,6 +6,14 @@ use ink_prelude;
 #[ink::contract]
 mod callee {
 
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct MessageDetail{
+        name: ink_prelude::string::String,
+        age: u32,
+        phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
+    }
+
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
@@ -42,6 +50,12 @@ mod callee {
         #[ink(message)]
         pub fn get(&self) -> bool {
             self.value
+        }
+
+        /// test encoding user defined struct to u8 
+        #[ink(message)]
+        pub fn encode_user_defined_struct(&self, msg: MessageDetail) -> MessageDetail{
+            msg
         }
     }
 
