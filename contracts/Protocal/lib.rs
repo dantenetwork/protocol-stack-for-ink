@@ -84,11 +84,9 @@ mod d_protocol_stack {
         }
 
         #[ink(message)]
-        pub fn call_to_contracts(&self, callee_account: AccountId, msg: MessageDetail) -> ink_prelude::string::String{
+        pub fn call_to_contracts(&self, callee_account: AccountId, msg: ink_prelude::string::String) -> ink_prelude::string::String{
             
-            let s = ink_prelude::format!("{{ name: {}, age: {}, phones: [] }}", msg.name, msg.age);
-            
-            let my_return_value: MessageDetail =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+            let my_return_value: ink_prelude::string::String =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
                         .callee(callee_account)
@@ -96,13 +94,12 @@ mod d_protocol_stack {
                         .transferred_value(0))
                 .exec_input(
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
-                    .push_arg(s.into_bytes())
+                    .push_arg(msg)
                 )
-                .returns::<MessageDetail>()
+                .returns::<ink_prelude::string::String>()
                 .fire()
                 .unwrap();
-            ink_prelude::format!("{:?}", my_return_value)
-            // my_return_value
+            my_return_value
         }
 
         /// message verification

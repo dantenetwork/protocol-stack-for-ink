@@ -54,8 +54,8 @@ mod callee {
 
         /// test cross contract call
         #[ink(message)]
-        pub fn encode_user_defined_struct(&self, msg: MessageDetail) -> MessageDetail{
-            msg
+        pub fn encode_user_defined_struct(&self, msg: MessageDetail) -> ink_prelude::string::String{
+            ink_prelude::format!("{:?}", msg)
         }
 
         /// test encoding user defined struct to u8 
