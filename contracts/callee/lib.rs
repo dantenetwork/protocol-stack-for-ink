@@ -52,10 +52,17 @@ mod callee {
             self.value
         }
 
-        /// test encoding user defined struct to u8 
+        /// test cross contract call
         #[ink(message)]
         pub fn encode_user_defined_struct(&self, msg: MessageDetail) -> MessageDetail{
             msg
+        }
+
+        /// test encoding user defined struct to u8 
+        #[ink(message)]
+        pub fn encode_uds(&self, msg: MessageDetail) -> ink_prelude::vec::Vec<u8>{
+            let s = ink_prelude::format!("{{ name: {}, age: {}, phones: [] }}", msg.name, msg.age);
+            s.into_bytes()
         }
     }
 
