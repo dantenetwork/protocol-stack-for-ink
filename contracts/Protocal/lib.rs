@@ -85,6 +85,9 @@ mod d_protocol_stack {
 
         #[ink(message)]
         pub fn call_to_contracts(&self, callee_account: AccountId, msg: MessageDetail) -> ink_prelude::string::String{
+            
+            let s = ink_prelude::format!("{{ name: {}, age: {}, phones: [] }}", msg.name, msg.age);
+            
             let my_return_value: MessageDetail =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
@@ -93,7 +96,7 @@ mod d_protocol_stack {
                         .transferred_value(0))
                 .exec_input(
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
-                    .push_arg(msg)
+                    .push_arg(s.into_bytes())
                 )
                 .returns::<MessageDetail>()
                 .fire()
