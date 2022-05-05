@@ -15,6 +15,12 @@ sender.decodePkcs8(process.env.PASSWORD);
 const abiFile = fs.readFileSync('./abi/metadata.json');
 const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTRACT_ADDRESS);
 
+const myABI = new Abi(JSON.parse(abiFile));
+// console.log(myABI.messages);
+const encodedInfo = myABI.findMessage('submit_message');
+console.log(encodedInfo);
+console.log(encodedInfo.toU8a([{"name": "Nika", "age": 36, "phones": ["123", "456"]}]));
+
 // Read from the contract via an RPC call
 async function query() {
   const value = 0; // only useful on isPayable messages
