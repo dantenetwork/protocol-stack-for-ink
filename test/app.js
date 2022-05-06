@@ -10,7 +10,7 @@ const keyring = new Keyring({ type: 'sr25519' });
 let data = fs.readFileSync('./.secret/keyPair.json');
 const sender = keyring.addFromJson(JSON.parse(data.toString()));
 sender.decodePkcs8(process.env.PASSWORD);
-// console.log(sender)
+// console.log(sender.address);
 
 
 const abiFile = fs.readFileSync('./abi/protocol.json');
@@ -24,9 +24,9 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTR
 
 const calleeFile = fs.readFileSync('./abi/callee.json');
 const calleeABI = new Abi(JSON.parse(calleeFile));
-const calleeEncode = calleeABI.findMessage('encode_user_multi_params').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}, "hthuang", 666]);
-// const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-// console.log(calleeABI.findMessage('encode_user_defined_struct'));
+const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
+const calleeDecode = calleeABI.findMessage('encode_user_defined_struct').fromU8a(calleeEncode.subarray(5));
+console.log(calleeDecode.args[0].toJSON());
 
 console.log(calleeEncode)
 // const ecdStr = Array.prototype.map.call(calleeEncode, (x) => ('00' + x.toString(16).slice(-2)));
@@ -62,7 +62,7 @@ async function query() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-  // 0x104e696b6112000000080c3132330c343536
+  console.log(ecdStr);
   const { gasConsumed, result, output } = await contract.query['callToContracts'](sender.address, {value, gasLimit }, 
                                           "5CgMjHnZm7VAi8x9HrB4b8FXYytnUj1pqNUH92yUmY9A7g8C", ecdStr);
   
