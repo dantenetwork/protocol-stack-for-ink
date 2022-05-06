@@ -3,9 +3,31 @@
 use ink_lang as ink;
 use ink_prelude;
 
-
 #[ink::contract]
 mod d_protocol_stack {
+    struct Wrapper {
+        data: ink_prelude::vec::Vec::<u8>,
+    }
+    
+    impl Wrapper {
+        pub fn new(data: ink_prelude::vec::Vec::<u8>) -> Self {
+            Self {
+                data,
+            }
+        }
+    }
+    
+    impl scale::Encode for Wrapper {
+        #[inline]
+        fn size_hint(&self) -> usize {
+            scale::Encode::size_hint(&self.data)
+        }
+    
+        #[inline]
+        fn encode_to<O: scale::Output + ?Sized>(&self, output: &mut O) {
+            output.write(&self.data);
+        }
+    }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -84,7 +106,16 @@ mod d_protocol_stack {
         }
 
         #[ink(message)]
-        pub fn call_to_contracts(&self, callee_account: AccountId, msg: ink_prelude::string::String) -> ink_prelude::string::String{
+        pub fn get_struct_message_u8(& self, msg: MessageDetail) -> ink_prelude::vec::Vec::<u8>{
+            let mut v = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&msg, &mut v);
+            v
+        }
+        
+        #[ink(message)]
+        pub fn call_to_contracts(& self, callee_account: AccountId, msg: ink_prelude::vec::Vec::<u8>) -> ink_prelude::string::String{
+            let data: ink_prelude::vec::Vec::<u8> = msg.clone().drain(4..).collect();
+            let wrapped_data = Wrapper::new(data);
             
             let my_return_value: ink_prelude::string::String =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
@@ -93,8 +124,8 @@ mod d_protocol_stack {
                         .gas_limit(0)
                         .transferred_value(0))
                 .exec_input(
-                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
-                    .push_arg(msg)
+                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([msg[0], msg[1], msg[2], msg[3]]))
+                    .push_arg(wrapped_data)
                 )
                 .returns::<ink_prelude::string::String>()
                 .fire()
@@ -143,6 +174,22 @@ mod d_protocol_stack {
             assert_eq!(cross_chain.get(), false);
             cross_chain.flip();
             assert_eq!(cross_chain.get(), true);
+        }
+
+        #[ink::test]
+        fn test_encode() {
+            let mut data = ink_prelude::vec::Vec::<u8>::new();
+            data.push(0x10);
+            data.push(0x4e);
+            data.push(0x69);
+            data.push(0x6b);
+            data.push(0x61);
+            data.push(0x24);
+            let wrapped_data = Wrapper::new(data);
+
+            let mut buf = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&wrapped_data, &mut buf);
+            assert_eq!(buf, [0x10, 0x4e, 0x69, 0x6b, 0x61, 0x24]);
         }
     }
 }
