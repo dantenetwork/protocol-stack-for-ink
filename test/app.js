@@ -24,10 +24,18 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTR
 
 const calleeFile = fs.readFileSync('./abi/callee.json');
 const calleeABI = new Abi(JSON.parse(calleeFile));
-const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
+const calleeEncode = calleeABI.findMessage('encode_user_multi_params').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}, "hthuang", 666]);
+// const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
 // console.log(calleeABI.findMessage('encode_user_defined_struct'));
 
+console.log(calleeEncode)
 // const ecdStr = Array.prototype.map.call(calleeEncode, (x) => ('00' + x.toString(16).slice(-2)));
+function toHexString(byteArray) {
+  return '0x' + Array.from(byteArray, function(byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('')
+}
+
 let ecdStr = '0x';
 for (let i = 1; i < calleeEncode.length; ++i){
   let stemp = calleeEncode[i].toString(16);
@@ -36,7 +44,9 @@ for (let i = 1; i < calleeEncode.length; ++i){
   }
   ecdStr += stemp;
 }
-// console.log(ecdStr);
+let newone = calleeEncode.slice(1);
+let a = toHexString(newone);
+console.log(ecdStr, a);
 
 // Read from the contract via an RPC call
 async function query() {
@@ -54,7 +64,7 @@ async function query() {
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
   // 0x104e696b6112000000080c3132330c343536
   const { gasConsumed, result, output } = await contract.query['callToContracts'](sender.address, {value, gasLimit }, 
-                                          "5EFwGBXG6DwPJUVoNPCtBPhqVtXqb9sPzZrtXdSp2A1T31VZ", ecdStr);
+                                          "5CgMjHnZm7VAi8x9HrB4b8FXYytnUj1pqNUH92yUmY9A7g8C", ecdStr);
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());

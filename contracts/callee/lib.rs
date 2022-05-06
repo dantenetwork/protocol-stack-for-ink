@@ -58,6 +58,12 @@ mod callee {
             ink_prelude::format!("{:?}", msg)
         }
 
+        /// test cross contract call
+        #[ink(message)]
+        pub fn encode_user_multi_params(&self, msg: MessageDetail, p_str: ink_prelude::string::String, p_int: u32) -> ink_prelude::string::String{
+            ink_prelude::format!("{}, {}, {:?}", p_int, p_str, msg)
+        }
+
         /// test encoding user defined struct to u8 
         #[ink(message)]
         pub fn encode_uds(&self, msg: MessageDetail) -> ink_prelude::vec::Vec<u8>{
