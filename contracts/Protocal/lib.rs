@@ -191,5 +191,27 @@ mod d_protocol_stack {
             scale::Encode::encode_to(&wrapped_data, &mut buf);
             assert_eq!(buf, [0x10, 0x4e, 0x69, 0x6b, 0x61, 0x24]);
         }
+
+        #[ink::test]
+        fn multi_params() {
+            let mut phones = ink_prelude::vec::Vec::<ink_prelude::string::String>::new();
+            phones.push(ink_prelude::string::String::from("123"));
+            phones.push(ink_prelude::string::String::from("456"));
+            let msg_struct = MessageDetail{
+                name: ink_prelude::string::String::from("Nika"),
+                age: 18,
+                phones: phones,
+            };
+
+            let exec_input = ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
+                    .push_arg(msg_struct)
+                    .push_arg(ink_prelude::string::String::from("hthuang"))
+                    .push_arg(666);
+            
+            let mut buf = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&exec_input, &mut buf);
+            println!("{:?}", buf);
+            // assert_eq!(buf, [0x10, 0x4e, 0x69, 0x6b, 0x61, 0x24]);
+        }
     }
 }

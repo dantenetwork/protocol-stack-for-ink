@@ -28,7 +28,14 @@ const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([
 const calleeDecode = calleeABI.findMessage('encode_user_defined_struct').fromU8a(calleeEncode.subarray(5));
 console.log(calleeDecode.args[0].toJSON());
 
+console.log(calleeEncode)
 // const ecdStr = Array.prototype.map.call(calleeEncode, (x) => ('00' + x.toString(16).slice(-2)));
+function toHexString(byteArray) {
+  return '0x' + Array.from(byteArray, function(byte) {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('')
+}
+
 let ecdStr = '0x';
 for (let i = 1; i < calleeEncode.length; ++i){
   let stemp = calleeEncode[i].toString(16);
@@ -37,6 +44,9 @@ for (let i = 1; i < calleeEncode.length; ++i){
   }
   ecdStr += stemp;
 }
+let newone = calleeEncode.slice(1);
+let a = toHexString(newone);
+console.log(ecdStr, a);
 
 // Read from the contract via an RPC call
 async function query() {
@@ -54,7 +64,7 @@ async function query() {
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
   console.log(ecdStr);
   const { gasConsumed, result, output } = await contract.query['callToContracts'](sender.address, {value, gasLimit }, 
-                                          "5E7GsNxZMeE71u7N8v7kSmTWti9NkxGoWHYhWqT5u7cGigdr", ecdStr);
+                                          "5CgMjHnZm7VAi8x9HrB4b8FXYytnUj1pqNUH92yUmY9A7g8C", ecdStr);
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
