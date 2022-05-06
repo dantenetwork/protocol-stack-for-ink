@@ -10,7 +10,7 @@ const keyring = new Keyring({ type: 'sr25519' });
 let data = fs.readFileSync('./.secret/keyPair.json');
 const sender = keyring.addFromJson(JSON.parse(data.toString()));
 sender.decodePkcs8(process.env.PASSWORD);
-// console.log(sender)
+// console.log(sender.address);
 
 
 const abiFile = fs.readFileSync('./abi/protocol.json');
@@ -25,7 +25,8 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTR
 const calleeFile = fs.readFileSync('./abi/callee.json');
 const calleeABI = new Abi(JSON.parse(calleeFile));
 const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-// console.log(calleeABI.findMessage('encode_user_defined_struct'));
+const calleeDecode = calleeABI.findMessage('encode_user_defined_struct').fromU8a(calleeEncode.subarray(5));
+console.log(calleeDecode.args[0].toJSON());
 
 // const ecdStr = Array.prototype.map.call(calleeEncode, (x) => ('00' + x.toString(16).slice(-2)));
 let ecdStr = '0x';
@@ -36,7 +37,6 @@ for (let i = 1; i < calleeEncode.length; ++i){
   }
   ecdStr += stemp;
 }
-// console.log(ecdStr);
 
 // Read from the contract via an RPC call
 async function query() {
@@ -52,9 +52,9 @@ async function query() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-  // 0x104e696b6112000000080c3132330c343536
+  console.log(ecdStr);
   const { gasConsumed, result, output } = await contract.query['callToContracts'](sender.address, {value, gasLimit }, 
-                                          "5EFwGBXG6DwPJUVoNPCtBPhqVtXqb9sPzZrtXdSp2A1T31VZ", ecdStr);
+                                          "5E7GsNxZMeE71u7N8v7kSmTWti9NkxGoWHYhWqT5u7cGigdr", ecdStr);
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
