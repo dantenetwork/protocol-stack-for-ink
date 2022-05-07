@@ -24,9 +24,15 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTR
 
 const calleeFile = fs.readFileSync('./abi/callee.json');
 const calleeABI = new Abi(JSON.parse(calleeFile));
-const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-const calleeDecode = calleeABI.findMessage('encode_user_defined_struct').fromU8a(calleeEncode.subarray(5));
-console.log(calleeDecode.args[0].toJSON());
+const calleeEncode = calleeABI.findMessage('encode_user_multi_params').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}, "hthuang", 666]);
+const calleeDecode = calleeABI.findMessage('encode_user_multi_params').fromU8a(calleeEncode.subarray(5));
+
+const calleeJson = JSON.parse(calleeFile);
+let json = {V3: {spec: {messages: []}}};
+json.V3.spec.messages.push(calleeJson.V3.spec.messages[3]);
+json.V3.types = calleeJson.V3.types;
+const calleeABI2 = new Abi(json);
+const calleeEncode2 = calleeABI2.findMessage('encode_user_multi_params').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}, "hthuang", 666]);
 
 console.log(calleeEncode)
 // const ecdStr = Array.prototype.map.call(calleeEncode, (x) => ('00' + x.toString(16).slice(-2)));
@@ -44,9 +50,10 @@ for (let i = 1; i < calleeEncode.length; ++i){
   }
   ecdStr += stemp;
 }
-let newone = calleeEncode.slice(1);
+let newone = calleeEncode2.slice(1);
 let a = toHexString(newone);
-console.log(ecdStr, a);
+console.log(ecdStr);
+console.log(a);
 
 // Read from the contract via an RPC call
 async function query() {
@@ -102,6 +109,6 @@ async function call() {
     });
 }
 
-query()
+// query()
 
 // call()
