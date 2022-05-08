@@ -99,7 +99,7 @@ mod Payload {
             let mut vv = v.as_slice();
             let vout: MessageDetail = scale::Decode::decode(&mut vv).unwrap();
             println!("{:?}", vout);
-            assert_eq!(msg, vout);
+            assert_eq!(Some(msg), Some(vout));
         }
     }
 }
