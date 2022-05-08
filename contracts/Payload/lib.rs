@@ -1,9 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_lang as ink;
+use ink_prelude;
 
 #[ink::contract]
 mod Payload {
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct MessageDetail{
+        name: ink_prelude::string::String,
+        age: u32,
+        phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
+        info: Option<ink_prelude::string::String>,
+    }
 
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
@@ -12,13 +22,17 @@ mod Payload {
     pub struct Payload {
         /// Stores a single `bool` value on the storage.
         value: bool,
+        info: Option<ink_prelude::string::String>,
     }
 
     impl Payload {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+            Self { 
+                value: init_value,
+                info: None,
+            }
         }
 
         /// Constructor that initializes the `bool` value to `false`.
@@ -69,6 +83,23 @@ mod Payload {
             assert_eq!(Payload.get(), false);
             Payload.flip();
             assert_eq!(Payload.get(), true);
+        }
+
+        #[ink::test]
+        fn test_encode_decode() {
+            let msg = MessageDetail{
+                name: "Nika".into(),
+                age: 37,
+                phones: ink_prelude::vec!["123".into(), "456".into()],
+                info: None,
+            };
+
+            let mut v: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&msg, &mut v);
+            let mut vv = v.as_slice();
+            let vout: MessageDetail = scale::Decode::decode(&mut vv).unwrap();
+            println!("{:?}", vout);
+            assert_eq!(msg, vout);
         }
     }
 }
