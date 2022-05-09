@@ -2,10 +2,36 @@
 
 use ink_lang as ink;
 use ink_prelude;
+use ink_storage;
 
 #[ink::contract]
 mod Payload {
 
+    use ink_storage::traits::SpreadAllocate;
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub enum MsgType{
+        InkString,
+        InkU8,
+        InkU16,
+        Unknow,
+    }
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct MessageItem{
+        t: MsgType,
+        v: ink_prelude::vec::Vec<u8>,
+    }
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct MessagePayload{
+        items: ink_prelude::vec::Vec<MessageItem>,
+    }
+
+    // for test
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
@@ -19,20 +45,22 @@ mod Payload {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct Payload {
         /// Stores a single `bool` value on the storage.
         value: bool,
         info: Option<ink_prelude::string::String>,
+        items: ink_storage::Mapping<ink_prelude::string::String, u128>,
     }
 
     impl Payload {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { 
-                value: init_value,
-                info: None,
-            }
+            ink_lang::utils::initialize_contract(|contract: &mut Self| {
+                contract.value = init_value;
+                contract.info = None;
+            })
         }
 
         /// Constructor that initializes the `bool` value to `false`.
@@ -40,7 +68,8 @@ mod Payload {
         /// Constructors can delegate to other constructors.
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self::new(Default::default())
+            ink_lang::utils::initialize_contract(|_| {})
+            // Self::new(Default::default())
         }
 
         /// A message that can be called on instantiated contracts.
@@ -55,6 +84,12 @@ mod Payload {
         #[ink(message)]
         pub fn get(&self) -> bool {
             self.value
+        }
+
+        /// Test the message Type.
+        #[ink(message)]
+        pub fn getMessage(&self, msg: MessageItem) -> MessageItem {
+            msg
         }
     }
 
