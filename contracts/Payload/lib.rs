@@ -15,20 +15,59 @@ mod Payload {
         InkString,
         InkU8,
         InkU16,
-        Unknow,
+        UserData,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageItem{
+        n: ink_prelude::vec::Vec<u8>,
         t: MsgType,
         v: ink_prelude::vec::Vec<u8>,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct MessageVec{
+        n: ink_prelude::vec::Vec<u8>,
+        t: MsgType,
+        v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
+    }
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessagePayload{
-        items: ink_prelude::vec::Vec<MessageItem>,
+        items: Option<ink_prelude::vec::Vec<MessageItem>>,
+        vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
+    }
+
+    impl MessagePayload{
+        pub fn new() -> MessagePayload{
+            MessagePayload {
+                items: None,
+                vecs: None,
+            }
+        }
+
+        pub fn add_item(&mut self, msg_item: MessageItem){
+            if let Some(item) = &mut self.items {
+                item.push(msg_item);
+            } else{
+                let mut item_vec = ink_prelude::vec::Vec::new();
+                item_vec.push(msg_item);
+                self.items = Some(item_vec);
+            }
+        }
+
+        pub fn add_vec(&mut self, msg_vec: MessageVec){
+            if let Some(m_vec) = &mut self.vecs {
+                m_vec.push(msg_vec);
+            } else {
+                let mut vec_one = ink_prelude::vec::Vec::new();
+                vec_one.push(msg_vec);
+                self.vecs = Some(vec_one);
+            }
+        }
     }
 
     // for test
@@ -88,7 +127,7 @@ mod Payload {
 
         /// Test the message Type.
         #[ink(message)]
-        pub fn getMessage(&self, msg: MessageItem) -> MessageItem {
+        pub fn getMessage(&self, msg: MessagePayload) -> MessagePayload {
             msg
         }
     }

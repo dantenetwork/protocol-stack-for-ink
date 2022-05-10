@@ -16,8 +16,10 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.PAYLO
 
 // test encoder
 const payloadABI = new Abi(JSON.parse(abiFile));
-const payed = payloadABI.findMessage('getMessage').toU8a([{ t: 0, v: "Hello nika!" }]);
-console.log(payed);
+const payed = payloadABI.findMessage('getMessage').toU8a([{'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': ['0x99', '0x88', '0x65535']}]}]);
+const payedDecode = payloadABI.findMessage('getMessage').fromU8a(payed.subarray(5));
+console.log(payedDecode.args[0].toHuman().vecs[0]);
+// console.log(payedDecode.args[0].toJSON().vecs[0]);
 
 // Read from the contract via an RPC call
 async function query() {
@@ -33,7 +35,8 @@ async function query() {
     //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
   
     // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-    const { gasConsumed, result, output } = await contract.query['getMessage'](sender.address, {value, gasLimit }, { t: 'InkString', v: "Hello nika!" });
+    const { gasConsumed, result, output } = await contract.query['getMessage'](sender.address, {value, gasLimit }, 
+                                                                              {'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': [99, 88]}]});
     
     // The actual result from RPC as `ContractExecResult`
     console.log(result.toHuman());
@@ -44,7 +47,16 @@ async function query() {
     // check if the call was successful
     if (result.isOk) {
       // should output 123 as per our initial set (output here is an i32)
-      console.log('Success', output.toHuman());
+      console.log('Success', output);
+      if (output.items){
+        console.log(output.items.toHuman());
+      }
+
+      if (output.vecs){
+        console.log(output.vecs.toHuman());
+        console.log(parseInt(output.vecs.toJSON()[0].v[0], 16) + 1);
+      }
+
     } else {
       console.error('Error', result.asErr);
     }
@@ -71,4 +83,4 @@ async function query() {
       });
   }
 
-//   query();
+  // query();
