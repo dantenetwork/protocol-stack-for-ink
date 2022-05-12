@@ -7,6 +7,47 @@ use ink_prelude;
 mod cross_chain {
     type String = ink_prelude::string::String;
     type Bytes = ink_prelude::vec::Vec<u8>;
+
+    /// Received message structure
+    struct ReceivedMessage {
+        id: u128,
+        from_chain: String,
+        sender: String,
+        signer: String,
+        contract: AccountId,
+        action: String,
+        data: Bytes,
+        executed: bool,
+        error_code: u32,
+    }
+
+    /// Content structure
+    struct Content {
+        contract: String,
+        action: String,
+        data: Bytes,
+    }
+
+    /// Sent message structure
+    struct SentMessage {
+        id: u128,
+        from_chain: String,
+        to_chain: String,
+        sender: AccountId,
+        signer: AccountId,
+        content: Content,
+    }
+
+    /// Context structure
+    struct Context {
+        id: uu128,
+        from_chain: String,
+        sender: String,
+        signer: String,
+        contract: String,
+        action: String,
+    }
+
     /// Base trait for cross-chain contract
     trait CrossChainBase {
         /// Sets DAT token contract address
@@ -17,7 +58,18 @@ mod cross_chain {
         fn receive_message(from_chain: String, id: u128, sender: String, signer: String, to: AccountId, action: String, data: Bytes);
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         fn abandon_message(from_chain: String, id: u128, error_code: u32);
-        
+        /// Triggers execution of a message sent from chain `chain_name` with id `id`
+        fn execute_message(chain_name: String, id: u128);
+        /// Returns the simplified message, this message is reset every time when a contract is called
+        fn get_context() -> Context;
+        /// Returns the number of messages sent to chain `chain_name`
+        fn get_sent_message_number(chain_name: String) -> u128;
+        /// Returns the number of messages received from chain `chain_name`
+        fn get_received_message_number(chain_name: String) -> u128;
+        /// Returns the message with id `id` sent to chain `chain_name`
+        fn get_sent_message(chain_name: String, id: u128) -> SentMessage;
+        /// Returns the message with id `id` received from chain `chain_name`
+        fn get_receivedMessage(chain_name: String, )
     }
 
     /// Trait for multi porters
