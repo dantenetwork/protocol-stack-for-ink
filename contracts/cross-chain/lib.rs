@@ -7,6 +7,7 @@ use ink_prelude;
 mod cross_chain {
     type String = ink_prelude::string::String;
     type Bytes = ink_prelude::vec::Vec<u8>;
+    type Porters = ink_prelude::vec::Vec<String>;
 
     /// Received message structure
     struct ReceivedMessage {
@@ -48,7 +49,7 @@ mod cross_chain {
         action: String,
     }
 
-    /// Base trait for cross-chain contract
+    /// Trait for basic cross-chain contract
     trait CrossChainBase {
         /// Sets DAT token contract address
         fn set_token_contract(token: AccountId);
@@ -69,12 +70,15 @@ mod cross_chain {
         /// Returns the message with id `id` sent to chain `chain_name`
         fn get_sent_message(chain_name: String, id: u128) -> SentMessage;
         /// Returns the message with id `id` received from chain `chain_name`
-        fn get_receivedMessage(chain_name: String, )
+        fn get_received_message(chain_name: String, id: u128) -> ReceivedMessage;
+        /// Registers external callable interface information
+        fn register_interface(action: String, interface: String);
     }
 
     /// Trait for multi porters
     trait MultiPorters {
-
+        /// Changes porters and requirement
+        fn change_porters_and_requirement(porters: Porters, requirement: u128);
     }
 
     /// Defines the wrapper for cross-chain data
