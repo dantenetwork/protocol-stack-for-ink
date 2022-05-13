@@ -2,13 +2,21 @@
 
 use ink_lang as ink;
 use ink_prelude;
-use ink_storage::Mapping;
 
 #[ink::contract]
 mod cross_chain {
-    type String = ink_prelude::string::String;
-    type Bytes = ink_prelude::vec::Vec<u8>;
-    type Porters = ink_prelude::vec::Vec<String>;
+    use ink_storage::{
+        traits::SpreadAllocate,
+        Mapping,
+    };
+
+    use ink_prelude::{
+        vec::Vec,
+        string::String,
+    };
+    
+    type Bytes = Vec<u8>;
+    type Porters = Vec<String>;
 
     /// Received message structure
     struct ReceivedMessage {
@@ -42,12 +50,22 @@ mod cross_chain {
 
     /// Context structure
     struct Context {
-        id: uu128,
+        id: u128,
         from_chain: String,
         sender: String,
         signer: String,
         contract: String,
         action: String,
+    }
+
+    /// Trait for owner
+    trait Ownable {
+        /// Returns the account id of the current owner
+        fn owner() -> AccountId;
+        /// Renounces ownership of the contract
+        fn renounce_ownership();
+        /// Transfer ownership to a new account id
+        fn transfer_ownership(new_owner: AccountId);
     }
 
     /// Trait for basic cross-chain contract
@@ -122,114 +140,45 @@ mod cross_chain {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct CrossChain {
+        // Data for Ownable
+        /// Account id of owner
+        owner: AccountId,
+
+        // Data for CrossChainBase
         /// Current chain name
         chain_name: String,
         /// Map for interfaces
-        interfaces: Mapping<AccountId, Mapping<String, String>>;
+        interfaces: Mapping<AccountId, Mapping<String, String>>,
         /// Dante token contract
-        /// Table of messages which were sent
-        // sent_message_table: Mapping<String, >
-        /// Stores a single `bool` value on the storage.
-        value: bool,
-        account: AccountId,
+        /// Table of sent messages
+        sent_message_table: Mapping<String, Vec<SentMessage>>,
+        /// Table of received messages
+        received_message_table: Mapping<String, Vec<ReceivedMessage>>,
+        /// Context of a cross-contract call
+        context: Context,
     }
 
     impl CrossChain {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
+        /// Constructor that initializes `chain_name`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { 
-                value: init_value,
-                account: Self::env().caller(),
-             }
+        pub fn new(chain_name: String) -> Self {
+            ink_lang::utils::initialize_contract(|contract| {
+                Self::new_init(contract, chain_name)
+            })
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
-        #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
-        }
-
-        /// Simply returns the current value of our `bool`.
-        #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        /// Initializes the contract with the specified chain name.
+        fn new_init(&mut self, chain_name: String) {
+            let caller = Self::env().caller();
+            self.owner = caller;
+            self.chain_name = chain_name;
         }
 
         /// Interface for Sending information from Polkadot
         #[ink(message)]
         pub fn send_message(&mut self){
-
-        }
-
-        /// Interface for receiving information from other ecosystem
-        /// Submit message from routers
-        #[ink(message)]
-        pub fn submit_message(& self, msg: MessageDetail) -> MessageDetail{
-            msg
-
-            // // Parse the string of data into serde_json::Value.
-            // let v: std::result::Result<MessageDetail, serde_json_wasm::de::Error>  = from_str(data);
-            
-            // // v?.to_string()
-            // if let Ok(val) = v {
-            //     val.to_string()
-            // }else{
-            //     "error!".to_string()
-            // }
-        }
-
-        #[ink(message)]
-        pub fn get_struct_message_u8(& self, msg: MessageDetail) -> ink_prelude::vec::Vec::<u8>{
-            let mut v = ink_prelude::vec::Vec::<u8>::new();
-            scale::Encode::encode_to(&msg, &mut v);
-            v
-        }
-        
-        #[ink(message)]
-        pub fn call_to_contracts(& self, callee_account: AccountId, msg: ink_prelude::vec::Vec::<u8>) -> ink_prelude::string::String{
-            let data: ink_prelude::vec::Vec::<u8> = msg.clone().drain(4..).collect();
-            let wrapped_data = Wrapper::new(data);
-            
-            let my_return_value: ink_prelude::string::String =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
-                .call_type(
-                    ink_env::call::Call::new()
-                        .callee(callee_account)
-                        .gas_limit(0)
-                        .transferred_value(0))
-                .exec_input(
-                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([msg[0], msg[1], msg[2], msg[3]]))
-                    .push_arg(wrapped_data)
-                )
-                .returns::<ink_prelude::string::String>()
-                .fire()
-                .unwrap();
-            my_return_value
-        }
-
-        /// message verification
-        fn message_verification(&mut self){
-
-        }
-
-        /// node evaluation
-        fn node_evaluation(&mut self){
-
-        }
-
-        /// node selection
-        fn select(&self) {
 
         }
     }
@@ -244,59 +193,5 @@ mod cross_chain {
 
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
-
-        /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let cross_chain = DProtocalStack::default();
-            assert_eq!(cross_chain.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut cross_chain = DProtocalStack::new(false);
-            assert_eq!(cross_chain.get(), false);
-            cross_chain.flip();
-            assert_eq!(cross_chain.get(), true);
-        }
-
-        #[ink::test]
-        fn test_encode() {
-            let mut data = ink_prelude::vec::Vec::<u8>::new();
-            data.push(0x10);
-            data.push(0x4e);
-            data.push(0x69);
-            data.push(0x6b);
-            data.push(0x61);
-            data.push(0x24);
-            let wrapped_data = Wrapper::new(data);
-
-            let mut buf = ink_prelude::vec::Vec::<u8>::new();
-            scale::Encode::encode_to(&wrapped_data, &mut buf);
-            assert_eq!(buf, [0x10, 0x4e, 0x69, 0x6b, 0x61, 0x24]);
-        }
-
-        #[ink::test]
-        fn multi_params() {
-            let mut phones = ink_prelude::vec::Vec::<ink_prelude::string::String>::new();
-            phones.push(ink_prelude::string::String::from("123"));
-            phones.push(ink_prelude::string::String::from("456"));
-            let msg_struct = MessageDetail{
-                name: ink_prelude::string::String::from("Nika"),
-                age: 18,
-                phones: phones,
-            };
-
-            let exec_input = ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
-                    .push_arg(msg_struct)
-                    .push_arg(ink_prelude::string::String::from("hthuang"))
-                    .push_arg(666);
-            
-            let mut buf = ink_prelude::vec::Vec::<u8>::new();
-            scale::Encode::encode_to(&exec_input, &mut buf);
-            println!("{:?}", buf);
-            // assert_eq!(buf, [0x10, 0x4e, 0x69, 0x6b, 0x61, 0x24]);
-        }
     }
 }
