@@ -6,6 +6,8 @@ use ink_prelude;
 #[ink::contract]
 mod callee {
 
+    use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
+
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
@@ -97,6 +99,26 @@ mod callee {
             assert_eq!(callee.get(), false);
             callee.flip();
             assert_eq!(callee.get(), true);
+        }
+
+        /// test `Payload`
+        #[ink::test]
+        fn test_payload() {
+
+            let n_s = ink_prelude::string::String::from("Nika");
+            let mut n_vec = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&n_s, &mut n_vec);
+
+            let v_u16 : u16 = 99;
+            let mut v_vec = ink_prelude:: vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&v_u16, &mut v_vec);
+
+            let mut pl = Payload::MessagePayload::new();
+            pl.add_item(Payload::MessageItem{
+                n: n_vec,
+                t: Payload::MsgType::InkU16,
+                v: v_vec,
+            });
         }
     }
 }

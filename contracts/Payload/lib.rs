@@ -1,5 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use self::Payload::{
+    MsgType,
+    MessageItem,
+    MessageVec,
+    MessagePayload,
+};
+
 use ink_lang as ink;
 use ink_prelude;
 use ink_storage;
@@ -21,24 +28,24 @@ mod Payload {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageItem{
-        n: ink_prelude::vec::Vec<u8>,
-        t: MsgType,
-        v: ink_prelude::vec::Vec<u8>,
+        pub n: ink_prelude::vec::Vec<u8>,
+        pub t: MsgType,
+        pub v: ink_prelude::vec::Vec<u8>,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageVec{
-        n: ink_prelude::vec::Vec<u8>,
-        t: MsgType,
-        v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
+        pub n: ink_prelude::vec::Vec<u8>,
+        pub t: MsgType,
+        pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessagePayload{
-        items: Option<ink_prelude::vec::Vec<MessageItem>>,
-        vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
+        pub items: Option<ink_prelude::vec::Vec<MessageItem>>,
+        pub vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
     }
 
     impl MessagePayload{
