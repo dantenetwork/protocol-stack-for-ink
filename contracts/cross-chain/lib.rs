@@ -2,6 +2,7 @@
 
 use ink_lang as ink;
 use ink_prelude;
+use ink_storage::Mapping;
 
 #[ink::contract]
 mod cross_chain {
@@ -122,6 +123,13 @@ mod cross_chain {
     /// to add new static storage fields to your contract.
     #[ink(storage)]
     pub struct CrossChain {
+        /// Current chain name
+        chain_name: String,
+        /// Map for interfaces
+        interfaces: Mapping<AccountId, Mapping<String, String>>;
+        /// Dante token contract
+        /// Table of messages which were sent
+        // sent_message_table: Mapping<String, >
         /// Stores a single `bool` value on the storage.
         value: bool,
         account: AccountId,
