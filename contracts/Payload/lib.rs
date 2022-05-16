@@ -25,20 +25,32 @@ mod Payload {
         UserData,
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageItem{
-        pub n: ink_prelude::vec::Vec<u8>,
+        pub n: u128,
         pub t: MsgType,
         pub v: ink_prelude::vec::Vec<u8>,
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    impl PartialEq for MessageItem {
+        fn eq(&self, other: &MessageItem) -> bool{
+            return self.n == other.n;
+        }
+    }
+
+    #[derive(Debug, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageVec{
-        pub n: ink_prelude::vec::Vec<u8>,
+        pub n: u128,
         pub t: MsgType,
         pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
+    }
+
+    impl PartialEq for MessageVec {
+        fn eq(&self, other: &MessageVec) -> bool{
+            return self.n == other.n;
+        }
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -137,6 +149,15 @@ mod Payload {
         pub fn getMessage(&self, msg: MessagePayload) -> MessagePayload {
             msg
         }
+
+        /// User defined behaviors when messages or invocations are received from other chains
+        #[ink(message)]
+        pub fn test_callee_received(&self, m_payload: MessagePayload, m_hm: ink_prelude::vec::Vec<(u32, u32)>) ->ink_prelude::string::String{
+            
+            let mut m_hash_map: ink_prelude::collections::HashMap<u32, u32> = ink_prelude::collections::HashMap::from_iter(m_hm);
+            
+            ink_prelude::string::String::new()
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -160,10 +181,12 @@ mod Payload {
         /// We test a simple use case of our contract.
         #[ink::test]
         fn it_works() {
-            let mut Payload = Payload::new(false);
-            assert_eq!(Payload.get(), false);
-            Payload.flip();
-            assert_eq!(Payload.get(), true);
+            let mut m_hm: ink_prelude::vec::Vec<(u32, u32)> = ink_prelude::vec::Vec::new();
+            m_hm.push((1, 1));
+            m_hm.push((2, 2));
+
+            assert_eq!(*m_hm, [(1, 1), (2, 2)]);
+
         }
 
         #[ink::test]
