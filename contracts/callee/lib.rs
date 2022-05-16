@@ -105,20 +105,30 @@ mod callee {
         #[ink::test]
         fn test_payload() {
 
-            let n_s = ink_prelude::string::String::from("Nika");
-            let mut n_vec = ink_prelude::vec::Vec::<u8>::new();
-            scale::Encode::encode_to(&n_s, &mut n_vec);
+            // let n_s = ink_prelude::string::String::from("Nika");
+            // let mut n_vec = ink_prelude::vec::Vec::<u8>::new();
+            // scale::Encode::encode_to(&n_s, &mut n_vec);
 
             let v_u16 : u16 = 99;
             let mut v_vec = ink_prelude:: vec::Vec::<u8>::new();
             scale::Encode::encode_to(&v_u16, &mut v_vec);
 
             let mut pl = Payload::MessagePayload::new();
-            pl.add_item(Payload::MessageItem{
-                n: n_vec,
+            let mut msg_item = Payload::MessageItem{
+                n: 1,
                 t: Payload::MsgType::InkU16,
                 v: v_vec,
-            });
+            };
+
+            pl.add_item(msg_item.clone());
+            msg_item.t = Payload::MsgType::InkU8;
+            assert_eq!(pl.add_item(msg_item.clone()), false);
+            // msg_item.n = 2;
+            msg_item.v.push(100);
+
+            // Attention, `assert_eq` use the concrete implementation of `PartialEq` to chack equal
+            // So it doesn't matter whether the `t` and `v` is the same
+            assert_eq!(pl.get_item(1), Some(&msg_item));
         }
     }
 }

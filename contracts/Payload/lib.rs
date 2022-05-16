@@ -16,7 +16,7 @@ mod Payload {
 
     use ink_storage::traits::SpreadAllocate;
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub enum MsgType{
         InkString,
@@ -25,7 +25,7 @@ mod Payload {
         UserData,
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageItem{
         pub n: u128,
@@ -33,11 +33,11 @@ mod Payload {
         pub v: ink_prelude::vec::Vec<u8>,
     }
 
-    // impl PartialEq for MessageItem {
-    //     fn eq(&self, other: &MessageItem) -> bool{
-    //         return self.n == other.n;
-    //     }
-    // }
+    impl PartialEq for MessageItem {
+        fn eq(&self, other: &MessageItem) -> bool{
+            return self.n == other.n;
+        }
+    }
 
     // impl PartialEq for (u128, MessageItem) {
     //     fn eq(&self, other: &(u128, MessageItem)) -> bool{
@@ -45,7 +45,7 @@ mod Payload {
     //     }
     // }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageVec{
         pub n: u128,
@@ -53,11 +53,11 @@ mod Payload {
         pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
     }
 
-    // impl PartialEq for MessageVec {
-    //     fn eq(&self, other: &MessageVec) -> bool{
-    //         return self.n == other.n;
-    //     }
-    // }
+    impl PartialEq for MessageVec {
+        fn eq(&self, other: &MessageVec) -> bool{
+            return self.n == other.n;
+        }
+    }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -74,24 +74,62 @@ mod Payload {
             }
         }
 
-        pub fn add_item(&mut self, msg_item: MessageItem){
+        /// for `item`
+        pub fn add_item(&mut self, msg_item: MessageItem)-> bool{
             if let Some(item) = &mut self.items {
+                if item.contains(&msg_item){
+                    return false;
+                }
+
                 item.push(msg_item);
+                true
             } else{
                 let mut item_vec = ink_prelude::vec::Vec::new();
                 item_vec.push(msg_item);
                 self.items = Some(item_vec);
+                true
             }
         }
 
-        pub fn add_vec(&mut self, msg_vec: MessageVec){
+        pub fn get_item(&self, msg_n: u128) -> Option<&MessageItem>{
+            if let Some(item) = &self.items {
+                for it in item.iter() {
+                    if it.n == msg_n {
+                        return Some(it);
+                    }
+                }
+            }
+
+            None
+        }
+
+        /// for `vecs`
+        pub fn add_vec(&mut self, msg_vec: MessageVec) -> bool{
             if let Some(m_vec) = &mut self.vecs {
+                if m_vec.contains(&msg_vec){
+                    return false;
+                }
+                
                 m_vec.push(msg_vec);
+                true
             } else {
                 let mut vec_one = ink_prelude::vec::Vec::new();
                 vec_one.push(msg_vec);
                 self.vecs = Some(vec_one);
+                true
             }
+        }
+
+        pub fn get_vec(&self, msg_n: u128) -> Option<&MessageVec>{
+            if let Some(m_vec) = &self.vecs {
+                for it in m_vec.iter() {
+                    if it.n == msg_n {
+                        return Some(it);
+                    }
+                }
+            }
+
+            None
         }
     }
 
@@ -159,9 +197,7 @@ mod Payload {
 
         /// User defined behaviors when messages or invocations are received from other chains
         #[ink(message)]
-        pub fn test_callee_received(&self, m_payload: MessagePayload, m_hm: ink_prelude::vec::Vec<(u32, u32)>) ->ink_prelude::string::String{
-            
-            // let mut m_hash_map: ink_prelude::collections::hash_map::HashMap<u32, u32> = ink_prelude::collections::hash_map::HashMap::from_iter(m_hm);
+        pub fn test_callee_received(&self, m_payload: MessagePayload) ->ink_prelude::string::String{
             
             ink_prelude::string::String::new()
         }
@@ -191,6 +227,8 @@ mod Payload {
             let mut m_hm: ink_prelude::vec::Vec<(u32, u32)> = ink_prelude::vec::Vec::new();
             m_hm.push((1, 1));
             m_hm.push((2, 2));
+
+            let mut m_hash_map: ink_prelude::collections::HashMap<u32, u32> = ink_prelude::collections::HashMap::from_iter(m_hm.clone());
 
             assert_eq!(*m_hm, [(1, 1), (2, 2)]);
 
