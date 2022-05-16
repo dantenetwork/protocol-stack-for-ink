@@ -25,7 +25,7 @@ mod Payload {
         UserData,
     }
 
-    #[derive(Debug, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageItem{
         pub n: u128,
@@ -33,13 +33,19 @@ mod Payload {
         pub v: ink_prelude::vec::Vec<u8>,
     }
 
-    impl PartialEq for MessageItem {
-        fn eq(&self, other: &MessageItem) -> bool{
-            return self.n == other.n;
-        }
-    }
+    // impl PartialEq for MessageItem {
+    //     fn eq(&self, other: &MessageItem) -> bool{
+    //         return self.n == other.n;
+    //     }
+    // }
 
-    #[derive(Debug, Eq, scale::Encode, scale::Decode)]
+    // impl PartialEq for (u128, MessageItem) {
+    //     fn eq(&self, other: &(u128, MessageItem)) -> bool{
+    //         return self.0 == other.0;
+    //     }
+    // }
+
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageVec{
         pub n: u128,
@@ -47,11 +53,11 @@ mod Payload {
         pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
     }
 
-    impl PartialEq for MessageVec {
-        fn eq(&self, other: &MessageVec) -> bool{
-            return self.n == other.n;
-        }
-    }
+    // impl PartialEq for MessageVec {
+    //     fn eq(&self, other: &MessageVec) -> bool{
+    //         return self.n == other.n;
+    //     }
+    // }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -108,7 +114,8 @@ mod Payload {
         /// Stores a single `bool` value on the storage.
         value: bool,
         info: Option<ink_prelude::string::String>,
-        items: ink_storage::Mapping<ink_prelude::string::String, u128>,
+        items: ink_storage::Mapping<ink_prelude::string::String, MessagePayload>,
+        mp: ink_storage::Mapping<u8, MessagePayload>,
     }
 
     impl Payload {
@@ -154,7 +161,7 @@ mod Payload {
         #[ink(message)]
         pub fn test_callee_received(&self, m_payload: MessagePayload, m_hm: ink_prelude::vec::Vec<(u32, u32)>) ->ink_prelude::string::String{
             
-            let mut m_hash_map: ink_prelude::collections::HashMap<u32, u32> = ink_prelude::collections::HashMap::from_iter(m_hm);
+            // let mut m_hash_map: ink_prelude::collections::hash_map::HashMap<u32, u32> = ink_prelude::collections::hash_map::HashMap::from_iter(m_hm);
             
             ink_prelude::string::String::new()
         }
