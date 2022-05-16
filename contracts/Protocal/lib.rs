@@ -5,6 +5,9 @@ use ink_prelude;
 
 #[ink::contract]
 mod d_protocol_stack {
+
+    use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
+
     struct Wrapper {
         data: ink_prelude::vec::Vec::<u8>,
     }

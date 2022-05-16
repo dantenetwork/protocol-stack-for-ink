@@ -39,12 +39,6 @@ mod Payload {
         }
     }
 
-    // impl PartialEq for (u128, MessageItem) {
-    //     fn eq(&self, other: &(u128, MessageItem)) -> bool{
-    //         return self.0 == other.0;
-    //     }
-    // }
-
     #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageVec{
@@ -198,8 +192,27 @@ mod Payload {
         /// User defined behaviors when messages or invocations are received from other chains
         #[ink(message)]
         pub fn test_callee_received(&self, m_payload: MessagePayload) ->ink_prelude::string::String{
-            
-            ink_prelude::string::String::new()
+            let mut s = ink_prelude::string::String::new();
+
+            // `1` is user defined `MessageItem` id
+            // In this example, we use user defined data struct `MessageDetail`
+            if let Some(item) = m_payload.get_item(1) {
+                let mut ss = item.v.as_slice();
+                let msg_data: MessageDetail = scale::Decode::decode(&mut ss).unwrap();
+                s = s + &ink_prelude::format!("{:?}", msg_data);
+                s = s + "\n";
+            }
+
+            if let Some(m_vec) = m_payload.get_vec(11) {
+                for vec_item in m_vec.v.iter() {
+                    let mut ss = vec_item.as_slice();
+                    let msg_data: MessageDetail = scale::Decode::decode(&mut ss).unwrap();
+                    s = s + &ink_prelude::format!("{:?}", msg_data);
+                    s = s + "\n";
+                }
+            }
+
+            s
         }
     }
 
@@ -234,6 +247,7 @@ mod Payload {
 
         }
 
+        /// test encode and decode
         #[ink::test]
         fn test_encode_decode() {
             let msg = MessageDetail{
@@ -249,6 +263,55 @@ mod Payload {
             let vout: MessageDetail = scale::Decode::decode(&mut vv).unwrap();
             println!("{:?}", vout);
             assert_eq!(Some(msg), Some(vout));
+        }
+
+        /// test encode and decode of user defined contract interface
+        #[ink::test]
+        fn test_contract_en_de() {
+            let msg = MessageDetail{
+                name: "Nika".into(),
+                age: 37,
+                phones: ink_prelude::vec!["123".into(), "456".into()],
+                info: None,
+            };
+
+            let rst_s = ink_prelude::format!("{:?}", msg) + "\n" + &ink_prelude::format!("{:?}", msg) + "\n" + &ink_prelude::format!("{:?}", msg) + "\n";
+
+            let mut v: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&msg, &mut v);
+
+            let mut msg_payload = MessagePayload::new();
+            let msg_item = MessageItem{
+                n: 1,
+                t: MsgType::UserData,
+                v: v.clone(),
+            };
+            assert_eq!(msg_payload.add_item(msg_item), true);
+
+            let mut vec_eles: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>> = ink_prelude::vec::Vec::new();
+            vec_eles.push(v.clone());
+            vec_eles.push(v.clone());
+
+            let msg_vec = MessageVec{
+                n: 11,
+                t: MsgType::UserData,
+                v: vec_eles,
+            };
+            assert_eq!(msg_payload.add_vec(msg_vec), true);
+            
+            // simulate encode `MessagePayload` from routers(off-chain js)
+            let mut pl_code: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&msg_payload, &mut pl_code);
+
+            // simulate decode `MessagePayload` implemented underlying
+            let mut vv = pl_code.as_slice();
+            let vout: MessagePayload = scale::Decode::decode(&mut vv).unwrap();
+
+            // simulate contract call
+            let payload = Payload::default();
+            let return_s = payload.test_callee_received(vout);
+
+            assert_eq!(return_s, rst_s);
         }
     }
 }
