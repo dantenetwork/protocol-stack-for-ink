@@ -73,9 +73,9 @@ mod cross_chain {
     /// Trait for owner
     trait Ownable {
         /// Returns the account id of the current owner
-        fn owner() -> AccountId;
+        fn owner(& self) -> AccountId;
         /// Renounces ownership of the contract
-        fn renounce_ownership();
+        fn renounce_ownership(&mut self);
         /// Transfer ownership to a new account id
         fn transfer_ownership(new_owner: AccountId);
     }
@@ -156,7 +156,7 @@ mod cross_chain {
     pub struct CrossChain {
         // Data for Ownable
         /// Account id of owner
-        owner: AccountId,
+        owner: Option<AccountId>,
 
         // Data for CrossChainBase
         /// Current chain name
@@ -192,6 +192,23 @@ mod cross_chain {
         #[ink(message)]
         pub fn send_message(&mut self){
 
+        }
+    }
+
+    impl Ownable for CrossChain {
+        /// Returns the account id of the current owner
+        pub fn owner(& self) -> Option<AccountId> {
+            self.owner
+        }
+
+        /// Renounces ownership of the contract
+        pub fn renounce_ownership(&mut self) {
+            self.owner = None;
+        }
+
+        /// Transfer ownership to a new account id
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) {
+            self.owner = Some()
         }
     }
 
