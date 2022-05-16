@@ -6,7 +6,11 @@ use ink_prelude;
 #[ink::contract]
 mod cross_chain {
     use ink_storage::{
-        traits::SpreadAllocate,
+        traits::{
+            SpreadLayout,
+            SpreadAllocate,
+            StorageLayout,
+        },
         Mapping,
     };
 
@@ -19,6 +23,8 @@ mod cross_chain {
     type Porters = Vec<String>;
 
     /// Received message structure
+    #[derive(SpreadAllocate, SpreadLayout)]
+    #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
     struct ReceivedMessage {
         id: u128,
         from_chain: String,
@@ -32,6 +38,8 @@ mod cross_chain {
     }
 
     /// Content structure
+    #[derive(SpreadAllocate, SpreadLayout)]
+    #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
     struct Content {
         contract: String,
         action: String,
@@ -39,6 +47,8 @@ mod cross_chain {
     }
 
     /// Sent message structure
+    #[derive(SpreadAllocate, SpreadLayout)]
+    #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
     struct SentMessage {
         id: u128,
         from_chain: String,
@@ -49,6 +59,8 @@ mod cross_chain {
     }
 
     /// Context structure
+    #[derive(SpreadAllocate, SpreadLayout)]
+    #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
     struct Context {
         id: u128,
         from_chain: String,
