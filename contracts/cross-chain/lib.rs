@@ -5,6 +5,7 @@ use ink_prelude;
 
 #[ink::contract]
 mod cross_chain {
+    use ink_lang as ink;    
     use ink_storage::{
         traits::{
             SpreadLayout,
@@ -18,9 +19,21 @@ mod cross_chain {
         vec::Vec,
         string::String,
     };
+
+    use scale::{
+        Encode,
+        Decode,
+    };
     
     type Bytes = Vec<u8>;
     type Porters = Vec<String>;
+
+    /// Errors for cross-chain contract
+    #[derive(Encode, Decode, Debug, PartialEq, Eq, Copy, Clone)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum Error {
+        NotOwner,
+    }
 
     /// Received message structure
     #[derive(SpreadAllocate, SpreadLayout)]
@@ -71,13 +84,17 @@ mod cross_chain {
     }
 
     /// Trait for owner
-    trait Ownable {
+    #[ink::trait_definition]
+    pub trait Ownable {
         /// Returns the account id of the current owner
-        fn owner(& self) -> AccountId;
+        #[ink(message)]
+        fn owner(& self) -> Option<AccountId>;
         /// Renounces ownership of the contract
+        #[ink(message)]
         fn renounce_ownership(&mut self);
         /// Transfer ownership to a new account id
-        fn transfer_ownership(new_owner: AccountId);
+        #[ink(message)]
+        fn transfer_ownership(&mut self, new_owner: AccountId);
     }
 
     /// Trait for basic cross-chain contract
@@ -184,7 +201,7 @@ mod cross_chain {
         /// Initializes the contract with the specified chain name.
         fn new_init(&mut self, chain_name: String) {
             let caller = Self::env().caller();
-            self.owner = caller;
+            self.owner = Some(caller);
             self.chain_name = chain_name;
         }
 
@@ -196,19 +213,32 @@ mod cross_chain {
     }
 
     impl Ownable for CrossChain {
+        /// Restricted to owner only
+        fn only_owner(& self) -> Result<(), Error> {
+            let caller = self.env().caller();
+            if self.owner.unwrap() != caller {
+                return Err(Error::NotOwner)
+            }
+
+            Ok(())
+        }
+
         /// Returns the account id of the current owner
-        pub fn owner(& self) -> Option<AccountId> {
+        #[ink(message)]
+        fn owner(& self) -> Option<AccountId> {
             self.owner
         }
 
         /// Renounces ownership of the contract
-        pub fn renounce_ownership(&mut self) {
+        #[ink(message)]
+        fn renounce_ownership(&mut self) {
             self.owner = None;
         }
 
         /// Transfer ownership to a new account id
-        pub fn transfer_ownership(&mut self, new_owner: AccountId) {
-            self.owner = Some()
+        #[ink(message)]
+        fn transfer_ownership(&mut self, new_owner: AccountId) {
+            self.owner = Some(new_owner);
         }
     }
 
@@ -222,5 +252,32 @@ mod cross_chain {
 
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
+
+        /// We test if the default constructor does its job.
+        #[ink::test]
+        fn new_works() {
+            // Constructor works.
+            let _erc20 = Erc20::new(100);
+
+            // Transfer event triggered during initial construction.
+            let emitted_events = ink_env::test::recorded_events().collect::<Vec<_>>();
+            assert_eq!(1, emitted_events.len());
+
+            assert_transfer_event(
+                &emitted_events[0],
+                None,
+                Some(AccountId::from([0x01; 32])),
+                100,
+            );
+        }
+
+        /// We test a simple use case of our contract.
+        #[ink::test]
+        fn it_works() {
+            let mut flipper = Flipper::new(false);
+            assert_eq!(flipper.get(), false);
+            flipper.flip();
+            assert_eq!(flipper.get(), true);
+        }
     }
 }
