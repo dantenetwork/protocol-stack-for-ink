@@ -205,14 +205,6 @@ mod cross_chain {
             self.chain_name = chain_name;
         }
 
-        /// Interface for Sending information from Polkadot
-        #[ink(message)]
-        pub fn send_message(&mut self){
-
-        }
-    }
-
-    impl Ownable for CrossChain {
         /// Restricted to owner only
         fn only_owner(& self) -> Result<(), Error> {
             let caller = self.env().caller();
@@ -222,7 +214,9 @@ mod cross_chain {
 
             Ok(())
         }
+    }
 
+    impl Ownable for CrossChain {
         /// Returns the account id of the current owner
         #[ink(message)]
         fn owner(& self) -> Option<AccountId> {
@@ -253,31 +247,73 @@ mod cross_chain {
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
 
-        /// We test if the default constructor does its job.
+        fn set_caller(sender: AccountId) {
+            ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
+        }
+
+        /// We test if the new constructor does its job.
         #[ink::test]
         fn new_works() {
             // Constructor works.
-            let _erc20 = Erc20::new(100);
-
-            // Transfer event triggered during initial construction.
-            let emitted_events = ink_env::test::recorded_events().collect::<Vec<_>>();
-            assert_eq!(1, emitted_events.len());
-
-            assert_transfer_event(
-                &emitted_events[0],
-                None,
-                Some(AccountId::from([0x01; 32])),
-                100,
-            );
+            let cross_chain = CrossChain::new("POLKADOT".to_string());
         }
 
-        /// We test a simple use case of our contract.
+        /// For trait Ownable
         #[ink::test]
-        fn it_works() {
-            let mut flipper = Flipper::new(false);
-            assert_eq!(flipper.get(), false);
-            flipper.flip();
-            assert_eq!(flipper.get(), true);
+        fn owner_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            set_caller(accounts.bob);
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Owner should be Bob.
+            assert_eq!(cross_chain.owner().unwrap(), accounts.bob);
+        }
+
+        #[ink::test]
+        fn renounce_ownership_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Renounce ownership.
+            cross_chain.renounce_ownership();
+            // Owner is None.
+            assert_eq!(cross_chain.owner(), None);
+        }
+
+        #[ink::test]
+        fn transfer_ownership_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Transfer ownership.
+            cross_chain.transfer_ownership(accounts.bob);
+            // Owner is Bob.
+            assert_eq!(cross_chain.owner().unwrap(), accounts.bob);
+        }
+
+        #[ink::test]
+        fn only_owner_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Call of only_owner should failed.
+            set_caller(accounts.alice);
+            assert_eq!(cross_chain.only_owner(), Ok(()));
+        }
+
+        #[ink::test]
+        fn not_owner_only_owner_should_fail() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Call of only_owner should failed.
+            set_caller(accounts.bob);
+            assert_eq!(cross_chain.only_owner(), Err(Error::NotOwner));
         }
     }
 }
