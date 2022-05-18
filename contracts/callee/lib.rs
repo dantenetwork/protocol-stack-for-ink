@@ -1,13 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod test;
+
 use ink_lang as ink;
 use ink_prelude;
-use Payload;
 
 use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+// #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct MyData {
     td: Payload::TestData,
 }
@@ -83,6 +84,7 @@ mod callee {
         // test Payload as parameter
         #[ink(message)]
         pub fn get_payload(&self){
+            let v = super::test::get();
             let msg = Payload::MessagePayload::new();
         }
     }
