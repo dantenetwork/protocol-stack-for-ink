@@ -5,7 +5,7 @@ mod test;
 use ink_lang as ink;
 use ink_prelude;
 
-use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
+use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType, Other, PayloadRef};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 // #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -83,9 +83,14 @@ mod callee {
 
         // test Payload as parameter
         #[ink(message)]
-        pub fn get_payload(&self){
+        pub fn get_payload(&self, msg_vec: Payload::TestData) -> Payload::TestData{
             let v = super::test::get();
             let msg = Payload::MessagePayload::new();
+
+            msg_vec
+
+            // let mut vv = msg_vec.as_slice();
+            // let vout: Payload::MessagePayload = scale::Decode::decode(&mut vv).unwrap();
         }
     }
 

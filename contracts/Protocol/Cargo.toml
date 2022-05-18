@@ -14,7 +14,7 @@ ink_prelude = { version = "3.0.1", default-features = false }
 # serde-json-wasm = "0.4.0"
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
+scale-info = { version = "2.1.2", default-features = false, features = ["derive"], optional = true }
 
 [lib]
 name = "d_protocol_stack"

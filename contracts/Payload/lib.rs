@@ -5,6 +5,8 @@ pub use self::Payload::{
     MessageItem,
     MessageVec,
     MessagePayload,
+    Payload as Other,
+    PayloadRef,
 };
 
 use ink_lang as ink;
@@ -12,16 +14,29 @@ use ink_prelude;
 use ink_storage;
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+// #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct TestData{
     pub n: u128,
     pub s: ink_prelude::string::String,
 }
 
+impl ::scale_info::TypeInfo for TestData{
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+            .path(::scale_info::Path::new("TestData", module_path!()))
+            .composite(::scale_info::build::Fields::named()
+                .field(|f| f.ty::<u128>().name("n").type_name("u128"))
+                .field(|f| f.ty::<ink_prelude::string::String>().name("s").type_name("ink_prelude::string::String"))
+            )
+    }
+}
+
 #[ink::contract]
 mod Payload {
 
-    use ink_storage::traits::{SpreadAllocate, StorageLayout};
+    use ink_storage::traits::{SpreadAllocate};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -61,7 +76,7 @@ mod Payload {
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
     pub struct MessagePayload{
         pub items: Option<ink_prelude::vec::Vec<MessageItem>>,
         pub vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
@@ -148,13 +163,14 @@ mod Payload {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    #[derive(SpreadAllocate)]
+    #[derive(SpreadAllocate, ::scale_info::TypeInfo)]
     pub struct Payload {
         /// Stores a single `bool` value on the storage.
         value: bool,
         info: Option<ink_prelude::string::String>,
-        items: ink_storage::Mapping<ink_prelude::string::String, MessagePayload>,
-        mp: ink_storage::Mapping<u8, MessagePayload>,
+        // items: ink_storage::Mapping<ink_prelude::string::String, MessagePayload>,
+        // mp: ink_storage::Mapping<u8, MessagePayload>,
+        // msg: MessageDetail,
     }
 
     impl Payload {
