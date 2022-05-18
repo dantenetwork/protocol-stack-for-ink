@@ -3,8 +3,6 @@
 use ink_lang as ink;
 use ink_prelude;
 
-use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
-
 #[ink::contract]
 mod d_protocol_stack {
 
@@ -93,19 +91,23 @@ mod d_protocol_stack {
 
         /// Interface for receiving information from other ecosystem
         /// Submit message from routers
+        /// Test `MessageDetail` in Protocol is the same in Callee
         #[ink(message)]
-        pub fn submit_message(& self, msg: MessageDetail) -> MessageDetail{
-            msg
-
-            // // Parse the string of data into serde_json::Value.
-            // let v: std::result::Result<MessageDetail, serde_json_wasm::de::Error>  = from_str(data);
-            
-            // // v?.to_string()
-            // if let Ok(val) = v {
-            //     val.to_string()
-            // }else{
-            //     "error!".to_string()
-            // }
+        pub fn submit_message(& self, callee_account: AccountId, msg: MessageDetail) -> ink_prelude::string::String{
+            let my_return_value: ink_prelude::string::String =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                .call_type(
+                    ink_env::call::Call::new()
+                        .callee(callee_account)
+                        .gas_limit(0)
+                        .transferred_value(0))
+                .exec_input(
+                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
+                    .push_arg(msg)
+                )
+                .returns::<ink_prelude::string::String>()
+                .fire()
+                .unwrap();
+            my_return_value
         }
 
         #[ink(message)]
