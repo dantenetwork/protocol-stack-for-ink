@@ -11,10 +11,17 @@ use ink_lang as ink;
 use ink_prelude;
 use ink_storage;
 
+#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
+#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+pub struct TestData{
+    pub n: u128,
+    pub s: ink_prelude::string::String,
+}
+
 #[ink::contract]
 mod Payload {
 
-    use ink_storage::traits::SpreadAllocate;
+    use ink_storage::traits::{SpreadAllocate, StorageLayout};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]

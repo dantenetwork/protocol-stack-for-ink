@@ -3,10 +3,10 @@
 use ink_lang as ink;
 use ink_prelude;
 
+use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
+
 #[ink::contract]
 mod d_protocol_stack {
-
-    use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
 
     struct Wrapper {
         data: ink_prelude::vec::Vec::<u8>,

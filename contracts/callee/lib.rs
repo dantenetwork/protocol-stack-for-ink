@@ -2,11 +2,18 @@
 
 use ink_lang as ink;
 use ink_prelude;
+use Payload;
+
+use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
+
+#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+pub struct MyData {
+    td: Payload::TestData,
+}
 
 #[ink::contract]
 mod callee {
-
-    use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -29,7 +36,7 @@ mod callee {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+            Self { value: init_value, }
         }
 
         /// Constructor that initializes the `bool` value to `false`.
@@ -71,6 +78,12 @@ mod callee {
         pub fn encode_uds(&self, msg: MessageDetail) -> ink_prelude::vec::Vec<u8>{
             let s = ink_prelude::format!("{{ name: {}, age: {}, phones: [] }}", msg.name, msg.age);
             s.into_bytes()
+        }
+
+        // test Payload as parameter
+        #[ink(message)]
+        pub fn get_payload(&self){
+            let msg = Payload::MessagePayload::new();
         }
     }
 
