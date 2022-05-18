@@ -33,6 +33,7 @@ mod cross_chain {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Error {
         NotOwner,
+        IdNotMatch,
     }
 
     /// Received message structure
@@ -43,11 +44,30 @@ mod cross_chain {
         from_chain: String,
         sender: String,
         signer: String,
+        sqos: SQOS,
         contract: AccountId,
         action: String,
         data: Bytes,
+        session: Session,
         executed: bool,
-        error_code: u32,
+        error_code: u16,
+    }
+
+    impl ReceivedMessage {
+        fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
+            contract: AccountId, action: String, data: Bytes, session: Session) -> Self {
+            Self {
+                id,
+                from_chain,
+                sender,
+                signer,
+                sqos,
+                contract,
+                action,
+                data,
+                session,
+            }
+        }
     }
 
     /// Content structure
@@ -59,6 +79,16 @@ mod cross_chain {
         data: Bytes,
     }
 
+    impl Content {
+        fn new(contract: String, action: String, data: Bytes) -> Self {
+            Self {
+                contract,
+                action,
+                data,
+            }
+        }
+    }
+
     /// Sent message structure
     #[derive(SpreadAllocate, SpreadLayout)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
@@ -68,7 +98,25 @@ mod cross_chain {
         to_chain: String,
         sender: AccountId,
         signer: AccountId,
+        sqos: SQOS,
         content: Content,
+        session: Session,
+    }
+
+    impl SentMessage {
+        fn new(id: u128, from_chain: String, to_chain: String, sender: AccountId, signer: AccountId,
+            sqos: SQOS, content: Content, session: Session) -> Self {
+            Self {
+                id,
+                from_chain,
+                to_chain,
+                sender,
+                signer,
+                sqos,
+                content,
+                session,
+            }
+        }
     }
 
     /// Context structure
@@ -81,6 +129,21 @@ mod cross_chain {
         signer: String,
         contract: String,
         action: String,
+    }
+
+    /// SQOS structure
+    #[derive(SpreadAllocate, SpreadLayout)]
+    #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+    struct SQOS {
+        reveal: u8,
+    }
+
+    /// Session Structure
+    #[derive(SpreadAllocate, SpreadLayout)]
+    #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+    struct Session {
+        msg_type: u8,
+        id: u128,
     }
 
     /// Trait for owner
@@ -98,29 +161,41 @@ mod cross_chain {
     }
 
     /// Trait for basic cross-chain contract
+    #[ink::trait_definition]
     trait CrossChainBase {
         /// Sets DAT token contract address
-        fn set_token_contract(token: AccountId);
+        #[ink(message)]
+        fn set_token_contract(&mut self, token: AccountId);
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
-        fn send_message(to_chain: String, contract: String, action: String, data: &Bytes);
+        #[ink(message)]
+        fn send_message(&mut self, to_chain: String, contract: String, action: String, data: &Bytes);
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
-        fn receive_message(from_chain: String, id: u128, sender: String, signer: String, to: AccountId, action: String, data: Bytes);
+        #[ink(message)]
+        fn receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String, to: AccountId, action: String, data: Bytes);
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
-        fn abandon_message(from_chain: String, id: u128, error_code: u32);
+        #[ink(message)]
+        fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16);
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
-        fn execute_message(chain_name: String, id: u128);
+        #[ink(message)]
+        fn execute_message(&mut self, chain_name: String, id: u128);
         /// Returns the simplified message, this message is reset every time when a contract is called
-        fn get_context() -> Context;
+        #[ink(message)]
+        fn get_context(& self, ) -> Context;
         /// Returns the number of messages sent to chain `chain_name`
-        fn get_sent_message_number(chain_name: String) -> u128;
+        #[ink(message)]
+        fn get_sent_message_number(& self, chain_name: String) -> u128;
         /// Returns the number of messages received from chain `chain_name`
-        fn get_received_message_number(chain_name: String) -> u128;
+        #[ink(message)]
+        fn get_received_message_number(& self, chain_name: String) -> u128;
         /// Returns the message with id `id` sent to chain `chain_name`
-        fn get_sent_message(chain_name: String, id: u128) -> SentMessage;
+        #[ink(message)]
+        fn get_sent_message(& self, chain_name: String, id: u128) -> SentMessage;
         /// Returns the message with id `id` received from chain `chain_name`
-        fn get_received_message(chain_name: String, id: u128) -> ReceivedMessage;
+        #[ink(message)]
+        fn get_received_message(& self, chain_name: String, id: u128) -> ReceivedMessage;
         /// Registers external callable interface information
-        fn register_interface(action: String, interface: String);
+        #[ink(message)]
+        fn register_interface(&mut self, action: String, interface: String);
     }
 
     /// Trait for multi porters
@@ -152,14 +227,6 @@ mod cross_chain {
         fn encode_to<O: scale::Output + ?Sized>(&self, output: &mut O) {
             output.write(&self.data);
         }
-    }
-
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
-    pub struct MessageDetail{
-        name: ink_prelude::string::String,
-        age: u32,
-        phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
     }
 
     // use serde_json::json;
@@ -214,6 +281,25 @@ mod cross_chain {
 
             Ok(())
         }
+
+        /// Receives message
+        fn internal_receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String, contract: AccountId
+            sqos: SQOS, action: String, data: Bytes, session: Session) -> Result<(), Err> {
+            let mut chain_message = self.received_message_table.get(from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+            let current_id = chain_message.len() + 1;
+            if current_id != id {
+                return Err(Error::IdNotMatch)
+            }
+
+            let message = ReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
+            chain_message.push(message);
+            self.received_message_table.insert(from_chain, chain_message);
+        }
+
+        /// Abandons message
+        fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Err> {
+            
+        }
     }
 
     impl Ownable for CrossChain {
@@ -234,6 +320,71 @@ mod cross_chain {
         fn transfer_ownership(&mut self, new_owner: AccountId) {
             self.owner = Some(new_owner);
         }
+    }
+
+    impl CrossChainBase for CrossChain {
+        /// Sets DAT token contract address
+        #[ink(message)]
+        fn set_token_contract(&mut self, token: AccountId) {
+
+        }
+
+        /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
+        #[ink(message)]
+        fn send_message(&mut self, to_chain: String, contract: String, action: String, data: &Bytes) {
+            let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(to_chain).unwrap_or(Vec::<SentMessage>::new());
+            let id = chain_message.len() + 1;
+            let caller = Self::env().caller();
+            let signer = caller.clone();
+            let content = Content::new(contract, action, data);
+            let mut message: SentMessage = SentMessage::new(id, self.chain_name, to_chain, caller, signer, content);
+            chain_message.push(message);
+            self.sent_message_table.insert(to_chain, chain_message);
+        }
+
+        /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
+        #[ink(message)]
+        fn receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String,
+            sqos: SQOS, contract: AccountId, action: String, data: Bytes, session: Session) {
+            internal_receive_message(from_chain, id, sender, signer, sqos, contract, action, data, session);
+        }
+
+        /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
+        #[ink(message)]
+        fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) {
+
+        }
+        /// Triggers execution of a message sent from chain `chain_name` with id `id`
+        #[ink(message)]
+        fn execute_message(&mut self, chain_name: String, id: u128) {
+
+        }
+        /// Returns the simplified message, this message is reset every time when a contract is called
+        #[ink(message)]
+        fn get_context(& self, ) -> Context {
+            self.context
+        }
+        /// Returns the number of messages sent to chain `chain_name`
+        #[ink(message)]
+        fn get_sent_message_number(& self, chain_name: String) -> u128 {
+            0
+        }
+        /// Returns the number of messages received from chain `chain_name`
+        #[ink(message)]
+        fn get_received_message_number(& self, chain_name: String) -> u128 {
+            0
+        }
+        /// Returns the message with id `id` sent to chain `chain_name`
+        #[ink(message)]
+        fn get_sent_message(& self, chain_name: String, id: u128) -> SentMessage {
+
+        }
+        /// Returns the message with id `id` received from chain `chain_name`
+        #[ink(message)]
+        fn get_received_message(& self, chain_name: String, id: u128) -> ReceivedMessage;
+        /// Registers external callable interface information
+        #[ink(message)]
+        fn register_interface(&mut self, action: String, interface: String);
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
