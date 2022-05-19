@@ -1,10 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod message_protocol;
+
 pub use self::Payload::{
-    MsgType,
-    MessageItem,
-    MessageVec,
-    MessagePayload,
     Payload as Other,
     PayloadRef,
 };
@@ -13,6 +11,8 @@ use ink_lang as ink;
 use ink_prelude;
 use ink_storage;
 
+
+/// This is an example that shows how can user-defined struct be used for other contracts as parameter in `message` interface
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
 // #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct TestData{
@@ -38,125 +38,13 @@ mod Payload {
 
     use ink_storage::traits::{SpreadAllocate};
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
-    pub enum MsgType{
-        InkString,
-        InkU8,
-        InkU16,
-        UserData,
-    }
-
-    #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
-    pub struct MessageItem{
-        pub n: u128,
-        pub t: MsgType,
-        pub v: ink_prelude::vec::Vec<u8>,
-    }
-
-    impl PartialEq for MessageItem {
-        fn eq(&self, other: &MessageItem) -> bool{
-            return self.n == other.n;
-        }
-    }
-
-    #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
-    pub struct MessageVec{
-        pub n: u128,
-        pub t: MsgType,
-        pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
-    }
-
-    impl PartialEq for MessageVec {
-        fn eq(&self, other: &MessageVec) -> bool{
-            return self.n == other.n;
-        }
-    }
-
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-    pub struct MessagePayload{
-        pub items: Option<ink_prelude::vec::Vec<MessageItem>>,
-        pub vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
-    }
-
-    impl MessagePayload{
-        pub fn new() -> MessagePayload{
-            MessagePayload {
-                items: None,
-                vecs: None,
-            }
-        }
-
-        /// for `item`
-        pub fn add_item(&mut self, msg_item: MessageItem)-> bool{
-            if let Some(item) = &mut self.items {
-                if item.contains(&msg_item){
-                    return false;
-                }
-
-                item.push(msg_item);
-                true
-            } else{
-                let mut item_vec = ink_prelude::vec::Vec::new();
-                item_vec.push(msg_item);
-                self.items = Some(item_vec);
-                true
-            }
-        }
-
-        pub fn get_item(&self, msg_n: u128) -> Option<&MessageItem>{
-            if let Some(item) = &self.items {
-                for it in item.iter() {
-                    if it.n == msg_n {
-                        return Some(it);
-                    }
-                }
-            }
-
-            None
-        }
-
-        /// for `vecs`
-        pub fn add_vec(&mut self, msg_vec: MessageVec) -> bool{
-            if let Some(m_vec) = &mut self.vecs {
-                if m_vec.contains(&msg_vec){
-                    return false;
-                }
-                
-                m_vec.push(msg_vec);
-                true
-            } else {
-                let mut vec_one = ink_prelude::vec::Vec::new();
-                vec_one.push(msg_vec);
-                self.vecs = Some(vec_one);
-                true
-            }
-        }
-
-        pub fn get_vec(&self, msg_n: u128) -> Option<&MessageVec>{
-            if let Some(m_vec) = &self.vecs {
-                for it in m_vec.iter() {
-                    if it.n == msg_n {
-                        return Some(it);
-                    }
-                }
-            }
-
-            None
-        }
-    }
-
-    // for test
+    /// for test
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
         name: ink_prelude::string::String,
         age: u32,
         phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
-        info: Option<ink_prelude::string::String>,
     }
 
     /// Defines the storage of your contract.
@@ -208,13 +96,13 @@ mod Payload {
 
         /// Test the message Type.
         #[ink(message)]
-        pub fn getMessage(&self, msg: MessagePayload) -> MessagePayload {
+        pub fn getMessage(&self, msg: super::message_protocol::MessagePayload) -> super::message_protocol::MessagePayload {
             msg
         }
 
         /// User defined behaviors when messages or invocations are received from other chains
         #[ink(message)]
-        pub fn test_callee_received(&self, m_payload: MessagePayload) ->ink_prelude::string::String{
+        pub fn test_callee_received(&self, m_payload: super::message_protocol::MessagePayload) ->ink_prelude::string::String{
             let mut s = ink_prelude::string::String::new();
 
             // `1` is user defined `MessageItem` id
@@ -244,6 +132,8 @@ mod Payload {
     /// The below code is technically just normal Rust code.
     #[cfg(test)]
     mod tests {
+
+
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
 
@@ -277,7 +167,6 @@ mod Payload {
                 name: "Nika".into(),
                 age: 37,
                 phones: ink_prelude::vec!["123".into(), "456".into()],
-                info: None,
             };
 
             let mut v: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
@@ -295,7 +184,6 @@ mod Payload {
                 name: "Nika".into(),
                 age: 37,
                 phones: ink_prelude::vec!["123".into(), "456".into()],
-                info: None,
             };
 
             let rst_s = ink_prelude::format!("{:?}", msg) + "\n" + &ink_prelude::format!("{:?}", msg) + "\n" + &ink_prelude::format!("{:?}", msg) + "\n";
@@ -303,10 +191,10 @@ mod Payload {
             let mut v: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
             scale::Encode::encode_to(&msg, &mut v);
 
-            let mut msg_payload = MessagePayload::new();
-            let msg_item = MessageItem{
+            let mut msg_payload = super::super::message_protocol::MessagePayload::new();
+            let msg_item = super::super::message_protocol::MessageItem{
                 n: 1,
-                t: MsgType::UserData,
+                t: super::super::message_protocol::MsgType::UserData,
                 v: v.clone(),
             };
             assert_eq!(msg_payload.add_item(msg_item), true);
@@ -315,9 +203,9 @@ mod Payload {
             vec_eles.push(v.clone());
             vec_eles.push(v.clone());
 
-            let msg_vec = MessageVec{
+            let msg_vec = super::super::message_protocol::MessageVec{
                 n: 11,
-                t: MsgType::UserData,
+                t: super::super::message_protocol::MsgType::UserData,
                 v: vec_eles,
             };
             assert_eq!(msg_payload.add_vec(msg_vec), true);
@@ -328,7 +216,7 @@ mod Payload {
 
             // simulate decode `MessagePayload` implemented underlying
             let mut vv = pl_code.as_slice();
-            let vout: MessagePayload = scale::Decode::decode(&mut vv).unwrap();
+            let vout: super::super::message_protocol::MessagePayload = scale::Decode::decode(&mut vv).unwrap();
 
             // simulate contract call
             let payload = Payload::default();
