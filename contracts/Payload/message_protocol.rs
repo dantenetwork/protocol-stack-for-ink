@@ -43,8 +43,12 @@ impl ::scale_info::TypeInfo for MsgType {
     }
 }
 
+/// Message Item, used for describing the information composed with a single element
+/// @member `n`: item unique ID, which is used for user applications to communicate user-defined informations
+/// @member `t`: item type
+/// @member `v`: the information data, encoded by `scale::Encode::encode_to`
 #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+// #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct MessageItem{
     pub n: u128,
     pub t: MsgType,
@@ -57,6 +61,24 @@ impl PartialEq for MessageItem {
     }
 }
 
+impl ::scale_info::TypeInfo for MessageItem {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("MessageItem", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<u128>().name("n").type_name("u128"))
+                        .field(|f| f.ty::<MsgType>().name("t").type_name("MsgType"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<u8>>().name("v").type_name("ink_prelude::vec::Vec<u8>"))
+                    )
+    }
+}
+
+/// Message vector, used for describing the information composed with an array of elements
+/// @member `n`: item unique ID, which is used for user applications to communicate user-defined informations
+/// @member `t`: item type. This is the element type of the inner array
+/// @member `v`: the information data, the inner array element is encoded by `scale::Encode::encode_to`
 #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
 #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct MessageVec{
@@ -71,6 +93,7 @@ impl PartialEq for MessageVec {
     }
 }
 
+/// Message Payload
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct MessagePayload{
