@@ -179,7 +179,7 @@ mod cross_chain {
                 return Err(Error::IdNotMatch)
             }
 
-            let message = ReceivedMessage::new(id, &from_chain, &sender, &signer, &sqos, contract, &action, &data, &session);
+            let message = ReceivedMessage::new(id, from_chain.clone(), sender, signer, sqos, contract, action, data, session);
             chain_message.push(message);
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
@@ -193,7 +193,7 @@ mod cross_chain {
                 return Err(Error::IdNotMatch)
             }
 
-            let message = ReceivedMessage::new_with_error(id, &from_chain, error_code);
+            let message = ReceivedMessage::new_with_error(id, from_chain.clone(), error_code);
             chain_message.push(message);
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
@@ -230,12 +230,12 @@ mod cross_chain {
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
         fn send_message(&mut self, to_chain: String, contract: String, action: String, sqos: SQOS, data: Bytes, session: Session) {
-            let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(to_chain.clone()).unwrap_or(Vec::<SentMessage>::new());
+            let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(&to_chain).unwrap_or(Vec::<SentMessage>::new());
             let id = chain_message.len() + 1;
             let caller = Self::env().caller();
             let signer = caller.clone();
-            let content = Content::new(&contract, &action, &data);
-            let message: SentMessage = SentMessage::new(id.try_into().unwrap(), &self.chain_name, &to_chain, caller, signer, &sqos, &content, &session);
+            let content = Content::new(contract, action, data);
+            let message: SentMessage = SentMessage::new(id.try_into().unwrap(), self.chain_name.clone(), to_chain.clone(), caller, signer, sqos, content, session);
             chain_message.push(message);
             self.sent_message_table.insert(to_chain, &chain_message);
         }
@@ -266,7 +266,8 @@ mod cross_chain {
                 return Err(Error::AlreadyExecuted);
             }
 
-            self.context = Context::new(message.id, &message.from_chain, &message.sender, &message.signer, message.contract, &message.action);
+            self.context = Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
+                message.contract.clone(), message.action.clone());
 
             // Cross-contract call
             Ok(())
@@ -344,7 +345,7 @@ mod cross_chain {
             let cross_chain = CrossChain::new("POLKADOT".to_string());
         }
 
-        /// For trait Ownable
+        /// Tests for trait Ownable
         #[ink::test]
         fn owner_works() {
             let accounts =
@@ -400,6 +401,26 @@ mod cross_chain {
             // Call of only_owner should return Err.
             set_caller(accounts.bob);
             assert_eq!(cross_chain.only_owner(), Err(Error::NotOwner));
+        }
+
+        /// Tests for CrossChainBase
+        #[ink::test]
+        fn send_message_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Send message.
+            let to_chain = "ETHEREUM".to_string();
+            let contract = "ETHEREUM_CONTRACT".to_string();
+            let action = "ETHERERUM_ACTION".to_string();
+            let sqos = SQOS::new(0);
+            let data = Bytes::new();
+            let session = Session::new(0, 0);
+            cross_chain.send_message(to_chain.clone(), contract, action, sqos, data, session);
+            // Number of sent messages is 1.
+            let num = cross_chain.sent_message_table.get(&to_chain).unwrap().len();
+            assert_eq!(num, 1);
         }
     }
 }

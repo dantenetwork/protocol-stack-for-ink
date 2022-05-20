@@ -7,9 +7,7 @@ use ink_storage::{
     },
 };
 
-use ink_env::{
-    AccountId,
-};
+use ink_env::AccountId;
 
 use ink_prelude::{
     vec::Vec,
@@ -45,11 +43,11 @@ pub struct Content {
 }
 
 impl Content {
-    pub fn new(contract: &String, action: &String, data: &Bytes) -> Self {
+    pub fn new(contract: String, action: String, data: Bytes) -> Self {
         Self {
-            contract: contract.clone(),
-            action: action.clone(),
-            data: data.clone(),
+            contract: contract,
+            action: action,
+            data: data,
         }
     }
 }
@@ -61,12 +59,29 @@ pub struct SQOS {
     pub reveal: u8,
 }
 
+impl SQOS {
+    pub fn new(reveal: u8) -> Self {
+        Self {
+            reveal,
+        }
+    }
+}
+
 /// Session Structure
 #[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct Session {
     pub msg_type: u8,
     pub id: u128,
+}
+
+impl Session {
+    pub fn new(msg_type: u8, id: u128) -> Self {
+        Self {
+            msg_type,
+            id,
+        }
+    }
 }
 
 /// Received message structure
@@ -87,27 +102,27 @@ pub struct ReceivedMessage {
 }
 
 impl ReceivedMessage {
-    pub fn new(id: u128, from_chain: &String, sender: &String, signer: &String, sqos: &SQOS,
-        contract: AccountId, action: &String, data: &Bytes, session: &Session) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
+        contract: AccountId, action: String, data: Bytes, session: Session) -> Self {
         Self {
             id,
-            from_chain: from_chain.clone(),
-            sender: sender.clone(),
-            signer: signer.clone(),
-            sqos: sqos.clone(),
+            from_chain,
+            sender,
+            signer,
+            sqos,
             contract,
-            action: action.clone(),
-            data: data.clone(),
-            session: session.clone(),
+            action,
+            data,
+            session,
             executed: false,
             error_code: 0,
         }
     }
 
-    pub fn new_with_error(id: u128, from_chain: &String, error_code: u16) -> Self {
+    pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
         let mut m = Self::default();
         m.id = id;
-        m.from_chain = from_chain.clone();
+        m.from_chain = from_chain;
         m.error_code = error_code;
         m
     }
@@ -128,17 +143,17 @@ pub struct SentMessage {
 }
 
 impl SentMessage {
-    pub fn new(id: u128, from_chain: &String, to_chain: &String, sender: AccountId, signer: AccountId,
-        sqos: &SQOS, content: &Content, session: &Session) -> Self {
+    pub fn new(id: u128, from_chain: String, to_chain: String, sender: AccountId, signer: AccountId,
+        sqos: SQOS, content: Content, session: Session) -> Self {
         Self {
             id,
-            from_chain: from_chain.clone(),
-            to_chain: to_chain.clone(),
-            sender: sender.clone(),
-            signer: signer.clone(),
-            sqos: sqos.clone(),
-            content: content.clone(),
-            session: session.clone(),
+            from_chain,
+            to_chain,
+            sender,
+            signer,
+            sqos,
+            content,
+            session,
         }
     }
 }
@@ -156,14 +171,14 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(id: u128, from_chain: &String, sender: &String, signer: &String, contract: AccountId, action: &String) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: String) -> Self {
         Self {
             id,
-            from_chain: from_chain.clone(),
-            sender: sender.clone(),
-            signer: signer.clone(),
+            from_chain,
+            sender,
+            signer,
             contract,
-            action: action.clone(),
+            action,
         }
     }
 }
