@@ -5,7 +5,7 @@ mod test;
 use ink_lang as ink;
 use ink_prelude;
 
-use Payload::{ MessagePayload, MessageItem, MessageVec, MsgType, Other, PayloadRef};
+use Payload::message_protocol::{ MessagePayload, MessageItem, MessageVec, MsgType};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 // #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -83,12 +83,8 @@ mod callee {
 
         // test Payload as parameter
         #[ink(message)]
-        pub fn get_payload(&self, msg_vec: Payload::TestData) -> Payload::TestData{
-            let v = super::test::get();
-            let msg = Payload::MessagePayload::new();
-
-            msg_vec
-
+        pub fn get_payload(&self, msg_vec: super::MessagePayload) -> ink_prelude::string::String{
+            ink_prelude::format!("{:?}", msg_vec)
             // let mut vv = msg_vec.as_slice();
             // let vout: Payload::MessagePayload = scale::Decode::decode(&mut vv).unwrap();
         }
@@ -133,15 +129,15 @@ mod callee {
             let mut v_vec = ink_prelude:: vec::Vec::<u8>::new();
             scale::Encode::encode_to(&v_u16, &mut v_vec);
 
-            let mut pl = Payload::MessagePayload::new();
-            let mut msg_item = Payload::MessageItem{
+            let mut pl = super::super::MessagePayload::new();
+            let mut msg_item = super::super::MessageItem{
                 n: 1,
-                t: Payload::MsgType::InkU16,
+                t: super::super::MsgType::InkU16,
                 v: v_vec,
             };
 
             pl.add_item(msg_item.clone());
-            msg_item.t = Payload::MsgType::InkU8;
+            msg_item.t = super::super::MsgType::InkU8;
             assert_eq!(pl.add_item(msg_item.clone()), false);
             // msg_item.n = 2;
             msg_item.v.push(100);

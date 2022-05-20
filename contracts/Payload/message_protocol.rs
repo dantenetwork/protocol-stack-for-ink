@@ -80,7 +80,7 @@ impl ::scale_info::TypeInfo for MessageItem {
 /// @member `t`: item type. This is the element type of the inner array
 /// @member `v`: the information data, the inner array element is encoded by `scale::Encode::encode_to`
 #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+// #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct MessageVec{
     pub n: u128,
     pub t: MsgType,
@@ -93,12 +93,41 @@ impl PartialEq for MessageVec {
     }
 }
 
+impl ::scale_info::TypeInfo for MessageVec {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("MessageVec", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<u128>().name("n").type_name("u128"))
+                        .field(|f| f.ty::<MsgType>().name("t").type_name("MsgType"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>>().name("v").type_name("ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>"))
+                    )
+    }
+}
+
 /// Message Payload
+/// @member items: a vector of `MessageItem`
+/// @member vecs: a vector of `MessageVec`
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
+// #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct MessagePayload{
     pub items: Option<ink_prelude::vec::Vec<MessageItem>>,
     pub vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
+}
+
+impl ::scale_info::TypeInfo for MessagePayload {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("MessagePayload", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<Option<ink_prelude::vec::Vec<MessageItem>>>().name("items").type_name("Option<ink_prelude::vec::Vec<MessageItem>>"))
+                        .field(|f| f.ty::<Option<ink_prelude::vec::Vec<MessageVec>>>().name("vecs").type_name("Option<ink_prelude::vec::Vec<MessageVec>>"))
+                    )
+    }
 }
 
 impl MessagePayload{
