@@ -93,21 +93,13 @@ mod d_protocol_stack {
         /// Submit message from routers
         /// Test `MessageDetail` in Protocol is the same in Callee
         #[ink(message)]
-        pub fn submit_message(& self, callee_account: AccountId, msg: MessageDetail) -> ink_prelude::string::String{
-            let my_return_value: ink_prelude::string::String =  ink_env::call::build_call::<ink_env::DefaultEnvironment>()
-                .call_type(
-                    ink_env::call::Call::new()
-                        .callee(callee_account)
-                        .gas_limit(0)
-                        .transferred_value(0))
-                .exec_input(
-                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0xa9, 0x45, 0xce, 0xc7]))
-                    .push_arg(msg)
-                )
-                .returns::<ink_prelude::string::String>()
-                .fire()
-                .unwrap();
-            my_return_value
+        pub fn submit_message(& self, callee_account: AccountId, msg: ink_prelude::vec::Vec::<u8>) -> ink_prelude::string::String{
+            // cache the msg
+
+            // verifiy the msg
+
+            // submit msg to callee account
+            self.call_to_contracts(callee_account, msg)
         }
 
         #[ink(message)]

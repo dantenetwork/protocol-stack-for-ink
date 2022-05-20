@@ -43,7 +43,7 @@ async function query() {
   
     // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
     console.log(ecdStr);
-    const { gasConsumed, result, output } = await contract.query['callToContracts'](sender.address, {value, gasLimit }, 
+    const { gasConsumed, result, output } = await contract.query['submitMessage'](sender.address, {value, gasLimit }, 
                                             process.env.CALLEE_CONTRACT, ecdStr);
     
     // The actual result from RPC as `ContractExecResult`
