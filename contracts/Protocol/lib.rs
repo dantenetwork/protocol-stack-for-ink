@@ -109,8 +109,8 @@ mod d_protocol_stack {
             v
         }
         
-        #[ink(message)]
-        pub fn call_to_contracts(& self, callee_account: AccountId, msg: ink_prelude::vec::Vec::<u8>) -> ink_prelude::string::String{
+        /// inner interface for dynamically call to user application contract
+        fn call_to_contracts(& self, callee_account: AccountId, msg: ink_prelude::vec::Vec::<u8>) -> ink_prelude::string::String{
             let data: ink_prelude::vec::Vec::<u8> = msg.clone().drain(4..).collect();
             let wrapped_data = Wrapper::new(data);
             
