@@ -31,6 +31,7 @@ pub enum Error {
     ChainMessageNotFound,
     IdOutOfBound,
     AlreadyExecuted,
+    InterfaceNotFound,
 }
 
 /// Content structure

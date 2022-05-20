@@ -68,7 +68,7 @@ mod cross_chain {
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<(), Error>;
         /// Returns the simplified message, this message is reset every time when a contract is called
         #[ink(message)]
-        fn get_context(& self) -> Context;
+        fn get_context(& self) -> Option<Context>;
         /// Returns the number of messages sent to chain `chain_name`
         #[ink(message)]
         fn get_sent_message_number(& self, chain_name: String) -> u128;
@@ -84,6 +84,9 @@ mod cross_chain {
         /// Registers external callable interface information
         #[ink(message)]
         fn register_interface(&mut self, action: String, interface: String);
+        /// Returns interface information of contract `contract` and action `action`
+        #[ink(message)]
+        fn get_interface(& self, contract: AccountId, action: String) -> Result<String, Error>;
     }
 
     /// Trait for multi porters
@@ -141,7 +144,7 @@ mod cross_chain {
         /// Table of received messages
         received_message_table: Mapping<String, Vec<ReceivedMessage>>,
         /// Context of a cross-contract call
-        context: Context,
+        context: Option<Context>,
     }
 
     impl CrossChain {
@@ -266,8 +269,8 @@ mod cross_chain {
                 return Err(Error::AlreadyExecuted);
             }
 
-            self.context = Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
-                message.contract.clone(), message.action.clone());
+            self.context = Some(Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
+                message.contract.clone(), message.action.clone()));
 
             // Cross-contract call
             Ok(())
@@ -275,7 +278,7 @@ mod cross_chain {
 
         /// Returns the simplified message, this message is reset every time when a contract is called
         #[ink(message)]
-        fn get_context(& self) -> Context {
+        fn get_context(& self) -> Option<Context> {
             self.context.clone()
         }
 
@@ -321,6 +324,12 @@ mod cross_chain {
             let caller = self.env().caller();
             self.interfaces.insert((caller, action), &interface);
         }
+
+        #[ink(message)]
+        fn get_interface(& self, contract: AccountId, action: String) -> Result<String, Error> {
+            let interface = self.interfaces.get((contract, action)).ok_or(Error::InterfaceNotFound)?;
+            Ok(interface)
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -336,6 +345,37 @@ mod cross_chain {
 
         fn set_caller(sender: AccountId) {
             ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
+        }
+
+        fn create_contract_with_received_message() -> CrossChain {
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Receive message.
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let sender = "SENDER".to_string();
+            let signer = "SIGNER".to_string();
+            let contract = AccountId::default();
+            let action = "ETHERERUM_ACTION".to_string();
+            let sqos = SQOS::new(0);
+            let data = Bytes::new();
+            let session = Session::new(0, 0);
+            cross_chain.receive_message(from_chain.clone(), id, sender, signer, sqos, contract, action, data, session);
+            cross_chain
+        }
+
+        fn create_contract_with_sent_message() -> CrossChain {
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Send message.
+            let to_chain = "ETHEREUM".to_string();
+            let contract = "ETHEREUM_CONTRACT".to_string();
+            let action = "ETHERERUM_ACTION".to_string();
+            let sqos = SQOS::new(0);
+            let data = Bytes::new();
+            let session = Session::new(0, 0);
+            cross_chain.send_message(to_chain.clone(), contract, action, sqos, data, session);
+            cross_chain
         }
 
         /// We test if the new constructor does its job.
@@ -421,6 +461,109 @@ mod cross_chain {
             // Number of sent messages is 1.
             let num = cross_chain.sent_message_table.get(&to_chain).unwrap().len();
             assert_eq!(num, 1);
+        }
+        
+        #[ink::test]
+        fn receive_message_works() {
+            let from_chain = "ETHEREUM".to_string();
+            let cross_chain = create_contract_with_received_message();
+            // Number of sent messages is 1.
+            let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
+            assert_eq!(num, 1);
+        }
+        
+        #[ink::test]
+        fn abandon_message_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Receive message.
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let error_code = 1;
+            cross_chain.abandon_message(from_chain.clone(), id, error_code);
+            // Number of sent messages is 1.
+            let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
+            assert_eq!(num, 1);
+        }
+        
+        #[ink::test]
+        fn execute_message_works() {
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_received_message();
+            // Execute message
+            let ret = cross_chain.execute_message(from_chain.clone(), id);
+            assert_eq!(ret, Ok(()));
+        }
+        
+        #[ink::test]
+        fn get_context_works() {
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_received_message();
+            // Execute message
+            let ret = cross_chain.execute_message(from_chain.clone(), id);
+            assert_eq!(ret, Ok(()));
+            // Context not None.
+            let context = cross_chain.get_context();
+            assert_eq!(context.is_some(), true);
+        }
+        
+        #[ink::test]
+        fn get_sent_message_number_works() {
+            let to_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_sent_message();
+            // Number of sent messages is 1.
+            let num = cross_chain.get_sent_message_number(to_chain);
+            assert_eq!(num, 1);
+        }
+        
+        #[ink::test]
+        fn get_received_message_number_works() {
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_received_message();
+            // Number of received messages is 1.
+            let num = cross_chain.get_received_message_number(from_chain);
+            assert_eq!(num, 1);
+        }
+
+        #[ink::test]
+        fn get_sent_message_works() {
+            let to_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_sent_message();
+            // Sent message is Ok.
+            let message = cross_chain.get_sent_message(to_chain, 1);
+            assert_eq!(message.is_ok(), true);
+        }
+
+        #[ink::test]
+        fn get_received_message_works() {
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_received_message();
+            // Received message is Ok.
+            let message = cross_chain.get_received_message(from_chain, 1);
+            assert_eq!(message.is_ok(), true);
+        }
+
+        #[ink::test]
+        fn register_interface_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Received message is Ok.
+            let action = "ETHERERUM_ACTION".to_string();
+            let interface = "INTERFACE".to_string();
+            cross_chain.register_interface(action.clone(), interface);
+            // Check registered interface.
+            let i = cross_chain.get_interface(accounts.alice, action);
+            assert_eq!(i.is_ok(), true);
         }
     }
 }
