@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_lang as ink;
-use ink_prelude;
 
 #[ink::contract]
 mod cross_chain {
@@ -43,18 +42,18 @@ mod cross_chain {
     /// Content structure
     #[derive(SpreadAllocate, SpreadLayout, PackedLayout, Clone, Decode, Encode)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-    struct Content {
+    pub struct Content {
         contract: String,
         action: String,
         data: Bytes,
     }
 
     impl Content {
-        fn new(contract: String, action: String, data: Bytes) -> Self {
+        fn new(contract: &String, action: &String, data: &Bytes) -> Self {
             Self {
-                contract,
-                action,
-                data,
+                contract: contract.clone(),
+                action: action.clone(),
+                data: data.clone(),
             }
         }
     }
@@ -62,14 +61,14 @@ mod cross_chain {
     /// SQOS structure
     #[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-    struct SQOS {
+    pub struct SQOS {
         reveal: u8,
     }
 
     /// Session Structure
     #[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-    struct Session {
+    pub struct Session {
         msg_type: u8,
         id: u128,
     }
@@ -77,7 +76,7 @@ mod cross_chain {
     /// Received message structure
     #[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-    struct ReceivedMessage {
+    pub struct ReceivedMessage {
         id: u128,
         from_chain: String,
         sender: String,
@@ -92,27 +91,27 @@ mod cross_chain {
     }
 
     impl ReceivedMessage {
-        fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
-            contract: AccountId, action: String, data: Bytes, session: Session) -> Self {
+        fn new(id: u128, from_chain: &String, sender: &String, signer: &String, sqos: &SQOS,
+            contract: AccountId, action: &String, data: &Bytes, session: &Session) -> Self {
             Self {
                 id,
-                from_chain,
-                sender,
-                signer,
-                sqos,
+                from_chain: from_chain.clone(),
+                sender: sender.clone(),
+                signer: signer.clone(),
+                sqos: sqos.clone(),
                 contract,
-                action,
-                data,
-                session,
+                action: action.clone(),
+                data: data.clone(),
+                session: session.clone(),
                 executed: false,
                 error_code: 0,
             }
         }
 
-        fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
+        fn new_with_error(id: u128, from_chain: &String, error_code: u16) -> Self {
             let mut m = Self::default();
             m.id = id;
-            m.from_chain = from_chain;
+            m.from_chain = from_chain.clone();
             m.error_code = error_code;
             m
         }
@@ -121,7 +120,7 @@ mod cross_chain {
     /// Sent message structure
     #[derive(SpreadAllocate, SpreadLayout, PackedLayout, Clone, Decode, Encode)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-    struct SentMessage {
+    pub struct SentMessage {
         id: u128,
         from_chain: String,
         to_chain: String,
@@ -133,17 +132,17 @@ mod cross_chain {
     }
 
     impl SentMessage {
-        fn new(id: u128, from_chain: String, to_chain: String, sender: AccountId, signer: AccountId,
-            sqos: SQOS, content: Content, session: Session) -> Self {
+        fn new(id: u128, from_chain: &String, to_chain: &String, sender: AccountId, signer: AccountId,
+            sqos: &SQOS, content: &Content, session: &Session) -> Self {
             Self {
                 id,
-                from_chain,
-                to_chain,
-                sender,
-                signer,
-                sqos,
-                content,
-                session,
+                from_chain: from_chain.clone(),
+                to_chain: to_chain.clone(),
+                sender: sender.clone(),
+                signer: signer.clone(),
+                sqos: sqos.clone(),
+                content: content.clone(),
+                session: session.clone(),
             }
         }
     }
@@ -151,7 +150,7 @@ mod cross_chain {
     /// Context structure
     #[derive(SpreadAllocate, SpreadLayout, Clone, Decode, Encode)]
     #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-    struct Context {
+    pub struct Context {
         id: u128,
         from_chain: String,
         sender: String,
@@ -161,14 +160,14 @@ mod cross_chain {
     }
 
     impl Context {
-        fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: String) -> Self {
+        fn new(id: u128, from_chain: &String, sender: &String, signer: &String, contract: AccountId, action: &String) -> Self {
             Self {
                 id,
-                from_chain,
-                sender,
-                signer,
+                from_chain: from_chain.clone(),
+                sender: sender.clone(),
+                signer: signer.clone(),
                 contract,
-                action,
+                action: action.clone(),
             }
         }
     }
@@ -312,13 +311,13 @@ mod cross_chain {
         /// Receives message
         fn internal_receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String, contract: AccountId,
             sqos: SQOS, action: String, data: Bytes, session: Session) -> Result<(), Error> {
-            let mut chain_message = self.received_message_table.get(from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+            let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
             let current_id = chain_message.len() + 1;
             if current_id != id.try_into().unwrap() {
                 return Err(Error::IdNotMatch)
             }
 
-            let message = ReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
+            let message = ReceivedMessage::new(id, &from_chain, &sender, &signer, &sqos, contract, &action, &data, &session);
             chain_message.push(message);
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
@@ -326,13 +325,13 @@ mod cross_chain {
 
         /// Abandons message
         fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
-            let mut chain_message = self.received_message_table.get(from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+            let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
             let current_id = chain_message.len() + 1;
             if current_id != (id as usize) {
                 return Err(Error::IdNotMatch)
             }
 
-            let message = ReceivedMessage::new_with_error(id, from_chain, error_code);
+            let message = ReceivedMessage::new_with_error(id, &from_chain, error_code);
             chain_message.push(message);
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
@@ -362,19 +361,19 @@ mod cross_chain {
     impl CrossChainBase for CrossChain {
         /// Sets DAT token contract address
         #[ink(message)]
-        fn set_token_contract(&mut self, token: AccountId) {
+        fn set_token_contract(&mut self, _token: AccountId) {
 
         }
 
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
         fn send_message(&mut self, to_chain: String, contract: String, action: String, sqos: SQOS, data: Bytes, session: Session) {
-            let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(to_chain).unwrap_or(Vec::<SentMessage>::new());
+            let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(to_chain.clone()).unwrap_or(Vec::<SentMessage>::new());
             let id = chain_message.len() + 1;
             let caller = Self::env().caller();
             let signer = caller.clone();
-            let content = Content::new(contract, action, data);
-            let mut message: SentMessage = SentMessage::new(id.try_into().unwrap(), self.chain_name, to_chain, caller, signer, sqos, content, session);
+            let content = Content::new(&contract, &action, &data);
+            let message: SentMessage = SentMessage::new(id.try_into().unwrap(), &self.chain_name, &to_chain, caller, signer, &sqos, &content, &session);
             chain_message.push(message);
             self.sent_message_table.insert(to_chain, &chain_message);
         }
@@ -398,14 +397,14 @@ mod cross_chain {
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<(), Error> {
-            let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let message: &ReceivedMessage = chain_message.get(0).ok_or(Error::IdOutOfBound)?;
+            let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
+            let message: &ReceivedMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
 
             if message.executed {
                 return Err(Error::AlreadyExecuted);
             }
 
-            self.context = Context::new(message.id, message.from_chain, message.sender, message.signer, message.contract, message.action);
+            self.context = Context::new(message.id, &message.from_chain, &message.sender, &message.signer, message.contract, &message.action);
 
             // Cross-contract call
             Ok(())
@@ -430,7 +429,7 @@ mod cross_chain {
         /// Returns the number of messages received from chain `chain_name`
         #[ink(message)]
         fn get_received_message_number(& self, chain_name: String) -> u128 {
-            let chain_message: Option<Vec<ReceivedMessage>> = self.received_message_table.get(chain_name);
+            let chain_message: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
             if chain_message.is_none() {
                 return 0;
             }
@@ -441,15 +440,15 @@ mod cross_chain {
         #[ink(message)]
         fn get_sent_message(& self, chain_name: String, id: u128) -> Result<SentMessage, Error> {
             let chain_message: Vec<SentMessage> = self.sent_message_table.get(chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let message: &SentMessage = chain_message.get(0).ok_or(Error::IdOutOfBound)?;
+            let message: &SentMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
             Ok(message.clone())
         }
 
         /// Returns the message with id `id` received from chain `chain_name`
         #[ink(message)]
         fn get_received_message(& self, chain_name: String, id: u128) -> Result<ReceivedMessage, Error> {
-            let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let message: &ReceivedMessage = chain_message.get(0).ok_or(Error::IdOutOfBound)?;
+            let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
+            let message: &ReceivedMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
             Ok(message.clone())
         }
 
