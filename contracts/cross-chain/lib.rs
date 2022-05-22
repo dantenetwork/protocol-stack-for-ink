@@ -90,9 +90,17 @@ mod cross_chain {
     }
 
     /// Trait for multi porters
-    trait MultiPorters {
-        /// Changes porters and requirement
-        fn change_porters_and_requirement(porters: Porters, requirement: u128);
+    #[ink::trait_definition]
+    pub trait MultiPorters {
+        /// Changes porters and requirement.
+        #[ink(message)]
+        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16);
+        /// Get porters.
+        #[ink(message)]
+        fn get_porters(& self) -> Porters;
+        /// Get requirement
+        #[ink(message)]
+        fn get_requirement(& self) -> u16;
     }
 
     /// Defines the wrapper for cross-chain data
@@ -145,6 +153,14 @@ mod cross_chain {
         received_message_table: Mapping<String, Vec<ReceivedMessage>>,
         /// Context of a cross-contract call
         context: Option<Context>,
+
+        // Data for MultiPorters
+        /// Required number of porters.
+        required: u16,
+        /// Mapping of porters.
+        is_porter: Mapping<AccountId, bool>,
+        /// List of porters.
+        porters: Vec<AccountId>,
     }
 
     impl CrossChain {
@@ -329,6 +345,36 @@ mod cross_chain {
         fn get_interface(& self, contract: AccountId, action: String) -> Result<String, Error> {
             let interface = self.interfaces.get((contract, action)).ok_or(Error::InterfaceNotFound)?;
             Ok(interface)
+        }
+    }
+
+    impl MultiPorters for CrossChain {
+        #[ink(message)]
+        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) {
+            // Clear porters
+            for i in &self.porters {
+                self.is_porter.remove(i);
+            }
+
+            // self.porters.resize(porters.len(), AccountId::default());
+            for i in &porters {
+                self.is_porter.insert(i, &true);
+            }
+
+            self.porters = porters;
+            self.required = requirement;
+        }
+
+        /// Get porters.
+        #[ink(message)]
+        fn get_porters(& self) -> Porters {
+            self.porters.clone()
+        }
+
+        /// Get requirement
+        #[ink(message)]
+        fn get_requirement(& self) -> u16 {
+            self.required
         }
     }
 
@@ -564,6 +610,27 @@ mod cross_chain {
             // Check registered interface.
             let i = cross_chain.get_interface(accounts.alice, action);
             assert_eq!(i.is_ok(), true);
+        }
+        // change_porters_and_requirement(&mut self, porters: Porters, requirement: u16);
+        // Tests for trait MultiPorters
+        #[ink::test]
+        fn change_porters_and_requirement_works() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Resister.
+            let mut porters = Porters::new();
+            porters.push(accounts.alice);
+            porters.push(accounts.bob);
+            let required = 2;
+            cross_chain.change_porters_and_requirement(porters.clone(), required);
+            // Requirement is 2.
+            let r = cross_chain.get_requirement();
+            assert_eq!(r, 2);
+            // Check porters.
+            let p = cross_chain.get_porters();
+            assert_eq!(p, porters);
         }
     }
 }

@@ -20,7 +20,7 @@ use scale::{
 };
     
 pub type Bytes = Vec<u8>;
-pub type Porters = Vec<String>;
+pub type Porters = Vec<AccountId>;
 
 /// Errors for cross-chain contract
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Copy, Clone)]
