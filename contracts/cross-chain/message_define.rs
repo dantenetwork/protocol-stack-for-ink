@@ -1,7 +1,6 @@
 use ink_storage::{
     traits::{
         SpreadLayout,
-        SpreadAllocate,
         StorageLayout,
         PackedLayout,
     },
@@ -18,6 +17,8 @@ use scale::{
     Encode,
     Decode,
 };
+
+use crate::payload::MessagePayload;
     
 pub type Bytes = Vec<u8>;
 pub type Porters = Vec<AccountId>;
@@ -35,16 +36,16 @@ pub enum Error {
 }
 
 /// Content structure
-#[derive(SpreadAllocate, SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct Content {
     contract: String,
     action: String,
-    data: Bytes,
+    data: MessagePayload,
 }
 
 impl Content {
-    pub fn new(contract: String, action: String, data: Bytes) -> Self {
+    pub fn new(contract: String, action: String, data: MessagePayload) -> Self {
         Self {
             contract: contract,
             action: action,
@@ -54,7 +55,7 @@ impl Content {
 }
 
 /// SQOS structure
-#[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct SQOS {
     pub reveal: u8,
@@ -69,7 +70,7 @@ impl SQOS {
 }
 
 /// Session Structure
-#[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct Session {
     pub msg_type: u8,
@@ -86,7 +87,7 @@ impl Session {
 }
 
 /// Received message structure
-#[derive(SpreadAllocate, SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct ReceivedMessage {
     pub id: u128,
@@ -96,7 +97,7 @@ pub struct ReceivedMessage {
     pub sqos: SQOS,
     pub contract: AccountId,
     pub action: String,
-    pub data: Bytes,
+    pub data: MessagePayload,
     pub session: Session,
     pub executed: bool,
     pub error_code: u16,
@@ -104,7 +105,7 @@ pub struct ReceivedMessage {
 
 impl ReceivedMessage {
     pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
-        contract: AccountId, action: String, data: Bytes, session: Session) -> Self {
+        contract: AccountId, action: String, data: MessagePayload, session: Session) -> Self {
         Self {
             id,
             from_chain,
@@ -130,7 +131,7 @@ impl ReceivedMessage {
 }
 
 /// Sent message structure
-#[derive(SpreadAllocate, SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct SentMessage {
     id: u128,
@@ -160,7 +161,7 @@ impl SentMessage {
 }
 
 /// Context structure
-#[derive(SpreadAllocate, SpreadLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct Context {
     pub id: u128,

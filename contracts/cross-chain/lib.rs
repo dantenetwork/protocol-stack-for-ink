@@ -2,7 +2,13 @@
 
 use ink_lang as ink;
 
-mod message_define;
+pub mod payload;
+pub mod message_define;
+
+pub use self::cross_chain::{
+    CrossChain,
+    CrossChainRef,
+};
 
 #[ink::contract]
 mod cross_chain {
@@ -34,6 +40,8 @@ mod cross_chain {
         Porters,
     };
 
+    use super::payload::MessagePayload;
+
     /// Trait for owner
     #[ink::trait_definition]
     pub trait Ownable {
@@ -56,10 +64,10 @@ mod cross_chain {
         fn set_token_contract(&mut self, token: AccountId);
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
-        fn send_message(&mut self, to_chain: String, contract: String, action: String, sqos: SQOS, data: Bytes, session: Session);
+        fn send_message(&mut self, to_chain: String, contract: String, action: String, sqos: SQOS, data: MessagePayload, session: Session);
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
-        fn receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String, sqos: SQOS, contract: AccountId, action: String, data: Bytes, session: Session);
+        fn receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String, sqos: SQOS, contract: AccountId, action: String, data: MessagePayload, session: Session);
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         #[ink(message)]
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
@@ -191,7 +199,7 @@ mod cross_chain {
 
         /// Receives message
         fn internal_receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String, contract: AccountId,
-            sqos: SQOS, action: String, data: Bytes, session: Session) -> Result<(), Error> {
+            sqos: SQOS, action: String, data: MessagePayload, session: Session) -> Result<(), Error> {
             let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
             let current_id = chain_message.len() + 1;
             if current_id != id.try_into().unwrap() {
@@ -248,7 +256,7 @@ mod cross_chain {
 
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
-        fn send_message(&mut self, to_chain: String, contract: String, action: String, sqos: SQOS, data: Bytes, session: Session) {
+        fn send_message(&mut self, to_chain: String, contract: String, action: String, sqos: SQOS, data: MessagePayload, session: Session) {
             let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(&to_chain).unwrap_or(Vec::<SentMessage>::new());
             let id = chain_message.len() + 1;
             let caller = Self::env().caller();
@@ -262,7 +270,7 @@ mod cross_chain {
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, from_chain: String, id: u128, sender: String, signer: String,
-            sqos: SQOS, contract: AccountId, action: String, data: Bytes, session: Session) {
+            sqos: SQOS, contract: AccountId, action: String, data: MessagePayload, session: Session) {
             self.internal_receive_message(from_chain, id, sender, signer, contract, sqos, action, data, session);
         }
 
@@ -404,7 +412,7 @@ mod cross_chain {
             let contract = AccountId::default();
             let action = "ETHERERUM_ACTION".to_string();
             let sqos = SQOS::new(0);
-            let data = Bytes::new();
+            let data = MessagePayload::new();
             let session = Session::new(0, 0);
             cross_chain.receive_message(from_chain.clone(), id, sender, signer, sqos, contract, action, data, session);
             cross_chain
@@ -418,7 +426,7 @@ mod cross_chain {
             let contract = "ETHEREUM_CONTRACT".to_string();
             let action = "ETHERERUM_ACTION".to_string();
             let sqos = SQOS::new(0);
-            let data = Bytes::new();
+            let data = MessagePayload::new();
             let session = Session::new(0, 0);
             cross_chain.send_message(to_chain.clone(), contract, action, sqos, data, session);
             cross_chain
@@ -501,7 +509,7 @@ mod cross_chain {
             let contract = "ETHEREUM_CONTRACT".to_string();
             let action = "ETHERERUM_ACTION".to_string();
             let sqos = SQOS::new(0);
-            let data = Bytes::new();
+            let data = MessagePayload::new();
             let session = Session::new(0, 0);
             cross_chain.send_message(to_chain.clone(), contract, action, sqos, data, session);
             // Number of sent messages is 1.
