@@ -81,6 +81,13 @@ mod callee {
             s.into_bytes()
         }
 
+        #[ink(message)]
+        pub fn get_struct_message_u8(& self, msg: MessageDetail) -> ink_prelude::vec::Vec::<u8>{
+            let mut v = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&msg, &mut v);
+            v
+        }
+
         // test Payload as parameter
         #[ink(message)]
         pub fn get_payload(&self, msg_vec: super::MessagePayload) -> ink_prelude::string::String{
