@@ -17,8 +17,6 @@ use scale::{
     Encode,
     Decode,
 };
-
-use crate::payload::MessagePayload;
     
 pub type Bytes = Vec<u8>;
 pub type Porters = Vec<AccountId>;
@@ -41,11 +39,11 @@ pub enum Error {
 pub struct Content {
     contract: String,
     action: String,
-    data: MessagePayload,
+    data: Bytes,
 }
 
 impl Content {
-    pub fn new(contract: String, action: String, data: MessagePayload) -> Self {
+    pub fn new(contract: String, action: String, data: Bytes) -> Self {
         Self {
             contract: contract,
             action: action,
@@ -97,7 +95,7 @@ pub struct ReceivedMessage {
     pub sqos: SQOS,
     pub contract: AccountId,
     pub action: String,
-    pub data: MessagePayload,
+    pub data: Bytes,
     pub session: Session,
     pub executed: bool,
     pub error_code: u16,
@@ -105,7 +103,7 @@ pub struct ReceivedMessage {
 
 impl ReceivedMessage {
     pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
-        contract: AccountId, action: String, data: MessagePayload, session: Session) -> Self {
+        contract: AccountId, action: String, data: Bytes, session: Session) -> Self {
         Self {
             id,
             from_chain,
