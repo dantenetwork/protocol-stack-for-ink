@@ -1,5 +1,5 @@
 [package]
-name = "cross_chain"
+name = "locker_mock"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -11,19 +11,18 @@ ink_env = { version = "3.0", default-features = false }
 ink_storage = { version = "3.0", default-features = false }
 ink_lang = { version = "3.0", default-features = false }
 ink_prelude = { version = "3.0.1", default-features = false }
-# serde-json-wasm = "0.4.0"
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
+scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
+
+cross_chain = { path = "../cross-chain/", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
-name = "cross_chain"
+name = "locker_mock"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
 	"cdylib",
-    # Used for ABI generation.
-    "rlib",
 ]
 
 [features]
