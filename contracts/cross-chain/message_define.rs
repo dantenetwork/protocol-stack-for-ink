@@ -132,14 +132,14 @@ impl ReceivedMessage {
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct SentMessage {
-    id: u128,
-    from_chain: String,
-    to_chain: String,
-    sender: AccountId,
-    signer: AccountId,
-    sqos: SQOS,
-    content: Content,
-    session: Session,
+    pub id: u128,
+    pub from_chain: String,
+    pub to_chain: String,
+    pub sender: AccountId,
+    pub signer: AccountId,
+    pub sqos: SQOS,
+    pub content: Content,
+    pub session: Session,
 }
 
 impl SentMessage {
@@ -151,6 +151,19 @@ impl SentMessage {
             to_chain,
             sender,
             signer,
+            sqos,
+            content,
+            session,
+        }
+    }
+
+    pub fn new_sending_message(to_chain: String, sqos: SQOS, session: Session, content: Content) -> Self {
+        Self {
+            id: 0,
+            from_chain: String::try_from("").unwrap(),
+            to_chain,
+            sender: AccountId::default(),
+            signer: AccountId::default(),
             sqos,
             content,
             session,

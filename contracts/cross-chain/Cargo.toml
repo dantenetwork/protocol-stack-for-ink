@@ -1,5 +1,5 @@
 [package]
-name = "D_ProtocolStack"
+name = "cross_chain"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -17,7 +17,7 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 
 [lib]
-name = "d_protocol_stack"
+name = "cross_chain"
 path = "lib.rs"
 crate-type = [
 	# Used for normal contract Wasm blobs.
