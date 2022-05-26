@@ -73,7 +73,7 @@ mod cross_chain {
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
-        fn execute_message(&mut self, chain_name: String, id: u128) -> Result<(String), Error>;
+        fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
         /// Returns the simplified message, this message is reset every time when a contract is called
         #[ink(message)]
         fn get_context(& self) -> Option<Context>;
@@ -282,7 +282,7 @@ mod cross_chain {
         }
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
-        fn execute_message(&mut self, chain_name: String, id: u128) -> Result<(String), Error> {
+        fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
             let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
             let message: &ReceivedMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
 
@@ -313,7 +313,7 @@ mod cross_chain {
                 .fire()
                 .unwrap();
             
-            Ok((my_return_value))
+            Ok(my_return_value)
         }
 
         /// Returns the simplified message, this message is reset every time when a contract is called
@@ -559,6 +559,7 @@ mod cross_chain {
             // // Execute message
             // let ret = cross_chain.execute_message(from_chain.clone(), id);
             // assert_eq!(ret, Ok(()));
+            println!("Cross-contract call can not be tested");
         }
         
         #[ink::test]
@@ -572,6 +573,7 @@ mod cross_chain {
             // // Context not None.
             // let context = cross_chain.get_context();
             // assert_eq!(context.is_some(), true);
+            println!("Cross-contract call can not be tested");
         }
         
         #[ink::test]
@@ -628,7 +630,7 @@ mod cross_chain {
             let i = cross_chain.get_interface(accounts.alice, action);
             assert_eq!(i.is_ok(), true);
         }
-        // change_porters_and_requirement(&mut self, porters: Porters, requirement: u16);
+
         // Tests for trait MultiPorters
         #[ink::test]
         fn change_porters_and_requirement_works() {

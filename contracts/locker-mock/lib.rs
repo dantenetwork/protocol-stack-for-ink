@@ -46,7 +46,7 @@ mod locker_mock {
 
         /// Sends message to another chain 
         #[ink(message)]
-        pub fn send_message(&self, uint_value: u32, string_value: String, struct_value: MessageDetail) {
+        pub fn send_message(&mut self, uint_value: u32, string_value: String, struct_value: MessageDetail) {
             let to_chain = String::try_from("ETHEREUM").unwrap();
             let contract = String::try_from("ETHEREUM_CONTRACT").unwrap();
             let action = String::try_from("ETHERERUM_ACTION").unwrap();
@@ -56,7 +56,7 @@ mod locker_mock {
             let content = Content::new(contract, action, data);
             let message = SentMessage::new_sending_message(to_chain.clone(), sqos, session, content);
 
-            let ret: String = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+            ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
                         .callee(self.cross_chain_contract.unwrap())
@@ -66,7 +66,7 @@ mod locker_mock {
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0x27, 0x26, 0x79, 0x17]))
                     .push_arg(message)
                 )
-                .returns::<String>()
+                .returns::<()>()
                 .fire()
                 .unwrap();
         }
@@ -106,10 +106,8 @@ mod locker_mock {
         #[ink::test]
         fn set_cross_chain_contract_works() {
             let mut locker = LockerMock::new();
-            // let cross_chain = CrossChainRef::new("POLKADOT".to_string());
             let contract_id = ink_env::test::callee::<ink_env::DefaultEnvironment>();
-            println!("{:?}", contract_id);
-            // locker.set_cross_chain_contract()
+            locker.set_cross_chain_contract(contract_id);
         }
     }
 }
