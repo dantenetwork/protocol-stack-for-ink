@@ -1,16 +1,9 @@
 
-use ink_storage::{
-    traits::{
-        SpreadLayout,
-        StorageLayout,
-        PackedLayout,
-    },
-};
 
 /// Message element type define
 /// U64, I64, U128, I128 will be decoded as `InkString`
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(StorageLayout))]
+#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
+// #[cfg_attr(feature = "std", derive())]
 pub enum MsgType{
     InkString,
     InkU8,
@@ -54,8 +47,8 @@ impl ::scale_info::TypeInfo for MsgType {
 /// @member `n`: item unique ID, which is used for user applications to communicate user-defined informations
 /// @member `t`: item type
 /// @member `v`: the information data, encoded by `scale::Encode::encode_to`
-#[derive(SpreadLayout, PackedLayout, Debug, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(StorageLayout))]
+#[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
+// #[cfg_attr(feature = "std", derive())]
 pub struct MessageItem{
     pub n: u128,
     pub t: MsgType,
@@ -86,8 +79,8 @@ impl ::scale_info::TypeInfo for MessageItem {
 /// @member `n`: item unique ID, which is used for user applications to communicate user-defined informations
 /// @member `t`: item type. This is the element type of the inner array
 /// @member `v`: the information data, the inner array element is encoded by `scale::Encode::encode_to`
-#[derive(SpreadLayout, PackedLayout, Debug, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(StorageLayout))]
+#[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
+// #[cfg_attr(feature = "std", derive())]
 pub struct MessageVec{
     pub n: u128,
     pub t: MsgType,
@@ -117,8 +110,8 @@ impl ::scale_info::TypeInfo for MessageVec {
 /// Message Payload
 /// @member items: a vector of `MessageItem`
 /// @member vecs: a vector of `MessageVec`
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(StorageLayout))]
+#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+// #[cfg_attr(feature = "std", derive())]
 pub struct MessagePayload{
     pub items: Option<ink_prelude::vec::Vec<MessageItem>>,
     pub vecs: Option<ink_prelude::vec::Vec<MessageVec>>,
