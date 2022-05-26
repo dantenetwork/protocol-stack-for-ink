@@ -94,7 +94,7 @@ pub struct ReceivedMessage {
     pub signer: String,
     pub sqos: SQOS,
     pub contract: AccountId,
-    pub action: String,
+    pub action: Bytes,
     pub data: Bytes,
     pub session: Session,
     pub executed: bool,
@@ -103,7 +103,7 @@ pub struct ReceivedMessage {
 
 impl ReceivedMessage {
     pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
-        contract: AccountId, action: String, data: Bytes, session: Session) -> Self {
+        contract: AccountId, action: Bytes, data: Bytes, session: Session) -> Self {
         Self {
             id,
             from_chain,
@@ -180,11 +180,11 @@ pub struct Context {
     pub sender: String,
     pub signer: String,
     pub contract: AccountId,
-    pub action: String,
+    pub action: Bytes,
 }
 
 impl Context {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: String) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: Bytes) -> Self {
         Self {
             id,
             from_chain,

@@ -13,7 +13,12 @@ mod locker_mock {
         Content,
         Bytes,
     };
-    use cross_chain::payload::MessagePayload;
+    use cross_chain::payload::{
+        MsgType,
+        MessageItem,
+        MessageVec,
+        MessagePayload,
+    };
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -52,6 +57,7 @@ mod locker_mock {
             let contract = String::try_from("ETHEREUM_CONTRACT").unwrap();
             let action = String::try_from("ETHERERUM_ACTION").unwrap();
             let mut msg_payload = MessagePayload::new();
+            // msg_payload.add_item();
             let mut pl_code: Bytes = Bytes::new();
             scale::Encode::encode_to(&msg_payload, &mut pl_code);
             let data = pl_code;
@@ -75,10 +81,55 @@ mod locker_mock {
                 .unwrap();
         }
 
-        // /// Receives message from another chain 
-        // #[ink(message)]
-        // pub fn receive_message(&self, payload: Payload) {
-        // }
+        /// Get bytes of payload
+        #[ink(message)]
+        pub fn get_bytes(&self, uint_value: u32, string_value: String, struct_value: MessageDetail) -> Bytes {
+            // u32 item
+            let mut u32_vec = Bytes::new();
+            scale::Encode::encode_to(&uint_value, &mut u32_vec);
+
+            let mut u32_item = MessageItem{
+                n: 1,
+                t: MsgType::InkU32,
+                v: u32_vec,
+            };
+
+            // string item
+            let mut string_vec = Bytes::new();
+            scale::Encode::encode_to(&uint_value, &mut string_vec);
+
+            let mut string_item = MessageItem{
+                n: 2,
+                t: MsgType::InkString,
+                v: string_vec,
+            };
+
+            // struct item
+            let mut struct_vec = Bytes::new();
+            scale::Encode::encode_to(&struct_value, &mut struct_vec);
+
+            let mut struct_item = MessageItem{
+                n: 3,
+                t: MsgType::UserData,
+                v: struct_vec,
+            };
+
+            let mut paylaod = MessagePayload::new();
+            paylaod.add_item(u32_item);
+            paylaod.add_item(string_item);
+            paylaod.add_item(struct_item);
+            
+            let mut ret = Bytes::new();
+            scale::Encode::encode_to(&paylaod, &mut ret);
+            ret
+        }
+
+        /// Receives message from another chain 
+        #[ink(message)]
+        pub fn receive_message(&mut self, payload: MessagePayload) -> String {
+            // let payload
+            String::try_from("hahaha").unwrap()
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`

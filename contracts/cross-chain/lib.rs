@@ -298,8 +298,8 @@ mod cross_chain {
             let payload: MessagePayload = scale::Decode::decode(&mut data_slice).unwrap();
 
             // Cross-contract call
-            let selector: [u8; 4] = message.action.as_bytes().try_into().unwrap();
-            let my_return_value: ink_prelude::string::String = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+            let selector: [u8; 4] = message.action.clone().try_into().unwrap();
+            let my_return_value: String = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
                         .callee(message.contract)
@@ -309,7 +309,7 @@ mod cross_chain {
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
                     .push_arg(payload)
                 )
-                .returns::<ink_prelude::string::String>()
+                .returns::<String>()
                 .fire()
                 .unwrap();
             
@@ -426,7 +426,11 @@ mod cross_chain {
             let sender = "SENDER".to_string();
             let signer = "SIGNER".to_string();
             let contract = AccountId::default();
-            let action = "ETHERERUM_ACTION".to_string();
+            let mut action = Bytes::new();
+            action.push(0x3a);
+            action.push(0x4a);
+            action.push(0x5a);
+            action.push(0x6a);
             let sqos = SQOS::new(0);
             let data = Bytes::new();
             let session = Session::new(0, 0);
@@ -650,6 +654,17 @@ mod cross_chain {
             // Check porters.
             let p = cross_chain.get_porters();
             assert_eq!(p, porters);
+        }
+
+        // Tests for trait MultiPorters
+        #[ink::test]
+        fn get_selector() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            // Create a new contract instance.
+            let s = vec![0x3a,0x6e,0x96,0x96];
+            let selector: [u8; 4] = s.clone().try_into().unwrap();
+            println!("{:?}", selector);
         }
     }
 }
