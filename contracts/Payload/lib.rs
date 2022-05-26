@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod message_protocol;
+pub mod message_define;
 
 pub use self::Payload::{
     Payload as Other,

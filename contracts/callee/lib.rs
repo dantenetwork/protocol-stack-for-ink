@@ -37,7 +37,9 @@ mod callee {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { value: init_value, }
+            Self { 
+                value: init_value, 
+            }
         }
 
         /// Constructor that initializes the `bool` value to `false`.
