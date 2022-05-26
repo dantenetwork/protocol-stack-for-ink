@@ -13,6 +13,7 @@ mod locker_mock {
         Content,
         Bytes,
     };
+    use cross_chain::payload::MessagePayload;
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -50,7 +51,10 @@ mod locker_mock {
             let to_chain = String::try_from("ETHEREUM").unwrap();
             let contract = String::try_from("ETHEREUM_CONTRACT").unwrap();
             let action = String::try_from("ETHERERUM_ACTION").unwrap();
-            let data = Bytes::new();
+            let mut msg_payload = MessagePayload::new();
+            let mut pl_code: Bytes = Bytes::new();
+            scale::Encode::encode_to(&msg_payload, &mut pl_code);
+            let data = pl_code;
             let sqos = SQOS::new(0);
             let session = Session::new(0, 0);
             let content = Content::new(contract, action, data);
@@ -73,7 +77,7 @@ mod locker_mock {
 
         // /// Receives message from another chain 
         // #[ink(message)]
-        // pub fn receive_message(&self, uint_value: u32, string_value: String, struct_value: MessageDetail) {
+        // pub fn receive_message(&self, payload: Payload) {
         // }
     }
 
