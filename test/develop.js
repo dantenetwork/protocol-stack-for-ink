@@ -2,8 +2,7 @@ import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { Abi, ContractPromise } from '@polkadot/api-contract';
 import fs from 'fs';
 import 'dotenv/config'
-import { bool, _void, str, u32, Enum, Struct, Vector } from "scale-ts"
-import textEncoding from 'text-encoding';
+import { bool, _void, str, u32, u128, Enum, Struct, Vector } from "scale-ts"
 
 // network
 const provider = new WsProvider("ws://127.0.0.1:9944");
@@ -98,6 +97,12 @@ function toHexString(byteArray) {
     }).join('')
 }
 
+async function test_scale_codec1() {
+  const numbers = Vector(u16)
+
+console.log(numbers.enc([4, 8, 15, 16, 23, 42]))
+}
+
 async function test_scale_codec() {
     let enc_param1 = u32.enc(666);
 
@@ -114,14 +119,35 @@ async function test_scale_codec() {
         phones: ['123', '456']
     });
 
+    let MsgType = Enum({
+      InkString: _void,
+      InkU8: _void,
+      InkU16: _void,
+      InkU32: _void,
+      InkU64: _void,
+      InkU128: _void,
+      InkI8: _void,
+      InkI16: _void,
+      InkI32: _void,
+      InkI64: _void,
+      InkI128: _void,
+      UserData: _void,
+    })
+
+    let PayloadItem = Struct({
+      n: u128,
+      t: MsgType,
+      // v: 
+    })
+
     console.log(enc_param1, enc_param2, enc_param3);
     console.log(toHexString(enc_param1));
     console.log(toHexString(enc_param2));
     console.log(toHexString(enc_param3));
 }
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000109a020000030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
-test_scale_codec()
-
+// test_scale_codec()
+test_scale_codec1()
 // query()
 
 // call()
