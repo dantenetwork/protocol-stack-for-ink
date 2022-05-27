@@ -17,7 +17,7 @@ pub type Porters = Vec<AccountId>;
 
 /// Errors for cross-chain contract
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Copy, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+// #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum IError {
     NotOwner,
     IdNotMatch,
@@ -27,9 +27,27 @@ pub enum IError {
     InterfaceNotFound,
 }
 
+impl scale_info::TypeInfo for IError {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("IError", module_path!()))
+                        .variant(
+                            ::scale_info::build::Variants::new()
+                                .variant("NotOwner", |v| v.index(0))
+                                .variant("IdNotMatch", |v| v.index(1))
+                                .variant("ChainMessageNotFound", |v| v.index(2))
+                                .variant("IdOutOfBound", |v| v.index(3))
+                                .variant("AlreadyExecuted", |v| v.index(4))
+                                .variant("InterfaceNotFound", |v| v.index(5))
+                        )
+    }
+}
+
 /// Content structure
 #[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
+// #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
 pub struct IContent {
     contract: String,
     action: String,
@@ -43,6 +61,20 @@ impl IContent {
             action: action,
             data: data,
         }
+    }
+}
+
+impl scale_info::TypeInfo for IContent {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("IContent", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<String>().name("contract").type_name("String"))
+                        .field(|f| f.ty::<String>().name("action").type_name("String"))
+                        .field(|f| f.ty::<Bytes>().name("data").type_name("Bytes"))
+                    )
     }
 }
 
@@ -82,14 +114,25 @@ impl ::scale_info::TypeInfo for ISQoSType {
     }
 }
 
-
-#[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
+#[derive(Debug, Clone, Decode, Encode)]
+// #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
 pub struct ISQoS {
-    pub reveal: u8,
-    pub haha: MsgType,
+    pub t: ISQoSType,
+    pub v: String,
 }
 
+impl scale_info::TypeInfo for ISQoS {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("ISQoS", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<ISQoSType>().name("t").type_name("ISQoSType"))
+                        .field(|f| f.ty::<String>().name("v").type_name("String"))
+                    )
+    }
+}
 
 /// Session Structure
 #[derive(Clone, Decode, Encode)]
@@ -99,7 +142,6 @@ pub struct ISession {
     pub id: u128,
 }
 
-
 /// Received message structure
 #[derive(Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
@@ -108,7 +150,7 @@ pub struct IReceivedMessage {
     pub from_chain: String,
     pub sender: String,
     pub signer: String,
-    pub sqos: ISQoS,
+    pub sqos: ink_prelude::vec::Vec<ISQoS>,
     pub contract: AccountId,
     pub action: String,
     pub data: Bytes,
@@ -118,7 +160,7 @@ pub struct IReceivedMessage {
 }
 
 impl IReceivedMessage {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: ISQoS,
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: ink_prelude::vec::Vec<ISQoS>,
         contract: AccountId, action: String, data: Bytes, session: ISession) -> Self {
         Self {
             id,
@@ -138,7 +180,7 @@ impl IReceivedMessage {
 
 /// Sent message structure
 #[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct SentMessage {
     pub id: u128,
     pub from_chain: String,

@@ -101,6 +101,11 @@ mod Payload {
             msg
         }
 
+        #[ink(message)]
+        pub fn getRecvMessage(&self, msg: super::message_define::IReceivedMessage) -> super::message_define::IReceivedMessage {
+            msg
+        }
+
         /// User defined behaviors when messages or invocations are received from other chains
         #[ink(message)]
         pub fn test_callee_received(&self, m_payload: super::message_protocol::MessagePayload) ->ink_prelude::string::String{
