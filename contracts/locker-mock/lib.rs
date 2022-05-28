@@ -96,7 +96,7 @@ mod locker_mock {
 
             // string item
             let mut string_vec = Bytes::new();
-            scale::Encode::encode_to(&uint_value, &mut string_vec);
+            scale::Encode::encode_to(&string_value, &mut string_vec);
 
             let mut string_item = MessageItem{
                 n: 2,

@@ -2,7 +2,7 @@ import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { Abi, ContractPromise } from '@polkadot/api-contract';
 import fs from 'fs';
 import 'dotenv/config'
-import { bool, _void, str, u32, u128, Enum, Struct, Vector } from "scale-ts"
+import { bool, _void, str, u8, u16, u32, u64, u128, Enum, Struct, Vector, Option, Bytes } from "scale-ts"
 
 // network
 const provider = new WsProvider("ws://127.0.0.1:9944");
@@ -98,9 +98,11 @@ function toHexString(byteArray) {
 }
 
 async function test_scale_codec1() {
-  const numbers = Vector(u16)
-
-console.log(numbers.enc([4, 8, 15, 16, 23, 42]))
+  const numbers = Vector(u8)
+  let a1 = [8,0,0,0];
+  let a2 = u32.enc(8);
+  
+  console.log(toHexString(numbers.enc([])));
 }
 
 async function test_scale_codec() {
@@ -137,17 +139,51 @@ async function test_scale_codec() {
     let PayloadItem = Struct({
       n: u128,
       t: MsgType,
-      // v: 
+      v: Vector(u8)
+    });
+
+    let PayloadVec = Struct({
+      n: u128,
+      t: MsgType,
+      v: Vector(Vector(u8))
+    });
+
+    let PayloadMessage = Struct({
+      items: Option(Vector(PayloadItem)),
+      vecs: Option(Vector(PayloadVec))
     })
 
-    console.log(enc_param1, enc_param2, enc_param3);
-    console.log(toHexString(enc_param1));
-    console.log(toHexString(enc_param2));
-    console.log(toHexString(enc_param3));
+    let item1 = {
+      n: 1n,
+      t: {tag: 'InkU32'},
+      v: Array.from(enc_param1)
+    }
+
+    let item2 = {
+      n: 2n,
+      t: {tag: 'InkString'},
+      v: Array.from(enc_param2)
+    }
+
+    let item3 = {
+      n: 3n,
+      t: {tag: 'UserData'},
+      v: Array.from(enc_param3)
+    }
+
+    let payload = PayloadMessage.enc({
+      items: [item1, item2, item3]
+    })
+
+    console.log(toHexString(PayloadItem.enc(item1)));
+    console.log(toHexString(PayloadItem.enc(item2)));
+    console.log(toHexString(PayloadItem.enc(item3)));
+    console.log(toHexString(payload));
 }
-// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000109a020000030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
-// test_scale_codec()
-test_scale_codec1()
+// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
+// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
+test_scale_codec()
+// test_scale_codec1()
 // query()
 
 // call()
