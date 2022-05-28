@@ -5,7 +5,8 @@ mod test;
 use ink_lang as ink;
 use ink_prelude;
 
-use Payload::message_protocol::{ MessagePayload, MessageItem, MessageVec, MsgType};
+use Payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
+use Payload::message_define::{ISentMessage, IReceivedMessage};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 // #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -96,6 +97,11 @@ mod callee {
             ink_prelude::format!("{:?}", msg_vec)
             // let mut vv = msg_vec.as_slice();
             // let vout: Payload::MessagePayload = scale::Decode::decode(&mut vv).unwrap();
+        }
+
+        #[ink(message)]
+        pub fn get_recv_message(&self, msg: super::IReceivedMessage) -> ink_prelude::string::String{
+            ink_prelude::format!("{:?}", msg)
         }
     }
 

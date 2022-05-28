@@ -46,16 +46,16 @@ impl scale_info::TypeInfo for IError {
 }
 
 /// Content structure
-#[derive(Clone, Decode, Encode)]
+#[derive(Decode, Encode)]
 // #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
 pub struct IContent {
     contract: String,
     action: String,
-    data: Bytes,
+    data: MessagePayload,
 }
 
 impl IContent {
-    pub fn new(contract: String, action: String, data: Bytes) -> Self {
+    pub fn new(contract: String, action: String, data: MessagePayload) -> Self {
         Self {
             contract: contract,
             action: action,
@@ -73,7 +73,7 @@ impl scale_info::TypeInfo for IContent {
                         .composite(::scale_info::build::Fields::named()
                         .field(|f| f.ty::<String>().name("contract").type_name("String"))
                         .field(|f| f.ty::<String>().name("action").type_name("String"))
-                        .field(|f| f.ty::<Bytes>().name("data").type_name("Bytes"))
+                        .field(|f| f.ty::<MessagePayload>().name("data").type_name("MessagePayload"))
                     )
     }
 }
@@ -118,7 +118,7 @@ impl ::scale_info::TypeInfo for ISQoSType {
 // #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
 pub struct ISQoS {
     pub t: ISQoSType,
-    pub v: String,
+    pub v: Option<String>,
 }
 
 impl scale_info::TypeInfo for ISQoS {
@@ -129,39 +129,74 @@ impl scale_info::TypeInfo for ISQoS {
                         .path(::scale_info::Path::new("ISQoS", module_path!()))
                         .composite(::scale_info::build::Fields::named()
                         .field(|f| f.ty::<ISQoSType>().name("t").type_name("ISQoSType"))
-                        .field(|f| f.ty::<String>().name("v").type_name("String"))
+                        .field(|f| f.ty::<Option<String>>().name("v").type_name("Option<String>"))
                     )
     }
 }
 
 /// Session Structure
-#[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
+#[derive(Debug, Clone, Decode, Encode)]
+// #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct ISession {
     pub msg_type: u8,
     pub id: u128,
 }
 
+impl scale_info::TypeInfo for ISession {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("ISession", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<u8>().name("msg_type").type_name("u8"))
+                        .field(|f| f.ty::<u128>().name("id").type_name("u128"))
+                    )
+    }
+}
+
 /// Received message structure
-#[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
+#[derive(Debug, Decode, Encode)]
+// #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct IReceivedMessage {
     pub id: u128,
     pub from_chain: String,
-    pub sender: String,
-    pub signer: String,
+    pub sender: [u8;32],
+    pub signer: [u8;32],
     pub sqos: ink_prelude::vec::Vec<ISQoS>,
-    pub contract: AccountId,
-    pub action: String,
-    pub data: Bytes,
+    pub contract: [u8;32],
+    pub action: [u8;4],
+    pub data: MessagePayload,
     pub session: ISession,
     pub executed: bool,
     pub error_code: u16,
 }
 
+impl scale_info::TypeInfo for IReceivedMessage {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("IReceivedMessage", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<u128>().name("id").type_name("u128"))
+                        .field(|f| f.ty::<String>().name("from_chain").type_name("String"))
+                        .field(|f| f.ty::<[u8;32]>().name("sender").type_name("[u8;32]"))
+                        .field(|f| f.ty::<[u8;32]>().name("signer").type_name("[u8;32]"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<ISQoS>>().name("sqos").type_name("ink_prelude::vec::Vec<ISQoS>"))
+                        .field(|f| f.ty::<[u8;32]>().name("contract").type_name("[u8;32]"))
+                        .field(|f| f.ty::<[u8;4]>().name("action").type_name("[u8;4]"))
+                        .field(|f| f.ty::<MessagePayload>().name("data").type_name("MessagePayload"))
+                        .field(|f| f.ty::<ISession>().name("session").type_name("ISession"))
+                        .field(|f| f.ty::<bool>().name("executed").type_name("bool"))
+                        .field(|f| f.ty::<u16>().name("error_code").type_name("u16"))
+                    )
+    }
+}
+
 impl IReceivedMessage {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: ink_prelude::vec::Vec<ISQoS>,
-        contract: AccountId, action: String, data: Bytes, session: ISession) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: [u8;32], signer: [u8;32], sqos: ink_prelude::vec::Vec<ISQoS>,
+        contract: [u8;32], action: [u8;4], data: MessagePayload, session: ISession) -> Self {
         Self {
             id,
             from_chain,
@@ -179,41 +214,47 @@ impl IReceivedMessage {
 }
 
 /// Sent message structure
-#[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub struct SentMessage {
+#[derive(Decode, Encode)]
+// #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub struct ISentMessage {
     pub id: u128,
     pub from_chain: String,
     pub to_chain: String,
-    pub sender: AccountId,
-    pub signer: AccountId,
-    pub sqos: ISQoS,
+    pub sender: [u8;32],
+    pub signer: [u8;32],
+    pub sqos: ink_prelude::vec::Vec<ISQoS>,
     pub content: IContent,
     pub session: ISession,
 }
 
-impl SentMessage {
-    pub fn new(id: u128, from_chain: String, to_chain: String, sender: AccountId, signer: AccountId,
-        sqos: ISQoS, content: IContent, session: ISession) -> Self {
+impl scale_info::TypeInfo for ISentMessage {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("IReceivedMessage", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<u128>().name("id").type_name("u128"))
+                        .field(|f| f.ty::<String>().name("from_chain").type_name("String"))
+                        .field(|f| f.ty::<String>().name("to_chain").type_name("String"))
+                        .field(|f| f.ty::<[u8;32]>().name("sender").type_name("[u8;32]"))
+                        .field(|f| f.ty::<[u8;32]>().name("signer").type_name("[u8;32]"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<ISQoS>>().name("sqos").type_name("ink_prelude::vec::Vec<ISQoS>"))
+                        .field(|f| f.ty::<IContent>().name("content").type_name("IContent"))
+                        .field(|f| f.ty::<ISession>().name("session").type_name("ISession"))
+                    )
+    }
+}
+
+impl ISentMessage {
+    pub fn new(id: u128, from_chain: String, to_chain: String, sender: [u8;32], signer: [u8;32],
+        sqos: ink_prelude::vec::Vec<ISQoS>, content: IContent, session: ISession) -> Self {
         Self {
             id,
             from_chain,
             to_chain,
             sender,
             signer,
-            sqos,
-            content,
-            session,
-        }
-    }
-
-    pub fn new_sending_message(to_chain: String, sqos: ISQoS, session: ISession, content: IContent) -> Self {
-        Self {
-            id: 0,
-            from_chain: String::try_from("").unwrap(),
-            to_chain,
-            sender: AccountId::default(),
-            signer: AccountId::default(),
             sqos,
             content,
             session,
@@ -222,24 +263,44 @@ impl SentMessage {
 }
 
 /// Context structure
-#[derive(Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
+#[derive(Debug, Clone, Decode, Encode)]
+// #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct IContext {
     pub id: u128,
     pub from_chain: String,
-    pub sender: String,
-    pub signer: String,
-    pub contract: AccountId,
-    pub action: String,
+    pub sender: [u8;32],
+    pub signer: [u8;32],
+    pub sqos: ink_prelude::vec::Vec<ISQoS>,
+    pub contract: [u8;32],
+    pub action: [u8;4],
+}
+
+impl scale_info::TypeInfo for IContext {
+    type Identity = Self;
+
+    fn type_info() -> ::scale_info::Type {
+        ::scale_info::Type::builder()
+                        .path(::scale_info::Path::new("IReceivedMessage", module_path!()))
+                        .composite(::scale_info::build::Fields::named()
+                        .field(|f| f.ty::<u128>().name("id").type_name("u128"))
+                        .field(|f| f.ty::<String>().name("from_chain").type_name("String"))
+                        .field(|f| f.ty::<[u8;32]>().name("sender").type_name("[u8;32]"))
+                        .field(|f| f.ty::<[u8;32]>().name("signer").type_name("[u8;32]"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<ISQoS>>().name("sqos").type_name("ink_prelude::vec::Vec<ISQoS>"))
+                        .field(|f| f.ty::<[u8;32]>().name("contract").type_name("[u8;32]"))
+                        .field(|f| f.ty::<[u8;4]>().name("action").type_name("[u8;4]"))
+                    )
+    }
 }
 
 impl IContext {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: String) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: [u8;32], signer: [u8;32], sqos: ink_prelude::vec::Vec<ISQoS>, contract: [u8;32], action: [u8;4]) -> Self {
         Self {
             id,
             from_chain,
             sender,
             signer,
+            sqos,
             contract,
             action,
         }
