@@ -127,8 +127,18 @@ mod locker_mock {
         /// Receives message from another chain 
         #[ink(message)]
         pub fn receive_message(&mut self, payload: MessagePayload) -> String {
+            let item1 = payload.get_item(1).unwrap();
+            let item2 = payload.get_item(2).unwrap();
+            let item3 = payload.get_item(3).unwrap();
+            let param1: u32 = scale::Decode::decode(&mut item1.v.as_slice()).unwrap();
+            let param2: String = scale::Decode::decode(&mut item2.v.as_slice()).unwrap();
+            let param3: MessageDetail = scale::Decode::decode(&mut item3.v.as_slice()).unwrap();
             // let payload
-            String::try_from("hahaha").unwrap()
+            let mut s = String::new();
+            s = s + &ink_prelude::format!("{:?}-", param1);
+            s = s + &ink_prelude::format!("{:?}-", param2);
+            s = s + &ink_prelude::format!("{:?}-", param3);
+            s
         }
     }
 
