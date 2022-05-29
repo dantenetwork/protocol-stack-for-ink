@@ -38,6 +38,9 @@ mod d_protocol_stack {
         phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
     }
 
+    /// Simelation
+    pub struct SimNode(u8, u32);
+
     // use serde_json::json;
     // use serde_json_wasm::{from_str, to_string};
     
@@ -143,6 +146,14 @@ mod d_protocol_stack {
         /// node selection
         fn select(&self) {
 
+        }
+
+        // Test selection algorithm
+        #[ink(message)]
+        pub fn selection_test(&self, n: [u8;4]) -> ink_prelude::string::String {
+            let mut nodes: ink_prelude::vec::Vec<SimNode> = ink_prelude::vec::Vec::new();
+            nodes.push(SimNode(0, 2));
+            ink_prelude::format!("{:?}", ink_env::random::<ink_env::DefaultEnvironment>(&n))
         }
     }
 
