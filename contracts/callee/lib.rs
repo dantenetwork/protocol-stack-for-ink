@@ -111,6 +111,24 @@ mod callee {
         pub fn get_recv_message(&self, msg: super::IReceivedMessage) -> ink_prelude::string::String{
             ink_prelude::format!("{:?}", msg)
         }
+
+        #[ink(message)]
+        pub fn test_ud_en_de(&self, msg: MessageDetail) -> MessageDetail {
+            let msg_item = super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
+                                                    super::MsgType::InkU32, 
+                                                    msg);
+
+            msg_item.in_to()
+        }
+
+        #[ink(message)]
+        pub fn test_ud_en_de_vec(&self, msg: MessageDetail) -> ink_prelude::vec::Vec<MessageDetail> {
+            let msg_vec = super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
+                                                    super::MsgType::InkU32, 
+                                                    ink_prelude::vec![msg.clone(), msg.clone()]);
+
+            msg_vec.in_to()
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -168,6 +186,17 @@ mod callee {
             // Attention, `assert_eq` use the concrete implementation of `PartialEq` to chack equal
             // So it doesn't matter whether the `t` and `v` is the same
             assert_eq!(pl.get_item(ink_prelude::string::String::from("1")), Some(&msg_item));
+        }
+
+        /// test `MessageItem::from`, `MessageItem::into` 
+        fn test_from_into(){
+            let mut msg_item = super::super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
+                                                            super::super::MsgType::InkU32, 
+                                                            128 as u32);
+
+            let num: u32 = msg_item.in_to();
+
+            assert_eq!(num, 128 as u32);
         }
     }
 }

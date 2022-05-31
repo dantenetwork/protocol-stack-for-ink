@@ -85,6 +85,11 @@ impl MessageItem {
             v,
         }
     }
+
+    pub fn in_to<T: scale::Decode>(&self) -> T{
+        let mut v_ref = self.v.as_slice();
+        scale::Decode::decode(&mut v_ref).unwrap()
+    }
 }
 
 /// Message vector, used for describing the information composed with an array of elements
@@ -128,6 +133,11 @@ impl MessageVec {
             t,
             v,
         }
+    }
+
+    pub fn in_to<T: scale::Decode>(&self) -> ink_prelude::vec::Vec<T> {
+        let mut v_ref = self.v.as_slice();
+        scale::Decode::decode(&mut v_ref).unwrap()
     }
 }
 
