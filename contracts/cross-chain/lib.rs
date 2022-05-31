@@ -73,7 +73,7 @@ mod cross_chain {
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
         /// Returns messages that sent from chains `chain_names` and can be executed.
         #[ink(message)]
-        fn get_executable_messages(&mut self, chain_names: Vec<String>) -> Vec<ReceivedMessage>;
+        fn get_executable_messages(& self, chain_names: Vec<String>) -> Vec<ReceivedMessage>;
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
@@ -289,7 +289,7 @@ mod cross_chain {
 
         /// Returns messages that sent from chains `chain_names` and can be executed.
         #[ink(message)]
-        fn get_executable_messages(&mut self, chain_names: Vec<String>) -> Vec<ReceivedMessage> {
+        fn get_executable_messages(& self, chain_names: Vec<String>) -> Vec<ReceivedMessage> {
             let mut ret = Vec::<ReceivedMessage>::new();
             
             for chain_name in chain_names {
