@@ -113,14 +113,14 @@ mod Payload {
 
             // `1` is user defined `MessageItem` id
             // In this example, we use user defined data struct `MessageDetail`
-            if let Some(item) = m_payload.get_item(1) {
+            if let Some(item) = m_payload.get_item(ink_prelude::string::String::from("1")) {
                 let mut ss = item.v.as_slice();
                 let msg_data: MessageDetail = scale::Decode::decode(&mut ss).unwrap();
                 s = s + &ink_prelude::format!("{:?}", msg_data);
                 s = s + "\n";
             }
 
-            if let Some(m_vec) = m_payload.get_vec(11) {
+            if let Some(m_vec) = m_payload.get_vec(ink_prelude::string::String::from("11")) {
                 for vec_item in m_vec.v.iter() {
                     let mut ss = vec_item.as_slice();
                     let msg_data: MessageDetail = scale::Decode::decode(&mut ss).unwrap();
@@ -199,7 +199,7 @@ mod Payload {
 
             let mut msg_payload = super::super::message_protocol::MessagePayload::new();
             let msg_item = super::super::message_protocol::MessageItem{
-                n: 1,
+                n: ink_prelude::vec![1],
                 t: super::super::message_protocol::MsgType::UserData,
                 v: v.clone(),
             };
@@ -210,7 +210,7 @@ mod Payload {
             vec_eles.push(v.clone());
 
             let msg_vec = super::super::message_protocol::MessageVec{
-                n: 11,
+                n: ink_prelude::vec![11],
                 t: super::super::message_protocol::MsgType::UserData,
                 v: vec_eles,
             };
@@ -229,6 +229,15 @@ mod Payload {
             let return_s = payload.test_callee_received(vout);
 
             assert_eq!(return_s, rst_s);
+        }
+
+        /// test vec compare
+        #[ink::test]
+        fn test_vec_compare() {
+            let v1: ink_prelude::vec::Vec<u8> = ink_prelude::vec![1, 2, 3];
+            let v2: ink_prelude::vec::Vec<u8> = ink_prelude::vec![1, 2, 3];
+
+            assert_eq!(v1, v2);
         }
     }
 }

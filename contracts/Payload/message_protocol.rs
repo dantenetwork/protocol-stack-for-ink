@@ -50,7 +50,7 @@ impl ::scale_info::TypeInfo for MsgType {
 #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
 // #[cfg_attr(feature = "std", derive())]
 pub struct MessageItem{
-    pub n: u128,
+    pub n: ink_prelude::string::String,
     pub t: MsgType,
     pub v: ink_prelude::vec::Vec<u8>,
 }
@@ -68,7 +68,7 @@ impl ::scale_info::TypeInfo for MessageItem {
         ::scale_info::Type::builder()
                         .path(::scale_info::Path::new("MessageItem", module_path!()))
                         .composite(::scale_info::build::Fields::named()
-                        .field(|f| f.ty::<u128>().name("n").type_name("u128"))
+                        .field(|f| f.ty::<ink_prelude::string::String>().name("n").type_name("ink_prelude::string::String"))
                         .field(|f| f.ty::<MsgType>().name("t").type_name("MsgType"))
                         .field(|f| f.ty::<ink_prelude::vec::Vec<u8>>().name("v").type_name("ink_prelude::vec::Vec<u8>"))
                     )
@@ -82,7 +82,7 @@ impl ::scale_info::TypeInfo for MessageItem {
 #[derive(Debug, Eq, scale::Encode, scale::Decode, Clone)]
 // #[cfg_attr(feature = "std", derive())]
 pub struct MessageVec{
-    pub n: u128,
+    pub n: ink_prelude::string::String,
     pub t: MsgType,
     pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
 }
@@ -100,7 +100,7 @@ impl ::scale_info::TypeInfo for MessageVec {
         ::scale_info::Type::builder()
                         .path(::scale_info::Path::new("MessageVec", module_path!()))
                         .composite(::scale_info::build::Fields::named()
-                        .field(|f| f.ty::<u128>().name("n").type_name("u128"))
+                        .field(|f| f.ty::<ink_prelude::string::String>().name("n").type_name("ink_prelude::string::String"))
                         .field(|f| f.ty::<MsgType>().name("t").type_name("MsgType"))
                         .field(|f| f.ty::<ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>>().name("v").type_name("ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>"))
                     )
@@ -155,7 +155,7 @@ impl MessagePayload{
         }
     }
 
-    pub fn get_item(&self, msg_n: u128) -> Option<&MessageItem>{
+    pub fn get_item(&self, msg_n: ink_prelude::string::String) -> Option<&MessageItem>{
         if let Some(item) = &self.items {
             for it in item.iter() {
                 if it.n == msg_n {
@@ -184,7 +184,7 @@ impl MessagePayload{
         }
     }
 
-    pub fn get_vec(&self, msg_n: u128) -> Option<&MessageVec>{
+    pub fn get_vec(&self, msg_n: ink_prelude::string::String) -> Option<&MessageVec>{
         if let Some(m_vec) = &self.vecs {
             for it in m_vec.iter() {
                 if it.n == msg_n {

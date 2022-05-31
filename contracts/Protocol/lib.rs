@@ -150,10 +150,12 @@ mod d_protocol_stack {
 
         // Test selection algorithm
         #[ink(message)]
-        pub fn selection_test(&self, n: [u8;4]) -> ink_prelude::string::String {
+        pub fn selection_test(&self, n: ink_prelude::vec::Vec<u8>) -> ink_prelude::string::String {
             let mut nodes: ink_prelude::vec::Vec<SimNode> = ink_prelude::vec::Vec::new();
             nodes.push(SimNode(0, 2));
-            ink_prelude::format!("{:?}", ink_env::random::<ink_env::DefaultEnvironment>(&n))
+            // ink_prelude::format!("{:?}", ink_env::random::<ink_env::DefaultEnvironment>(&n))
+            let r_v = ink_env::random::<ink_env::DefaultEnvironment>(&n).unwrap();
+            ink_prelude::format!("{}", r_v.0.as_ref().len())
         }
     }
 
