@@ -4,6 +4,22 @@ import fs from 'fs';
 import 'dotenv/config'
 import { bool, _void, str, u8, u16, u32, u64, u128, Enum, Struct, Vector, Option, Bytes } from "scale-ts"
 
+let MsgType = Enum({
+  InkString: _void,
+  InkU8: _void,
+  InkU16: _void,
+  InkU32: _void,
+  InkU64: _void,
+  InkU128: _void,
+  InkI8: _void,
+  InkI16: _void,
+  InkI32: _void,
+  InkI64: _void,
+  InkI128: _void,
+  InkStringArray: _void,
+  UserData: _void,
+});
+
 // network
 const provider = new WsProvider("ws://127.0.0.1:9944");
 const api = await ApiPromise.create({provider});
@@ -47,9 +63,8 @@ async function query() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-  console.log(ecdStr);
-  const { gasConsumed, result, output } = await contract.query['callToContracts'](sender.address, {value, gasLimit }, 
-                                          "5CgMjHnZm7VAi8x9HrB4b8FXYytnUj1pqNUH92yUmY9A7g8C", ecdStr);
+  const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getReceivedMessage'](sender.address, {value, gasLimit }, 
+                                          "ETHEREUM", 4);
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
@@ -71,15 +86,33 @@ async function pushMessage() {
   const value = 0; // only useful on isPayable messages
   const gasLimit = -1;
 
-  const param1 = 666;
-  const param2 = 'hthuang';
-  const param3 = {'items': [{'n': 1, 't': 'InkI32', 'v': '0x12345678'}], 'vecs': [{'n': 100123, 't': 'InkU16', 'v': ['0x99', '0x88', '0x65535']}]};
+  let payload = await test_scale_codec();
+
+  let message = {
+    id: '4',
+    from_chain: 'ETHEREUM',
+    sender: 'hthuang',
+    signer: 'hthuang',
+    sqos: {
+      reveal: 0
+    },
+    contract: '5CXQ2sERuk9kBeokbhdw7wSv1t8374Umey7d4Um28jtTi7D5',
+    action: '0x3a6e9696',
+    data: payload,
+    session: {
+      msg_type: 0,
+      id: 0
+    },
+    executed: false,
+    error_code: 0
+  }
+  console.log(message);
 
   // Send the transaction, like elsewhere this is a normal extrinsic
   // with the same rules as applied in the API (As with the read example,
   // additional params, if required can follow - here only one is needed)
-  await contract.tx
-    .flip({ value, gasLimit })
+  await crossChainContract.tx
+    ['crossChainBase::receiveMessage']({ value, gasLimit }, message)
     .signAndSend(sender, (result) => {
       console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
       if (result.status.isInBlock) {
@@ -121,21 +154,6 @@ async function test_scale_codec() {
         phones: ['123', '456']
     });
 
-    let MsgType = Enum({
-      InkString: _void,
-      InkU8: _void,
-      InkU16: _void,
-      InkU32: _void,
-      InkU64: _void,
-      InkU128: _void,
-      InkI8: _void,
-      InkI16: _void,
-      InkI32: _void,
-      InkI64: _void,
-      InkI128: _void,
-      UserData: _void,
-    })
-
     let PayloadItem = Struct({
       n: u128,
       t: MsgType,
@@ -171,19 +189,28 @@ async function test_scale_codec() {
       v: Array.from(enc_param3)
     }
 
-    let payload = PayloadMessage.enc({
+    let payload = {
       items: [item1, item2, item3]
-    })
+    };
 
+    console.log('payload', payload);
     console.log(toHexString(PayloadItem.enc(item1)));
     console.log(toHexString(PayloadItem.enc(item2)));
     console.log(toHexString(PayloadItem.enc(item3)));
-    console.log(toHexString(payload));
+    console.log(toHexString(PayloadMessage.enc(payload)));
+    return toHexString(PayloadMessage.enc(payload));
 }
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 test_scale_codec()
 // test_scale_codec1()
 // query()
+function test() {
+  let api = require("@polkadot/api");
+  let api_contract = require("@polkadot/api-contract");
+  console.log(api, api_contract);
+}
 
-// call()
+// test()
+
+// pushMessage()
