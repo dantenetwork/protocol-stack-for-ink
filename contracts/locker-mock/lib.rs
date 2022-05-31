@@ -34,6 +34,7 @@ mod locker_mock {
     #[ink(storage)]
     pub struct LockerMock {
         cross_chain_contract: Option<AccountId>,
+        ret: Option<String>,
     }
 
     impl LockerMock {
@@ -41,6 +42,7 @@ mod locker_mock {
         pub fn new() -> Self {
             Self {
                 cross_chain_contract: None,
+                ret: None,
             }
         }
 
@@ -138,7 +140,14 @@ mod locker_mock {
             s = s + &ink_prelude::format!("{:?}-", param1);
             s = s + &ink_prelude::format!("{:?}-", param2);
             s = s + &ink_prelude::format!("{:?}-", param3);
+            self.ret = Some(s.clone());
             s
+        }
+
+        /// Receives message from another chain 
+        #[ink(message)]
+        pub fn get_ret(& self) -> String {
+            self.ret.clone().unwrap()
         }
     }
 
