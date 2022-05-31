@@ -290,20 +290,33 @@ mod cross_chain {
         /// Returns messages that sent from chains `chain_names` and can be executed.
         #[ink(message)]
         fn get_executable_messages(&mut self, chain_names: Vec<String>) -> Vec<ReceivedMessage> {
-            let ret = Vec::<ReceivedMessage>::new();
+            let mut ret = Vec::<ReceivedMessage>::new();
+            
+            for chain_name in chain_names {
+                let chain_message_option: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
+                if let Some(chain_message) = chain_message_option {
+                    for message in chain_message {
+                        if (message.error_code == 0) && (!message.executed) {
+                            ret.push(message.clone());
+                        }
+                    }
+                }
+            }
+
             ret
         }
 
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
-            let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let message: &ReceivedMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
+            let mut chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
+            let mut message: &mut ReceivedMessage = chain_message.get_mut(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
 
             if message.executed {
                 return Err(Error::AlreadyExecuted);
             }
 
+            message.executed = true;
             self.context = Some(Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
                 message.contract.clone(), message.action.clone()));
 
@@ -326,6 +339,9 @@ mod cross_chain {
                 .returns::<String>()
                 .fire()
                 .unwrap();
+
+            
+            self.received_message_table.insert(chain_name, &chain_message);
             
             Ok(my_return_value)
         }
@@ -420,7 +436,8 @@ mod cross_chain {
         /// Get the message id which needs to be ported by `validator` on chain `chain_name`
         #[ink(message)]
         fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128 {
-            1
+            let num = self.get_received_message_number(chain_name) + 1;
+            num
         }
     }
 
@@ -576,6 +593,21 @@ mod cross_chain {
             let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
             assert_eq!(num, 1);
         }
+
+        #[ink::test]
+        fn get_executable_messages_works() {
+            let from_chain = "ETHEREUM".to_string();
+            let mut cross_chain = create_contract_with_received_message();
+            // Number of sent messages is 1.
+            let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
+            assert_eq!(num, 1);
+            // Get executable messages
+            let mut chains = Vec::<String>::new();
+            chains.push("ETHEREUM".to_string());
+            let messages = cross_chain.get_executable_messages(chains);
+            // Number of messages is 1
+            assert_eq!(messages.len(), 1);
+        }
         
         #[ink::test]
         fn execute_message_works() {
@@ -678,7 +710,22 @@ mod cross_chain {
             assert_eq!(p, porters);
         }
 
-        // Tests for trait MultiPorters
+        #[ink::test]
+        fn get_msg_porting_task() {
+            let accounts =
+                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let from_chain = "ETHEREUM".to_string();
+            let id = 1;
+            let mut cross_chain = create_contract_with_received_message();
+            // Received message is Ok.
+            let message = cross_chain.get_received_message(from_chain.clone(), 1);
+            assert_eq!(message.is_ok(), true);
+            // Get porting task id
+            let id = cross_chain.get_msg_porting_task(from_chain, accounts.alice);
+            // id is 2
+            assert_eq!(id, 2);
+        }
+
         #[ink::test]
         fn get_selector() {
             let accounts =
