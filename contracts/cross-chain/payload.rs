@@ -22,6 +22,7 @@ pub enum MsgType{
     InkI32,
     InkI64,
     InkI128,
+    InkStringArray,
     UserData,
 }
 

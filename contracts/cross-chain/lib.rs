@@ -71,6 +71,9 @@ mod cross_chain {
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         #[ink(message)]
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
+        /// Returns messages that sent from chains `chain_names` and can be executed.
+        #[ink(message)]
+        fn get_executable_messages(&mut self, chain_names: Vec<String>) -> Vec<ReceivedMessage>;
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
@@ -109,6 +112,9 @@ mod cross_chain {
         /// Get requirement
         #[ink(message)]
         fn get_requirement(& self) -> u16;
+        /// Get the message id which needs to be ported by `validator` on chain `chain_name`
+        #[ink(message)]
+        fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
     }
 
     /// Defines the wrapper for cross-chain data
@@ -280,6 +286,14 @@ mod cross_chain {
 
             Ok(())
         }
+
+        /// Returns messages that sent from chains `chain_names` and can be executed.
+        #[ink(message)]
+        fn get_executable_messages(&mut self, chain_names: Vec<String>) -> Vec<ReceivedMessage> {
+            let ret = Vec::<ReceivedMessage>::new();
+            ret
+        }
+
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
@@ -365,6 +379,7 @@ mod cross_chain {
             self.interfaces.insert((caller, action), &interface);
         }
 
+        /// Returns interface information of contract `contract` and action `action`
         #[ink(message)]
         fn get_interface(& self, contract: AccountId, action: String) -> Result<String, Error> {
             let interface = self.interfaces.get((contract, action)).ok_or(Error::InterfaceNotFound)?;
@@ -373,6 +388,7 @@ mod cross_chain {
     }
 
     impl MultiPorters for CrossChain {
+        /// Changes porters and requirement.
         #[ink(message)]
         fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) {
             // Clear porters
@@ -399,6 +415,12 @@ mod cross_chain {
         #[ink(message)]
         fn get_requirement(& self) -> u16 {
             self.required
+        }
+
+        /// Get the message id which needs to be ported by `validator` on chain `chain_name`
+        #[ink(message)]
+        fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128 {
+            1
         }
     }
 
