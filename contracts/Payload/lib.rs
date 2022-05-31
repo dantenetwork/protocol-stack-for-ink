@@ -40,7 +40,7 @@ mod Payload {
     use ink_storage::traits::{SpreadAllocate};
 
     /// for test
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
         name: ink_prelude::string::String,
@@ -121,9 +121,10 @@ mod Payload {
             }
 
             if let Some(m_vec) = m_payload.get_vec(ink_prelude::string::String::from("11")) {
-                for vec_item in m_vec.v.iter() {
-                    let mut ss = vec_item.as_slice();
-                    let msg_data: MessageDetail = scale::Decode::decode(&mut ss).unwrap();
+                let mut ss = m_vec.v.as_slice();
+                let msgs: ink_prelude::vec::Vec<MessageDetail> = scale::Decode::decode(&mut ss).unwrap();
+                
+                for msg_data in msgs.iter() {
                     s = s + &ink_prelude::format!("{:?}", msg_data);
                     s = s + "\n";
                 }
@@ -199,20 +200,30 @@ mod Payload {
 
             let mut msg_payload = super::super::message_protocol::MessagePayload::new();
             let msg_item = super::super::message_protocol::MessageItem{
-                n: ink_prelude::vec![1],
+                n: ink_prelude::string::String::from("1"),
                 t: super::super::message_protocol::MsgType::UserData,
                 v: v.clone(),
             };
+
+            let msg_item2 = super::super::message_protocol::MessageItem::from(ink_prelude::string::String::from("1"), 
+                                                                                super::super::message_protocol::MsgType::UserData, 
+                                                                                msg.clone());
+
+            assert_eq!(msg_item, msg_item2);
+
             assert_eq!(msg_payload.add_item(msg_item), true);
 
-            let mut vec_eles: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>> = ink_prelude::vec::Vec::new();
-            vec_eles.push(v.clone());
-            vec_eles.push(v.clone());
+            let mut vec_eles: ink_prelude::vec::Vec<MessageDetail> = ink_prelude::vec::Vec::new();
+            vec_eles.push(msg.clone());
+            vec_eles.push(msg.clone());
+
+            let mut vv: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
+            scale::Encode::encode_to(&vec_eles, &mut vv);
 
             let msg_vec = super::super::message_protocol::MessageVec{
-                n: ink_prelude::vec![11],
+                n: ink_prelude::string::String::from("11"),
                 t: super::super::message_protocol::MsgType::UserData,
-                v: vec_eles,
+                v: vv,
             };
             assert_eq!(msg_payload.add_vec(msg_vec), true);
             

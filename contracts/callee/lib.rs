@@ -17,7 +17,7 @@ pub struct MyData {
 #[ink::contract]
 mod callee {
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
         name: ink_prelude::string::String,
@@ -91,6 +91,14 @@ mod callee {
             v
         }
 
+        #[ink(message)]
+        pub fn get_struct_message_vec_u8(& self, msg: MessageDetail) -> ink_prelude::vec::Vec::<u8>{
+            let mut v = ink_prelude::vec::Vec::<u8>::new();
+            let mut v_vec = ink_prelude::vec![msg.clone(), msg.clone()];
+            scale::Encode::encode_to(&v_vec, &mut v);
+            v
+        }
+
         // test Payload as parameter
         #[ink(message)]
         pub fn get_payload(&self, msg_vec: super::MessagePayload) -> ink_prelude::string::String{
@@ -146,7 +154,7 @@ mod callee {
 
             let mut pl = super::super::MessagePayload::new();
             let mut msg_item = super::super::MessageItem{
-                n: 1,
+                n: ink_prelude::string::String::from("1"),
                 t: super::super::MsgType::InkU16,
                 v: v_vec,
             };
@@ -159,7 +167,7 @@ mod callee {
 
             // Attention, `assert_eq` use the concrete implementation of `PartialEq` to chack equal
             // So it doesn't matter whether the `t` and `v` is the same
-            assert_eq!(pl.get_item(1), Some(&msg_item));
+            assert_eq!(pl.get_item(ink_prelude::string::String::from("1")), Some(&msg_item));
         }
     }
 }

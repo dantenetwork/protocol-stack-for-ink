@@ -75,6 +75,18 @@ impl ::scale_info::TypeInfo for MessageItem {
     }
 }
 
+impl MessageItem {
+    pub fn from<T: scale::Encode>(n: ink_prelude::string::String, t: MsgType, vs: T) -> Self {
+        let mut v = ink_prelude::vec::Vec::new();
+        scale::Encode::encode_to(&vs, &mut v);
+        Self {
+            n, 
+            t,
+            v,
+        }
+    }
+}
+
 /// Message vector, used for describing the information composed with an array of elements
 /// @member `n`: item unique ID, which is used for user applications to communicate user-defined informations
 /// @member `t`: item type. This is the element type of the inner array
@@ -84,7 +96,7 @@ impl ::scale_info::TypeInfo for MessageItem {
 pub struct MessageVec{
     pub n: ink_prelude::string::String,
     pub t: MsgType,
-    pub v: ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>,
+    pub v: ink_prelude::vec::Vec<u8>,
 }
 
 impl PartialEq for MessageVec {
@@ -102,8 +114,20 @@ impl ::scale_info::TypeInfo for MessageVec {
                         .composite(::scale_info::build::Fields::named()
                         .field(|f| f.ty::<ink_prelude::string::String>().name("n").type_name("ink_prelude::string::String"))
                         .field(|f| f.ty::<MsgType>().name("t").type_name("MsgType"))
-                        .field(|f| f.ty::<ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>>().name("v").type_name("ink_prelude::vec::Vec<ink_prelude::vec::Vec<u8>>"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<u8>>().name("v").type_name("ink_prelude::vec::Vec<u8>"))
                     )
+    }
+}
+
+impl MessageVec {
+    pub fn from<T: scale::Encode>(n: ink_prelude::string::String, t: MsgType, vs: ink_prelude::vec::Vec<T>) -> Self {
+        let mut v = ink_prelude::vec::Vec::new();
+        scale::Encode::encode_to(&vs, &mut v);
+        Self {
+            n, 
+            t,
+            v,
+        }
     }
 }
 

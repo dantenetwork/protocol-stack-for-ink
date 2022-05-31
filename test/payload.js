@@ -16,7 +16,7 @@ const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.PAYLO
 
 // test encoder
 const payloadABI = new Abi(JSON.parse(abiFile));
-const payed = payloadABI.findMessage('getMessage').toU8a([{'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': ['0x99', '0x88', '0x65535']}]}]);
+const payed = payloadABI.findMessage('getMessage').toU8a([{'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': '0x99887766'}]}]);
 const payedDecode = payloadABI.findMessage('getMessage').fromU8a(payed.subarray(5));
 console.log(payedDecode.args[0].toHuman().vecs[0]);
 // console.log(payedDecode.args[0].toJSON().vecs[0]);
