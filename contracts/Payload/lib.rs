@@ -225,6 +225,13 @@ mod Payload {
                 t: super::super::message_protocol::MsgType::UserData,
                 v: vv,
             };
+
+            let msg_vec2 = super::super::message_protocol::MessageVec::from(ink_prelude::string::String::from("11"), 
+                                                                            super::super::message_protocol::MsgType::UserData, 
+                                                                            vec_eles);
+
+            assert_eq!(msg_vec, msg_vec2);
+
             assert_eq!(msg_payload.add_vec(msg_vec), true);
             
             // simulate encode `MessagePayload` from routers(off-chain js)
