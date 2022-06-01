@@ -155,7 +155,7 @@ mod d_protocol_stack {
             nodes.push(SimNode(0, 2));
             // ink_prelude::format!("{:?}", ink_env::random::<ink_env::DefaultEnvironment>(&n))
             let r_v = ink_env::random::<ink_env::DefaultEnvironment>(&n).unwrap();
-            ink_prelude::format!("{}", r_v.0.as_ref().len())
+            ink_prelude::format!("{:?}", r_v.0)
         }
     }
 
