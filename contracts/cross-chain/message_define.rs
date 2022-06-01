@@ -31,6 +31,7 @@ pub enum Error {
     IdOutOfBound,
     AlreadyExecuted,
     InterfaceNotFound,
+    DecodeDataFailed,
 }
 
 /// Content structure

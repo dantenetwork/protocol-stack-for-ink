@@ -229,6 +229,13 @@ mod cross_chain {
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
         }
+
+        /// For debug
+        #[ink(message)]
+        pub fn clear_messages(&mut self, chain_name: String) {
+            self.received_message_table.remove(chain_name.clone());
+            self.sent_message_table.remove(chain_name)
+        }
     }
 
     impl Ownable for CrossChain {
@@ -322,7 +329,7 @@ mod cross_chain {
 
             // Construct paylaod
             let mut data_slice = message.data.as_slice();
-            let payload: MessagePayload = scale::Decode::decode(&mut data_slice).unwrap();
+            let payload: MessagePayload = scale::Decode::decode(&mut data_slice).ok().ok_or(Error::DecodeDataFailed)?;
 
             // Cross-contract call
             let selector: [u8; 4] = message.action.clone().try_into().unwrap();
@@ -451,9 +458,17 @@ mod cross_chain {
 
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
+        use std::{fmt::Write, num::ParseIntError};
 
         fn set_caller(sender: AccountId) {
             ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
+        }
+
+        fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+            (0..s.len())
+                .step_by(2)
+                .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+                .collect()
         }
 
         fn create_contract_with_received_message() -> CrossChain {
@@ -462,8 +477,8 @@ mod cross_chain {
             // Receive message.
             let from_chain = "ETHEREUM".to_string();
             let id = 1;
-            let sender = "SENDER".to_string();
-            let signer = "SIGNER".to_string();
+            let sender = "0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b".to_string();
+            let signer = "0x3aE841B899Ae4652784EA734cc61F524c36325d1".to_string();
             let contract = AccountId::default();
             let mut action = Bytes::new();
             action.push(0x3a);
@@ -471,7 +486,8 @@ mod cross_chain {
             action.push(0x5a);
             action.push(0x6a);
             let sqos = SQOS::new(0);
-            let data = Bytes::new();
+            let raw_data = "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600".to_string();
+            let data = decode_hex(&raw_data).unwrap();
             let session = Session::new(0, 0);
             let message = ReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
             cross_chain.receive_message(message);

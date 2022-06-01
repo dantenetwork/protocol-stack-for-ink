@@ -64,7 +64,57 @@ async function query() {
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
   const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getReceivedMessage'](sender.address, {value, gasLimit }, 
-                                          "ETHEREUM", 4);
+                                          "PLATONEVMDEV", 1);
+  
+  // The actual result from RPC as `ContractExecResult`
+  console.log(result.toHuman());
+  
+  // gas consumed
+  console.log(gasConsumed.toHuman());
+
+  // check if the call was successful
+  if (result.isOk) {
+    // should output 123 as per our initial set (output here is an i32)
+    console.log('Success', output.toHuman());
+  } else {
+    console.error('Error', result.asErr);
+  }
+}
+
+async function test_message() {
+  const value = 0; // only useful on isPayable messages
+  // NOTE the apps UI specified these in mega units
+  const gasLimit = -1;
+  
+  // const storage_deposit_limit = 3n * 1000000n;
+  
+  // Perform the actual read (with one param, which is an user defined struct)
+  // (We perform the send from an account, here using address created from a Json)
+  // const { gasConsumed, result, output } = await contract.query['submitMessage'](sender.address, { value, gasLimit }, 
+  //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
+
+  let payload = await test_scale_codec();
+  let message = {
+    id: '1',
+    from_chain: 'ETHEREUM',
+    sender: '0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b',
+    signer: '0x3aE841B899Ae4652784EA734cc61F524c36325d1',
+    sqos: {
+      reveal: '0'
+    },
+    contract: '5CXQ2sERuk9kBeokbhdw7wSv1t8374Umey7d4Um28jtTi7D5',
+    action: '0x3a6e9696',
+    data: payload,
+    session: {
+      msg_type: '0',
+      id: '0'
+    },
+    executed: false,
+    error_code: 0
+  }
+  console.log(message);
+  const { gasConsumed, result, output } = await crossChainContract.query['testReceiveMessage'](sender.address, {value, gasLimit }, 
+    message);
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
@@ -89,19 +139,19 @@ async function pushMessage() {
   let payload = await test_scale_codec();
 
   let message = {
-    id: '4',
+    id: '1',
     from_chain: 'ETHEREUM',
-    sender: 'hthuang',
-    signer: 'hthuang',
+    sender: '0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b',
+    signer: '0x3aE841B899Ae4652784EA734cc61F524c36325d1',
     sqos: {
-      reveal: 0
+      reveal: '0'
     },
     contract: '5CXQ2sERuk9kBeokbhdw7wSv1t8374Umey7d4Um28jtTi7D5',
     action: '0x3a6e9696',
     data: payload,
     session: {
-      msg_type: 0,
-      id: 0
+      msg_type: '0',
+      id: '0'
     },
     executed: false,
     error_code: 0
@@ -202,9 +252,10 @@ async function test_scale_codec() {
 }
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
-test_scale_codec()
+// test_scale_codec()
 // test_scale_codec1()
 // query()
+test_message()
 function test() {
   let api = require("@polkadot/api");
   let api_contract = require("@polkadot/api-contract");
