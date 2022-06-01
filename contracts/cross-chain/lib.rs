@@ -333,20 +333,22 @@ mod cross_chain {
 
             // Cross-contract call
             let selector: [u8; 4] = message.action.clone().try_into().unwrap();
-            let my_return_value: String = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+            let ret: Result<String, ink_env::Error> = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
                         .callee(message.contract)
-                        .gas_limit(0)
+                        .gas_limit(200000000000)
                         .transferred_value(0))
                 .exec_input(
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
                     .push_arg(payload)
                 )
                 .returns::<String>()
-                .fire()
-                .unwrap();
+                .fire();
 
+            if ret.is_err() {
+
+            }
             
             self.received_message_table.insert(chain_name, &chain_message);
             

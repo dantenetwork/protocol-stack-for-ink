@@ -32,6 +32,7 @@ pub enum Error {
     AlreadyExecuted,
     InterfaceNotFound,
     DecodeDataFailed,
+    CrossContractCallFailed(ink_env::Error),
 }
 
 /// Content structure
