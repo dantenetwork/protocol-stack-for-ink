@@ -20,6 +20,23 @@ let MsgType = Enum({
   UserData: _void,
 });
 
+let PayloadItem = Struct({
+  n: u128,
+  t: MsgType,
+  v: Vector(u8)
+});
+
+let PayloadVec = Struct({
+  n: u128,
+  t: MsgType,
+  v: Vector(Vector(u8))
+});
+
+let PayloadMessage = Struct({
+  items: Option(Vector(PayloadItem)),
+  vecs: Option(Vector(PayloadVec))
+})
+
 // network
 const provider = new WsProvider("ws://127.0.0.1:9944");
 const api = await ApiPromise.create({provider});
@@ -64,7 +81,7 @@ async function query() {
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
   const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getReceivedMessage'](sender.address, {value, gasLimit }, 
-                                          "PLATONEVMDEV", 1);
+                                          "ETHEREUM", 1);
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
@@ -93,42 +110,13 @@ async function test_message() {
   // const { gasConsumed, result, output } = await contract.query['submitMessage'](sender.address, { value, gasLimit }, 
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
-  let payload = await test_scale_codec();
-  let message = {
-    id: '1',
-    from_chain: 'ETHEREUM',
-    sender: '0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b',
-    signer: '0x3aE841B899Ae4652784EA734cc61F524c36325d1',
-    sqos: {
-      reveal: '0'
-    },
-    contract: '5CXQ2sERuk9kBeokbhdw7wSv1t8374Umey7d4Um28jtTi7D5',
-    action: '0x3a6e9696',
-    data: payload,
-    session: {
-      msg_type: '0',
-      id: '0'
-    },
-    executed: false,
-    error_code: 0
-  }
-  console.log(message);
-  const { gasConsumed, result, output } = await crossChainContract.query['testReceiveMessage'](sender.address, {value, gasLimit }, 
-    message);
+  let payload = await test_scale_codec1();
   
-  // The actual result from RPC as `ContractExecResult`
-  console.log(result.toHuman());
-  
-  // gas consumed
-  console.log(gasConsumed.toHuman());
-
-  // check if the call was successful
-  if (result.isOk) {
-    // should output 123 as per our initial set (output here is an i32)
-    console.log('Success', output.toHuman());
-  } else {
-    console.error('Error', result.asErr);
-  }
+  let revert = PayloadMessage.dec(payload);
+  console.log('revert', JSON.stringify(revert.items[0].t));
+  console.log('revert', toHexString(revert.items[0].v));
+  let a = Vector(str).dec(toHexString(revert.items[0].v));
+  console.log('a', a);
 }
 
 async function pushMessage() {
@@ -136,7 +124,7 @@ async function pushMessage() {
   const value = 0; // only useful on isPayable messages
   const gasLimit = -1;
 
-  let payload = await test_scale_codec();
+  let payload = '0x0104010000000000000000000000000000000bd81020504f4c4b41444f54244772656574696e6773584772656574696e672066726f6d20504f4c4b41444f5428323032322d30362d303100';
 
   let message = {
     id: '1',
@@ -144,9 +132,9 @@ async function pushMessage() {
     sender: '0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b',
     signer: '0x3aE841B899Ae4652784EA734cc61F524c36325d1',
     sqos: {
-      reveal: '0'
+      reveal: '1'
     },
-    contract: '5CXQ2sERuk9kBeokbhdw7wSv1t8374Umey7d4Um28jtTi7D5',
+    contract: '5DeiQFwpYh7cJ5Rx5pnHgHHWPBbgq4qkyf3Q8G9CE6ZvEFLu',
     action: '0x3a6e9696',
     data: payload,
     session: {
@@ -181,11 +169,20 @@ function toHexString(byteArray) {
 }
 
 async function test_scale_codec1() {
-  const numbers = Vector(u8)
-  let a1 = [8,0,0,0];
-  let a2 = u32.enc(8);
+  let data = [ 'POLKADOT', 'Greetings', 'Greeting from POLKADOT', '2022-06-01' ];
+
+  let payload = {
+    items:[]
+  };
+
+  let item = {};
+  item.n = BigInt(1);
+  item.t = {tag: 'InkStringArray'};
+  item.v = Array.from(Vector(str).enc(data));
+  payload.items.push(item);
   
-  console.log(toHexString(numbers.enc([])));
+  console.log(toHexString(PayloadMessage.enc(payload)));
+  return toHexString(PayloadMessage.enc(payload));
 }
 
 async function test_scale_codec() {
@@ -203,23 +200,6 @@ async function test_scale_codec() {
         age: 33,
         phones: ['123', '456']
     });
-
-    let PayloadItem = Struct({
-      n: u128,
-      t: MsgType,
-      v: Vector(u8)
-    });
-
-    let PayloadVec = Struct({
-      n: u128,
-      t: MsgType,
-      v: Vector(Vector(u8))
-    });
-
-    let PayloadMessage = Struct({
-      items: Option(Vector(PayloadItem)),
-      vecs: Option(Vector(PayloadVec))
-    })
 
     let item1 = {
       n: 1n,
@@ -254,8 +234,8 @@ async function test_scale_codec() {
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // test_scale_codec()
 // test_scale_codec1()
-// query()
-test_message()
+query()
+// test_message()
 function test() {
   let api = require("@polkadot/api");
   let api_contract = require("@polkadot/api-contract");
