@@ -333,11 +333,11 @@ mod cross_chain {
 
             // Cross-contract call
             let selector: [u8; 4] = message.action.clone().try_into().unwrap();
-            let ret: Result<String, ink_env::Error> = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+            let cc_result: Result<String, ink_env::Error> = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
                         .callee(message.contract)
-                        .gas_limit(200000000000)
+                        .gas_limit(0)
                         .transferred_value(0))
                 .exec_input(
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
@@ -346,13 +346,14 @@ mod cross_chain {
                 .returns::<String>()
                 .fire();
 
-            if ret.is_err() {
-
+            if cc_result.is_err() {
+                let e = cc_result.unwrap_err();
+                return Err(Error::CrossContractCallFailed);
             }
             
             self.received_message_table.insert(chain_name, &chain_message);
             
-            Ok(my_return_value)
+            Ok(cc_result.unwrap())
         }
 
         /// Returns the simplified message, this message is reset every time when a contract is called
