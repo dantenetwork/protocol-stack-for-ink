@@ -54,6 +54,7 @@ const crossChainContract = new ContractPromise(api, JSON.parse(crossChainABIRaw)
 // locker-mock contract
 const calleeAbiRaw = fs.readFileSync('./abi/callee.json');
 const calleeABI = new Abi(JSON.parse(calleeAbiRaw));
+const calleeContract = new ContractPromise(api, JSON.parse(calleeAbiRaw), process.env.CALLEE_ADDRESS);
 // const calleeEncode = calleeABI.findMessage('encode_user_multi_params').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}, "hthuang", 666]);
 // const calleeDecode = calleeABI.findMessage('encode_user_multi_params').fromU8a(calleeEncode.subarray(5));
 
@@ -162,6 +163,35 @@ async function pushMessage() {
     });
 }
 
+async function sendGreeting() {
+  // We will use these values for the execution
+  const value = 0; // only useful on isPayable messages
+  const gasLimit = -1;
+
+  // Send the transaction, like elsewhere this is a normal extrinsic
+  // with the same rules as applied in the API (As with the read example,
+  // additional params, if required can follow - here only one is needed)
+  function getCurrentDate() {
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var yyyy = today.getFullYear();
+    return yyyy + '-' + mm + '-' + dd;
+  }
+
+  await calleeContract.tx
+    ['sendGreeting']({ value, gasLimit }, 'PLATONEVMDEV', ['POLKADOT', 'Greetings', 'Greeting from POLKADOT', getCurrentDate()])
+    .signAndSend(sender, (result) => {
+      console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
+      if (result.status.isInBlock) {
+        console.log('in a block');
+        // console.log(result);
+      } else if (result.status.isFinalized) {
+        console.log('finalized');
+      }
+    });
+}
+
 function toHexString(byteArray) {
     return '0x' + Array.from(byteArray, function(byte) {
         return ('0' + (byte & 0xFF).toString(16)).slice(-2);
@@ -234,7 +264,8 @@ async function test_scale_codec() {
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // test_scale_codec()
 // test_scale_codec1()
-query()
+// query()
+sendGreeting()
 // test_message()
 function test() {
   let api = require("@polkadot/api");
