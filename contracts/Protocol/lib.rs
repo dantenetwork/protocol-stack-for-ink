@@ -6,6 +6,14 @@ use ink_prelude;
 #[ink::contract]
 mod d_protocol_stack {
 
+    use ink_storage::{
+        traits::{
+            SpreadLayout,
+            StorageLayout,
+            PackedLayout,
+        },
+    };
+
     struct Wrapper {
         data: ink_prelude::vec::Vec::<u8>,
     }
@@ -39,7 +47,29 @@ mod d_protocol_stack {
     }
 
     /// Simelation
-    pub struct SimNode(u8, u32);
+    #[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
+    pub struct SimNode(u16, u32);
+
+    /// selection interval
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct SelectionInterval {
+        pub id: u16,
+        pub low: u32,
+        pub high: u32,
+        pub selected: bool,
+    }
+
+    impl SelectionInterval {
+        pub fn contains(&self, value: u32) -> bool {
+            if value >= self.low && value < self.high {
+                true
+            } else {
+                false
+            }
+        }
+    }
 
     // use serde_json::json;
     // use serde_json_wasm::{from_str, to_string};
@@ -52,6 +82,8 @@ mod d_protocol_stack {
         /// Stores a single `bool` value on the storage.
         value: bool,
         account: AccountId,
+
+        sim_routers: ink_prelude::vec::Vec<SimNode>,
     }
 
     impl DProtocalStack {
@@ -61,6 +93,7 @@ mod d_protocol_stack {
             Self { 
                 value: init_value,
                 account: Self::env().caller(),
+                sim_routers: ink_prelude::vec![],
              }
         }
 
@@ -148,14 +181,88 @@ mod d_protocol_stack {
 
         }
 
-        // Test selection algorithm
         #[ink(message)]
-        pub fn selection_test(&self, n: ink_prelude::vec::Vec<u8>) -> ink_prelude::string::String {
-            let mut nodes: ink_prelude::vec::Vec<SimNode> = ink_prelude::vec::Vec::new();
-            nodes.push(SimNode(0, 2));
-            // ink_prelude::format!("{:?}", ink_env::random::<ink_env::DefaultEnvironment>(&n))
-            let r_v = ink_env::random::<ink_env::DefaultEnvironment>(&n).unwrap();
-            ink_prelude::format!("{:?}", r_v.0)
+        pub fn create_intervals(&self, just_for_test: bool) -> ink_prelude::vec::Vec<SelectionInterval>{
+            let mut sum: u32 = 0;
+            let mut select_intervals = ink_prelude::vec![];
+            for router in self.sim_routers.iter() {
+                select_intervals.push(SelectionInterval{
+                    id: router.0,
+                    low: sum,
+                    high: sum + router.1,
+                    selected: false,
+                });
+                sum += router.1;
+            }
+
+            select_intervals
+        }
+
+        /// Test selection algorithm
+        /// test interface for register
+        #[ink(message)]
+        pub fn random_register_routers(&mut self, routers: ink_prelude::vec::Vec<u32>) {
+            let mut start_id = self.sim_routers.len() as u16;
+            for ele in routers {
+                self.sim_routers.push(SimNode(start_id, ele));
+                start_id += 1;
+            }
+        }
+
+        /// Test selection algorithm
+        /// test interface 
+        #[ink(message)]
+        pub fn selection_test(&self, n: u16) -> Option<ink_prelude::vec::Vec<u16>>{
+            let mut start_idx = 0;
+            let mut select_intervals = self.create_intervals(true);
+            if (select_intervals.len() as u16) < n {
+                return None;
+            }
+
+            let mut selected: ink_prelude::vec::Vec<u16> = ink_prelude::vec![];
+            while (selected.len() as u16) < n {
+                let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_idx]).unwrap().0;
+                let mut seed_idx = 0;
+
+                while seed_idx < random_seed.as_ref().len() {
+                    let two_bytes: [u8; 2] = random_seed.as_ref()[seed_idx..seed_idx+2].try_into().unwrap();
+                    let rand_num = u16::from_be_bytes(two_bytes) as u32;
+
+                    let max = select_intervals[select_intervals.len() - 1].high;
+
+                    // rand_num will multiple 100 in later implementation as the credibility does
+                    let rand_num = rand_num % max;
+
+                    let mut choose_next = false;
+                    for ele in select_intervals.iter_mut() {
+                        if ele.contains(rand_num) {
+                            if !ele.selected {
+                                selected.push(ele.id);
+                                ele.selected = true;
+                                break;
+                            } else {
+                                choose_next = true;
+                            }
+                        }
+
+                        if choose_next && (!ele.selected) {
+                            selected.push(ele.id);
+                            ele.selected = true;
+                            break;
+                        }
+                    }
+
+                    if (selected.len() as u16) >= n {
+                        return Some(selected);
+                    }
+
+                    seed_idx += 2;
+                }
+
+                start_idx += 1;
+            }
+
+            Some(selected)
         }
     }
 
