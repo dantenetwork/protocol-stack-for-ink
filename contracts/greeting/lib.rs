@@ -47,7 +47,7 @@ mod greeting {
         /// Sends greeting to another chain 
         #[ink(message)]
         pub fn send_greeting(&mut self, chain_name: String, greeting: Vec<String>) {
-            let contract = String::try_from("receiveGreeting").unwrap();
+            let contract = String::try_from("0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b").unwrap();
             let action = String::try_from("receiveGreeting").unwrap();
             let mut msg_payload = MessagePayload::new();
             let mut itemValue = greeting.clone();
@@ -63,7 +63,7 @@ mod greeting {
             let mut pl_code: Bytes = Bytes::new();
             scale::Encode::encode_to(&msg_payload, &mut pl_code);
             let data = pl_code;
-            let sqos = SQOS::new(0);
+            let sqos = SQOS::new(1);
             let session = Session::new(0, 0);
             let content = Content::new(contract, action, data);
             let message = SentMessage::new_sending_message(chain_name.clone(), sqos, session, content);
