@@ -15,9 +15,15 @@ const abiFile = fs.readFileSync('../contracts/Protocol/target/ink/metadata.json'
 const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTRACT_ADDRESS);
 
 async function registerRouters() {
+    let cres = Array.from({length: 20}, v=> Math.floor(Math.random() * 100 + 1));
+    cres = {"routers": cres};
+    console.log(cres);
+
 
 }
 
 async function selectRouters() {
-    
+
 }
+
+registerRouters()
