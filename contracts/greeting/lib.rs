@@ -6,14 +6,13 @@ use ink_lang as ink;
 mod greeting {
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
-    use cross_chain::message_define::{
-        SentMessage,
-        Session,
-        SQOS,
-        Content,
-        Bytes,
+    use Payload::message_define::{
+        ISentMessage,
+        ISession,
+        ISQOS,
+        IContent,
     };
-    use cross_chain::payload::{
+    use Payload::message_protocol::{
         MsgType,
         MessageItem,
         MessageVec,
@@ -49,24 +48,15 @@ mod greeting {
         pub fn send_greeting(&mut self, chain_name: String, greeting: Vec<String>) {
             let contract = String::try_from("0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b").unwrap();
             let action = String::try_from("receiveGreeting").unwrap();
+
             let mut msg_payload = MessagePayload::new();
-            let mut itemValue = greeting.clone();
-            let mut item_vec = Bytes::new();
-            scale::Encode::encode_to(&itemValue, &mut item_vec);
-            // msg_payload.add_item();
-            let mut item = MessageItem {
-                n: 1,
-                t: MsgType::InkStringArray,
-                v: item_vec,
-            };
-            msg_payload.add_item(item);
-            let mut pl_code: Bytes = Bytes::new();
-            scale::Encode::encode_to(&msg_payload, &mut pl_code);
-            let data = pl_code;
-            let sqos = SQOS::new(1);
-            let session = Session::new(0, 0);
-            let content = Content::new(contract, action, data);
-            let message = SentMessage::new_sending_message(chain_name.clone(), sqos, session, content);
+            msg_payload.push_item(String::try_from("greeting").unwrap(), MsgType::InkStringArray, greeting.clone());
+            let data = msg_payload.to_bytes();
+
+            let sqos = ISQOS::new(1);
+            let session = ISession::new(0, 0);
+            let content = IContent::new(contract, action, data);
+            let message = ISentMessage::new(chain_name.clone(), sqos, session, content);
 
             ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
@@ -86,7 +76,7 @@ mod greeting {
         /// Receives greeting from another chain 
         #[ink(message)]
         pub fn receive_greeting(&mut self, payload: MessagePayload) -> String {
-            let item = payload.get_item(1).unwrap();
+            let item = payload.get_item(String::try_from("greeting").unwrap()).unwrap();
             let param: Vec<String> = scale::Decode::decode(&mut item.v.as_slice()).unwrap();
             // let payload
             let mut s = String::new();
@@ -112,12 +102,11 @@ mod greeting {
 
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
-        use cross_chain::message_define::{
-            SentMessage,
-            Session,
-            SQOS,
-            Content,
-            Bytes,
+        use Payload::message_define::{
+            ISentMessage,
+            ISession,
+            ISQOS,
+            IContent,
         };
         use cross_chain::CrossChainRef;
 

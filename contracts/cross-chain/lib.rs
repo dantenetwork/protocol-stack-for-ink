@@ -2,7 +2,6 @@
 
 use ink_lang as ink;
 
-pub mod payload;
 pub mod message_define;
 
 pub use self::cross_chain::{
@@ -31,7 +30,7 @@ mod cross_chain {
     use super::message_define::{
         Error,
         Content,
-        SQOS,
+        SQoS,
         Session,
         ReceivedMessage,
         SentMessage,
@@ -40,7 +39,11 @@ mod cross_chain {
         Porters,
     };
 
-    use super::payload::MessagePayload;
+    use Payload::message_protocol::MessagePayload;
+    use Payload::message_define::{
+        ISentMessage,
+        IReceivedMessage,
+    };
 
     /// Trait for owner
     #[ink::trait_definition]
@@ -64,7 +67,7 @@ mod cross_chain {
         fn set_token_contract(&mut self, token: AccountId);
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
-        fn send_message(&mut self, message: SentMessage);
+        fn send_message(&mut self, message: ISentMessage);
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, message: ReceivedMessage);
@@ -267,7 +270,7 @@ mod cross_chain {
 
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
-        fn send_message(&mut self, message: SentMessage) {
+        fn send_message(&mut self, message: ISentMessage) {
             let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(&message.to_chain).unwrap_or(Vec::<SentMessage>::new());
             let id = chain_message.len() + 1;
             let caller = Self::env().caller();
@@ -488,7 +491,7 @@ mod cross_chain {
             action.push(0x4a);
             action.push(0x5a);
             action.push(0x6a);
-            let sqos = SQOS::new(0);
+            let sqos = SQoS::new(SQoSType::Reveal, None);
             let raw_data = "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600".to_string();
             let data = decode_hex(&raw_data).unwrap();
             let session = Session::new(0, 0);
@@ -505,7 +508,7 @@ mod cross_chain {
             let contract = "ETHEREUM_CONTRACT".to_string();
             let action = "ETHERERUM_ACTION".to_string();
             let data = Bytes::new();
-            let sqos = SQOS::new(0);
+            let sqos = SQoS::new(SQoSType::Reveal, None);
             let session = Session::new(0, 0);
             let content = Content::new(contract, action, data);
             let message = SentMessage::new_sending_message(to_chain.clone(), sqos, session, content);

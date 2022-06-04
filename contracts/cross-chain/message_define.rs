@@ -17,6 +17,12 @@ use scale::{
     Encode,
     Decode,
 };
+
+use Payload::message_define::{
+    ISentMessage,
+    IReceivedMessage,
+    IContent,
+};
     
 pub type Bytes = Vec<u8>;
 pub type Porters = Vec<AccountId>;
@@ -52,25 +58,57 @@ impl Content {
             data: data,
         }
     }
+
+    pub fn from(content: IContent) -> Self {
+        Self {
+            contract: content.contract,
+            action: content.action,
+            data: content.data,
+        }
+    }
 }
 
 /// SQOS structure
-#[derive(SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
-pub struct SQOS {
-    pub reveal: u8,
+#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, StorageLayout))]
+pub enum SQoSType{
+    Reveal,
+    Challenge,
+    Threshold,
+    Priority,
+    ExceptionRollback,
+    Anonymous,
+    Identity,
+    Isolation,
+    CrossVerify,
 }
 
-impl SQOS {
-    pub fn new(reveal: u8) -> Self {
+/// SQOS structure
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+pub struct SQoS {
+    pub t: SQoSType,
+    pub v: Option<String>,
+}
+
+impl SQoS {
+    pub fn new(t: SQoSType, v: Option<String>) -> Self {
         Self {
-            reveal,
+            t,
+            v,
+        }
+    }
+
+    pub fn from(sqos: ISQoS) -> Self {
+        Self {
+            t: sqos,
+            v: sqos.v,
         }
     }
 }
 
 /// Session Structure
-#[derive(SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct Session {
     pub msg_type: u8,
@@ -87,14 +125,14 @@ impl Session {
 }
 
 /// Received message structure
-#[derive(SpreadLayout, PackedLayout, Default, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
 pub struct ReceivedMessage {
     pub id: u128,
     pub from_chain: String,
     pub sender: String,
     pub signer: String,
-    pub sqos: SQOS,
+    pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: Bytes,
     pub data: Bytes,
@@ -104,7 +142,7 @@ pub struct ReceivedMessage {
 }
 
 impl ReceivedMessage {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: SQOS,
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: Vec<SQoS>,
         contract: AccountId, action: Bytes, data: Bytes, session: Session) -> Self {
         Self {
             id,
@@ -122,10 +160,19 @@ impl ReceivedMessage {
     }
 
     pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
-        let mut m = Self::default();
-        m.id = id;
-        m.from_chain = from_chain;
-        m.error_code = error_code;
+        let m = Self {
+            id,
+            from_chain,
+            sender: String::try_from("").unwrap(),
+            signer: String::try_from("").unwrap(),
+            sqos: Vec::<SQoS>::new(),
+            contract: AccountId::default(),
+            action: Bytes::new(),
+            data: Bytes::new(),
+            session: Session::new(0, 0),
+            executed: false,
+            error_code,
+        };
         m
     }
 }
@@ -139,18 +186,17 @@ pub struct SentMessage {
     pub to_chain: String,
     pub sender: AccountId,
     pub signer: AccountId,
-    pub sqos: SQOS,
+    pub sqos: Vec<SQoS>,
     pub content: Content,
     pub session: Session,
 }
 
 impl SentMessage {
-    pub fn new(id: u128, from_chain: String, to_chain: String, sender: AccountId, signer: AccountId,
-        sqos: SQOS, content: Content, session: Session) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: AccountId, signer: AccountId, message: ISentMessage) -> Self {
         Self {
             id,
             from_chain,
-            to_chain,
+            to_chain: message.to_chain,
             sender,
             signer,
             sqos,
@@ -159,7 +205,7 @@ impl SentMessage {
         }
     }
 
-    pub fn new_sending_message(to_chain: String, sqos: SQOS, session: Session, content: Content) -> Self {
+    pub fn new_sending_message(to_chain: String, sqos: Vec<SQoS>, session: Session, content: Content) -> Self {
         Self {
             id: 0,
             from_chain: String::try_from("").unwrap(),
