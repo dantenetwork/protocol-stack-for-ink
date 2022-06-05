@@ -1,7 +1,5 @@
 include!("message_protocol.rs");
 
-use ink_env::AccountId;
-
 use ink_prelude::{
     vec::Vec,
     string::String,
@@ -22,6 +20,8 @@ pub enum IError {
     IdOutOfBound,
     AlreadyExecuted,
     InterfaceNotFound,
+    DecodeDataFailed,
+    CrossContractCallFailed,
 }
 
 impl scale_info::TypeInfo for IError {
@@ -43,16 +43,16 @@ impl scale_info::TypeInfo for IError {
 }
 
 /// Content structure
-#[derive(Decode, Encode)]
+#[derive(Decode, Encode, Clone)]
 // #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo))]
 pub struct IContent {
-    contract: String,
-    action: String,
-    data: MessagePayload,
+    pub contract: String,
+    pub action: String,
+    pub data: ink_prelude::vec::Vec<u8>,
 }
 
 impl IContent {
-    pub fn new(contract: String, action: String, data: MessagePayload) -> Self {
+    pub fn new(contract: String, action: String, data: ink_prelude::vec::Vec<u8>) -> Self {
         Self {
             contract: contract,
             action: action,
@@ -70,7 +70,7 @@ impl scale_info::TypeInfo for IContent {
                         .composite(::scale_info::build::Fields::named()
                         .field(|f| f.ty::<String>().name("contract").type_name("String"))
                         .field(|f| f.ty::<String>().name("action").type_name("String"))
-                        .field(|f| f.ty::<MessagePayload>().name("data").type_name("MessagePayload"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<u8>>().name("data").type_name("ink_prelude::vec::Vec<u8>"))
                     )
     }
 }
@@ -148,6 +148,15 @@ pub struct ISession {
     pub id: u128,
 }
 
+impl ISession {
+    pub fn new(msg_type: u8, id: u128) -> Self {
+        Self {
+            msg_type,
+            id,
+        }
+    }
+}
+
 impl scale_info::TypeInfo for ISession {
     type Identity = Self;
 
@@ -162,7 +171,7 @@ impl scale_info::TypeInfo for ISession {
 }
 
 /// Received message structure
-#[derive(Debug, Decode, Encode)]
+#[derive(Debug, Decode, Encode, Clone)]
 // #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct IReceivedMessage {
     pub id: u128,
@@ -172,7 +181,7 @@ pub struct IReceivedMessage {
     pub sqos: ink_prelude::vec::Vec<ISQoS>,
     pub contract: [u8;32],
     pub action: [u8;4],
-    pub data: MessagePayload,
+    pub data: ink_prelude::vec::Vec<u8>,
     pub session: ISession,
 }
 
@@ -190,7 +199,7 @@ impl scale_info::TypeInfo for IReceivedMessage {
                         .field(|f| f.ty::<ink_prelude::vec::Vec<ISQoS>>().name("sqos").type_name("ink_prelude::vec::Vec<ISQoS>"))
                         .field(|f| f.ty::<[u8;32]>().name("contract").type_name("[u8;32]"))
                         .field(|f| f.ty::<[u8;4]>().name("action").type_name("[u8;4]"))
-                        .field(|f| f.ty::<MessagePayload>().name("data").type_name("MessagePayload"))
+                        .field(|f| f.ty::<ink_prelude::vec::Vec<u8>>().name("data").type_name("ink_prelude::vec::Vec<u8>"))
                         .field(|f| f.ty::<ISession>().name("session").type_name("ISession"))
                     )
     }
@@ -198,7 +207,7 @@ impl scale_info::TypeInfo for IReceivedMessage {
 
 impl IReceivedMessage {
     pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: ink_prelude::vec::Vec<ISQoS>,
-        contract: [u8;32], action: [u8;4], data: MessagePayload, session: ISession) -> Self {
+        contract: [u8;32], action: [u8;4], data: ink_prelude::vec::Vec<u8>, session: ISession) -> Self {
         Self {
             id,
             from_chain,
@@ -214,7 +223,7 @@ impl IReceivedMessage {
 }
 
 /// Sent message structure
-#[derive(Decode, Encode)]
+#[derive(Decode, Encode, Clone)]
 // #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub struct ISentMessage {
     pub to_chain: String,

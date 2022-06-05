@@ -19,6 +19,10 @@ use scale::{
 };
 
 use Payload::message_define::{
+    IError,
+    ISQoSType,
+    ISession,
+    ISQoS,
     ISentMessage,
     IReceivedMessage,
     IContent,
@@ -39,6 +43,21 @@ pub enum Error {
     InterfaceNotFound,
     DecodeDataFailed,
     CrossContractCallFailed,
+}
+
+impl Error {
+    pub fn from(e: IError) -> Self {
+        match e {
+            IError::NotOwner => Error::NotOwner,
+            IError::IdNotMatch => Error::IdNotMatch,
+            IError::ChainMessageNotFound => Error::ChainMessageNotFound,
+            IError::IdOutOfBound => Error::IdOutOfBound,
+            IError::AlreadyExecuted => Error::AlreadyExecuted,
+            IError::InterfaceNotFound => Error::InterfaceNotFound,
+            IError::DecodeDataFailed => Error::DecodeDataFailed,
+            IError::CrossContractCallFailed => Error::CrossContractCallFailed,
+        }
+    }
 }
 
 /// Content structure
@@ -83,6 +102,22 @@ pub enum SQoSType{
     CrossVerify,
 }
 
+impl SQoSType {
+    pub fn from(s: ISQoSType) -> Self {
+        match s {
+            ISQoSType::Reveal => SQoSType::Reveal,
+            ISQoSType::Challenge => SQoSType::Challenge,
+            ISQoSType::Threshold => SQoSType::Threshold,
+            ISQoSType::Priority => SQoSType::Priority,
+            ISQoSType::ExceptionRollback => SQoSType::ExceptionRollback,
+            ISQoSType::Anonymous => SQoSType::Anonymous,
+            ISQoSType::Identity => SQoSType::Identity,
+            ISQoSType::Isolation => SQoSType::Isolation,
+            ISQoSType::CrossVerify => SQoSType::CrossVerify,
+        }
+    }
+}
+
 /// SQOS structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
@@ -101,7 +136,7 @@ impl SQoS {
 
     pub fn from(sqos: ISQoS) -> Self {
         Self {
-            t: sqos,
+            t: SQoSType::from(sqos.t),
             v: sqos.v,
         }
     }
@@ -122,6 +157,13 @@ impl Session {
             id,
         }
     }
+
+    pub fn from(session: ISession) -> Self {
+        Self {
+            msg_type: session.msg_type,
+            id: session.id,
+        }
+    }
 }
 
 /// Received message structure
@@ -134,7 +176,7 @@ pub struct ReceivedMessage {
     pub signer: String,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
-    pub action: Bytes,
+    pub action: [u8;4],
     pub data: Bytes,
     pub session: Session,
     pub executed: bool,
@@ -142,18 +184,22 @@ pub struct ReceivedMessage {
 }
 
 impl ReceivedMessage {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: Vec<SQoS>,
-        contract: AccountId, action: Bytes, data: Bytes, session: Session) -> Self {
+    pub fn new(message: IReceivedMessage) -> Self {
+        let mut sqos = Vec::<SQoS>::new();
+        for s in message.sqos {
+            sqos.push(SQoS::from(s));
+        }
+
         Self {
-            id,
-            from_chain,
-            sender,
-            signer,
+            id: message.id,
+            from_chain: message.from_chain,
+            sender: message.sender,
+            signer: message.signer,
             sqos,
-            contract,
-            action,
-            data,
-            session,
+            contract: AccountId::from(message.contract),
+            action: message.action,
+            data: message.data,
+            session: Session::from(message.session),
             executed: false,
             error_code: 0,
         }
@@ -167,7 +213,7 @@ impl ReceivedMessage {
             signer: String::try_from("").unwrap(),
             sqos: Vec::<SQoS>::new(),
             contract: AccountId::default(),
-            action: Bytes::new(),
+            action: [0, 0, 0, 0],
             data: Bytes::new(),
             session: Session::new(0, 0),
             executed: false,
@@ -193,6 +239,11 @@ pub struct SentMessage {
 
 impl SentMessage {
     pub fn new(id: u128, from_chain: String, sender: AccountId, signer: AccountId, message: ISentMessage) -> Self {
+        let mut sqos = Vec::<SQoS>::new();
+        for s in message.sqos {
+            sqos.push(SQoS::from(s));
+        }
+
         Self {
             id,
             from_chain,
@@ -200,12 +251,12 @@ impl SentMessage {
             sender,
             signer,
             sqos,
-            content,
-            session,
+            content: Content::from(message.content),
+            session: Session::from(message.session),
         }
     }
 
-    pub fn new_sending_message(to_chain: String, sqos: Vec<SQoS>, session: Session, content: Content) -> Self {
+    pub fn new_sending_message(to_chain: String, sqos: Vec<SQoS>, content: Content, session: Session) -> Self {
         Self {
             id: 0,
             from_chain: String::try_from("").unwrap(),
@@ -228,11 +279,11 @@ pub struct Context {
     pub sender: String,
     pub signer: String,
     pub contract: AccountId,
-    pub action: Bytes,
+    pub action: [u8;4],
 }
 
 impl Context {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: Bytes) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: [u8;4]) -> Self {
         Self {
             id,
             from_chain,

@@ -31,6 +31,7 @@ mod cross_chain {
         Error,
         Content,
         SQoS,
+        SQoSType,
         Session,
         ReceivedMessage,
         SentMessage,
@@ -70,7 +71,7 @@ mod cross_chain {
         fn send_message(&mut self, message: ISentMessage);
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
-        fn receive_message(&mut self, message: ReceivedMessage);
+        fn receive_message(&mut self, message: IReceivedMessage);
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         #[ink(message)]
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
@@ -207,14 +208,15 @@ mod cross_chain {
         }
 
         /// Receives message
-        fn internal_receive_message(&mut self, message: ReceivedMessage) -> Result<(), Error> {
+        fn internal_receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
             let mut chain_message = self.received_message_table.get(&message.from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
             let current_id = chain_message.len() + 1;
             if current_id != message.id.try_into().unwrap() {
                 return Err(Error::IdNotMatch)
             }
 
-            chain_message.push(message.clone());
+            let m = ReceivedMessage::new(message.clone());
+            chain_message.push(m);
             self.received_message_table.insert(message.from_chain, &chain_message);
             Ok(())
         }
@@ -276,14 +278,14 @@ mod cross_chain {
             let caller = Self::env().caller();
             let signer = caller.clone();
             let sent_message: SentMessage = SentMessage::new(id.try_into().unwrap(), self.chain_name.clone(),
-                message.to_chain.clone(), caller, signer, message.sqos, message.content, message.session);
+                caller, signer, message.clone());
             chain_message.push(sent_message);
             self.sent_message_table.insert(message.to_chain, &chain_message);
         }
 
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
-        fn receive_message(&mut self, message: ReceivedMessage) {
+        fn receive_message(&mut self, message: IReceivedMessage) {
             self.internal_receive_message(message);
         }
 
@@ -465,6 +467,13 @@ mod cross_chain {
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
         use std::{fmt::Write, num::ParseIntError};
+        
+        use Payload::message_define::{
+            ISession,
+            IContent,
+            ISQoS,
+            ISQoSType,
+        };
 
         fn set_caller(sender: AccountId) {
             ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
@@ -485,17 +494,13 @@ mod cross_chain {
             let id = 1;
             let sender = "0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b".to_string();
             let signer = "0x3aE841B899Ae4652784EA734cc61F524c36325d1".to_string();
-            let contract = AccountId::default();
-            let mut action = Bytes::new();
-            action.push(0x3a);
-            action.push(0x4a);
-            action.push(0x5a);
-            action.push(0x6a);
-            let sqos = SQoS::new(SQoSType::Reveal, None);
+            let contract = [0; 32];
+            let mut action = [0x3a, 0x4a, 0x5a, 0x6a];
+            let sqos = Vec::<ISQoS>::new();
             let raw_data = "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600".to_string();
             let data = decode_hex(&raw_data).unwrap();
-            let session = Session::new(0, 0);
-            let message = ReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
+            let session = ISession::new(0, 0);
+            let message = IReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
             cross_chain.receive_message(message);
             cross_chain
         }
@@ -508,10 +513,10 @@ mod cross_chain {
             let contract = "ETHEREUM_CONTRACT".to_string();
             let action = "ETHERERUM_ACTION".to_string();
             let data = Bytes::new();
-            let sqos = SQoS::new(SQoSType::Reveal, None);
-            let session = Session::new(0, 0);
-            let content = Content::new(contract, action, data);
-            let message = SentMessage::new_sending_message(to_chain.clone(), sqos, session, content);
+            let sqos = Vec::<ISQoS>::new();
+            let session = ISession::new(0, 0);
+            let content = IContent::new(contract, action, data);
+            let message = ISentMessage::new(to_chain.clone(), sqos, content, session);
             cross_chain.send_message(message);
             cross_chain
         }

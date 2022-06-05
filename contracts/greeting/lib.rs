@@ -9,13 +9,13 @@ mod greeting {
     use Payload::message_define::{
         ISentMessage,
         ISession,
-        ISQOS,
+        ISQoS,
+        ISQoSType,
         IContent,
     };
     use Payload::message_protocol::{
         MsgType,
         MessageItem,
-        MessageVec,
         MessagePayload,
     };
 
@@ -53,10 +53,11 @@ mod greeting {
             msg_payload.push_item(String::try_from("greeting").unwrap(), MsgType::InkStringArray, greeting.clone());
             let data = msg_payload.to_bytes();
 
-            let sqos = ISQOS::new(1);
+            let mut sqos = Vec::<ISQoS>::new();
+            sqos.push(ISQoS::new(ISQoSType::Reveal, None));
             let session = ISession::new(0, 0);
             let content = IContent::new(contract, action, data);
-            let message = ISentMessage::new(chain_name.clone(), sqos, session, content);
+            let message = ISentMessage::new(chain_name.clone(), sqos, content, session);
 
             ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
@@ -105,10 +106,9 @@ mod greeting {
         use Payload::message_define::{
             ISentMessage,
             ISession,
-            ISQOS,
+            ISQoS,
             IContent,
         };
-        use cross_chain::CrossChainRef;
 
         /// We test if the new constructor does its job.
         #[ink::test]
