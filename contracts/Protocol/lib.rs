@@ -56,9 +56,10 @@ mod d_protocol_stack {
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct SelectionInterval {
         pub id: u16,
+        pub cre: u32,
         pub low: u32,
         pub high: u32,
-        pub selected: bool,
+        pub selected: u16,
     }
 
     impl SelectionInterval {
@@ -188,9 +189,10 @@ mod d_protocol_stack {
             for router in self.sim_routers.iter() {
                 select_intervals.push(SelectionInterval{
                     id: router.0,
+                    cre: router.1,
                     low: sum,
                     high: sum + router.1,
-                    selected: false,
+                    selected: 0,
                 });
                 sum += router.1;
             }
@@ -224,7 +226,7 @@ mod d_protocol_stack {
                 let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_idx]).unwrap().0;
                 let mut seed_idx = 0;
 
-                while seed_idx < random_seed.as_ref().len() {
+                while seed_idx < (random_seed.as_ref().len() - 1) {
                     let two_bytes: [u8; 2] = random_seed.as_ref()[seed_idx..seed_idx+2].try_into().unwrap();
                     let rand_num = u16::from_be_bytes(two_bytes) as u32;
 
@@ -236,18 +238,18 @@ mod d_protocol_stack {
                     let mut choose_next = false;
                     for ele in select_intervals.iter_mut() {
                         if ele.contains(rand_num) {
-                            if !ele.selected {
+                            if ele.selected == 0 {
                                 selected.push(ele.id);
-                                ele.selected = true;
+                                ele.selected += 1;
                                 break;
                             } else {
                                 choose_next = true;
                             }
                         }
 
-                        if choose_next && (!ele.selected) {
+                        if choose_next && (ele.selected == 0) {
                             selected.push(ele.id);
-                            ele.selected = true;
+                            ele.selected += 1;
                             break;
                         }
                     }
@@ -263,6 +265,49 @@ mod d_protocol_stack {
             }
 
             Some(selected)
+        }
+
+        /// selection statistic
+        /// test interface 
+        #[ink(message)]
+        pub fn selection_statistic(&self, n: u16) -> Option<ink_prelude::vec::Vec<SelectionInterval>>{
+            let mut start_idx = 0;
+            let mut select_intervals = self.create_intervals(true);
+
+            let mut selected = 0;
+
+            while selected < n {
+                let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_idx]).unwrap().0;
+                let mut seed_idx = 0;
+
+                while seed_idx < (random_seed.as_ref().len() - 1) {
+                    let two_bytes: [u8; 2] = random_seed.as_ref()[seed_idx..seed_idx+2].try_into().unwrap();
+                    let rand_num = u16::from_be_bytes(two_bytes) as u32;
+
+                    let max = select_intervals[select_intervals.len() - 1].high;
+
+                    // rand_num will multiple 100 in later implementation as the credibility does
+                    let rand_num = rand_num % max;
+
+                    for ele in select_intervals.iter_mut() {
+                        if ele.contains(rand_num) {
+                            selected += 1;
+                            ele.selected += 1;
+                            break;
+                        }
+                    }
+
+                    if selected >= n {
+                        return Some(select_intervals);
+                    }
+
+                    seed_idx += 2;
+                }
+
+                start_idx += 1;
+            }
+
+            Some(select_intervals)
         }
     }
 
