@@ -19,9 +19,10 @@ async function registerRouters() {
     // NOTE the apps UI specified these in mega units
     const gasLimit = -1;
 
-    let cres = Array.from({length: 20}, v=> Math.floor(Math.random() * 100 + 1));
     // cres = {"routers": cres};
     // console.log(cres);
+
+    let cres = Array.from({length: 10}, v=> Math.floor(Math.random() * 100 + 1));
 
     await contract.tx
     .randomRegisterRouters({ value, gasLimit }, cres)
@@ -41,7 +42,9 @@ async function selectRouters() {
     // NOTE the apps UI specified these in mega units
     const gasLimit = -1;
 
-    const { gasConsumed, result, output } = await contract.query['selectionTest'](sender.address, {value, gasLimit }, 5);
+    const epoch = 10000;
+
+    const { gasConsumed, result, output } = await contract.query['selectionStatistic'](sender.address, {value, gasLimit }, epoch);
 
     // The actual result from RPC as `ContractExecResult`
     console.log(result.toHuman());
@@ -52,7 +55,15 @@ async function selectRouters() {
     // check if the call was successful
     if (result.isOk) {
         // should output 123 as per our initial set (output here is an i32)
-        console.log('Success', output.toHuman());
+        // console.log('Success', output.toHuman());
+        let res = output.toHuman();
+        // console.log(res[res.length - 1].high);
+        let totalCres = parseInt(res[res.length - 1].high.replace(/,/g,''));
+        // console.log(totalCres);
+        res.forEach(element => {
+          // console.log(element.selected);
+          console.log(`probability: ${parseInt(element.cre.replace(/,/g,'')) * 100 / totalCres}%`, `frequency: ${parseInt(element.selected.replace(/,/g,'')) * 100 / epoch}%`);
+        });
     } else {
         console.error('Error', result.asErr);
     }

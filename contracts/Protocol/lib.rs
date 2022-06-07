@@ -267,17 +267,31 @@ mod d_protocol_stack {
             Some(selected)
         }
 
+        #[ink(message)]
+        pub fn test_input_patameter(&self, n8: u8, n16: u16, n32: u32, n64: u64, n128: u128) -> ink_prelude::string::String{
+            // ink_prelude::format!("{:?}, {}, {}, {}", u16::to_be_bytes(n16), n32, n64, n128)
+            let start_seed = u16::to_be_bytes(n16);
+            let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&start_seed).unwrap().0;
+            let random_seed2 = ink_env::random::<ink_env::DefaultEnvironment>(&[n8]).unwrap().0;
+            ink_prelude::format!("{:?} \n {:?}", random_seed, random_seed2)
+        }
+
         /// selection statistic
         /// test interface 
         #[ink(message)]
         pub fn selection_statistic(&self, n: u16) -> Option<ink_prelude::vec::Vec<SelectionInterval>>{
-            let mut start_idx = 0;
+            let mut start_idx: u16 = 0;
             let mut select_intervals = self.create_intervals(true);
+
+            if select_intervals.len() == 0 {
+                return None;
+            }
 
             let mut selected = 0;
 
             while selected < n {
-                let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_idx]).unwrap().0;
+                let start_seed = u16::to_be_bytes(start_idx);
+                let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&start_seed).unwrap().0;
                 let mut seed_idx = 0;
 
                 while seed_idx < (random_seed.as_ref().len() - 1) {
