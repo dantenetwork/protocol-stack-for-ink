@@ -169,16 +169,16 @@ mod tokenomics {
         pub fn get_staking_weights(&self, router_addr: AccountId) -> Option<u128> {
             let coe: u128 = 10000;
             if let Some(staking_info) = self.staking_routers.get(router_addr) {
-                let mut weights: u128 = 0;
                 if staking_info.amount <= self.sp.m {
                     let alpha: u128 = staking_info.amount * coe / self.sp.m;
-                    weights = self.sp.b * alpha / (2 * coe - alpha);
+                    let weights: u128 = self.sp.b * alpha / (2 * coe - alpha);
+                    Some(weights)
                 } else {
                     let alpha: u128 = self.sp.m * coe / staking_info.amount;
-                    weights = self.sp.b * (2 * coe - alpha) / coe;
+                    let weights: u128 = self.sp.b * (2 * coe - alpha) / coe;
+                    Some(weights)
                 }
                 
-                Some(weights * self.sp.gc / 100)
             } else{
                 None
             }
