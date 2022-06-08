@@ -197,9 +197,15 @@ mod tokenomics {
             }
             
             if let Some(mut staking_info) = self.staking_routers.get(router_addr) {
-                let coe: u128 = 100;
-                staking_info.reward += self.sp.r * (credibility as u128 + coe) / coe;
-                self.staking_routers.insert(router_addr, &staking_info);
+                if credibility <= 50 {
+                    staking_info.reward += self.sp.r;
+                    self.staking_routers.insert(router_addr, &staking_info);
+                } else {
+                    let coe: u128 = 100;
+                    staking_info.reward += self.sp.r + self.sp.r * (credibility as u128 - 50) / 50;
+                    self.staking_routers.insert(router_addr, &staking_info);
+                }
+                
                 Ok(())
             }else {
                 Err(StakingError::NotExist)
