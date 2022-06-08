@@ -195,7 +195,7 @@ impl scale_info::TypeInfo for IReceivedMessage {
                         .field(|f| f.ty::<u128>().name("id").type_name("u128"))
                         .field(|f| f.ty::<String>().name("from_chain").type_name("String"))
                         .field(|f| f.ty::<String>().name("sender").type_name("String"))
-                        .field(|f| f.ty::<[u8;32]>().name("signer").type_name("[u8;32]"))
+                        .field(|f| f.ty::<String>().name("signer").type_name("String"))
                         .field(|f| f.ty::<ink_prelude::vec::Vec<ISQoS>>().name("sqos").type_name("ink_prelude::vec::Vec<ISQoS>"))
                         .field(|f| f.ty::<[u8;32]>().name("contract").type_name("[u8;32]"))
                         .field(|f| f.ty::<[u8;4]>().name("action").type_name("[u8;4]"))
@@ -237,7 +237,7 @@ impl scale_info::TypeInfo for ISentMessage {
 
     fn type_info() -> ::scale_info::Type {
         ::scale_info::Type::builder()
-                        .path(::scale_info::Path::new("IReceivedMessage", module_path!()))
+                        .path(::scale_info::Path::new("ISentMessage", module_path!()))
                         .composite(::scale_info::build::Fields::named()
                         .field(|f| f.ty::<String>().name("to_chain").type_name("String"))
                         .field(|f| f.ty::<ink_prelude::vec::Vec<ISQoS>>().name("sqos").type_name("ink_prelude::vec::Vec<ISQoS>"))

@@ -1,10 +1,11 @@
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { Abi, ContractPromise } from '@polkadot/api-contract';
+import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import fs from 'fs';
 import 'dotenv/config'
 import { bool, _void, str, u8, u16, u32, u64, u128, Enum, Struct, Vector, Option, Bytes } from "scale-ts"
 
-let MsgType = Enum({
+const MsgType = Enum({
   InkString: _void,
   InkU8: _void,
   InkU16: _void,
@@ -17,24 +18,27 @@ let MsgType = Enum({
   InkI64: _void,
   InkI128: _void,
   InkStringArray: _void,
+  InkU8Array: _void,
+  InkU16Array: _void,
+  InkU32Array: _void,
+  InkU64Array: _void,
+  InkU128Array: _void,
+  InkI8Array: _void,
+  InkI16Array: _void,
+  InkI32Array: _void,
+  InkI64Array: _void,
+  InkI128Array: _void,
   UserData: _void,
 });
 
 let PayloadItem = Struct({
-  n: u128,
+  n: str,
   t: MsgType,
   v: Vector(u8)
 });
 
-let PayloadVec = Struct({
-  n: u128,
-  t: MsgType,
-  v: Vector(Vector(u8))
-});
-
 let PayloadMessage = Struct({
-  items: Option(Vector(PayloadItem)),
-  vecs: Option(Vector(PayloadVec))
+  items: Option(Vector(PayloadItem))
 })
 
 // network
@@ -111,9 +115,11 @@ async function test_message() {
   // const { gasConsumed, result, output } = await contract.query['submitMessage'](sender.address, { value, gasLimit }, 
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
-  let payload = await test_scale_codec1();
+  // let payload = await test_scale_codec1();
+  let payload = '0x0104206772656574696e670bd81020504f4c4b41444f54244772656574696e6773584772656574696e672066726f6d20504f4c4b41444f5428323032322d30362d3038';
   
   let revert = PayloadMessage.dec(payload);
+  console.log('revert', JSON.stringify(revert.items[0].n));
   console.log('revert', JSON.stringify(revert.items[0].t));
   console.log('revert', toHexString(revert.items[0].v));
   let a = Vector(str).dec(toHexString(revert.items[0].v));
@@ -265,14 +271,20 @@ async function test_scale_codec() {
 // test_scale_codec()
 // test_scale_codec1()
 // query()
-sendGreeting()
-// test_message()
-function test() {
-  let api = require("@polkadot/api");
-  let api_contract = require("@polkadot/api-contract");
-  console.log(api, api_contract);
+// sendGreeting()
+test_message()
+function addressTest() {
+  console.log(decodeAddress, encodeAddress);
+  let a = [
+    164, 193, 205,  72, 150,  30,  15,
+    218, 179, 201,  11, 103, 160, 135,
+     10, 108,  61, 216, 132,  13, 162,
+     26, 108, 188, 242, 121, 211, 133,
+    132,  84, 142,  76
+  ];
+  console.log(toHexString((a)));
 }
 
-// test()
+// addressTest()
 
 // pushMessage()

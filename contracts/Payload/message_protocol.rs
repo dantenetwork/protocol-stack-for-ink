@@ -47,7 +47,7 @@ impl ::scale_info::TypeInfo for MsgType {
                                 .variant("InkI32", |v| v.index(8))
                                 .variant("InkI64", |v| v.index(9))
                                 .variant("InkI128", |v| v.index(10))
-                                .variant("InkStringArray", |v| v.index(1))
+                                .variant("InkStringArray", |v| v.index(11))
                                 .variant("InkU8Array", |v| v.index(12))
                                 .variant("InkU16Array", |v| v.index(13))
                                 .variant("InkU32Array", |v| v.index(14))
