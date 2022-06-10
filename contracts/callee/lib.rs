@@ -177,9 +177,9 @@ mod callee {
                 v: v_vec,
             };
 
-            pl.add_item(msg_item.clone());
+            pl.push_item(ink_prelude::string::String::from("1"), super::super::MsgType::InkU16, v_u16);
             msg_item.t = super::super::MsgType::InkU8;
-            assert_eq!(pl.add_item(msg_item.clone()), false);
+            assert_eq!(pl.push_item(ink_prelude::string::String::from("1"), super::super::MsgType::InkU16, v_u16), false);
             // msg_item.n = 2;
             msg_item.v.push(100);
 
