@@ -3,6 +3,12 @@
 use ink_lang as ink;
 use ink_prelude;
 
+use Payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
+use Payload::message_define::{ISentMessage, IReceivedMessage};
+
+/// Note:
+/// This branch is only for algorithms test.
+/// 
 #[ink::contract]
 mod d_protocol_stack {
 
@@ -46,7 +52,7 @@ mod d_protocol_stack {
         phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
     }
 
-    /// Simelation
+    /// Simulation
     #[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
     pub struct SimNode(u16, u32);
@@ -70,6 +76,17 @@ mod d_protocol_stack {
                 false
             }
         }
+    }
+
+    /// message simulation
+    #[derive(SpreadLayout, PackedLayout, Debug, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
+    pub struct RecvedMessage {
+        msg_id: u128,
+        msg_hash: [u8;32],
+        // the struct is `IReceivedMessage`
+        msg_detail: ink_prelude::vec::Vec<u8>,
+        submitors: ink_prelude::vec::Vec<u16>,
     }
 
     // use serde_json::json;

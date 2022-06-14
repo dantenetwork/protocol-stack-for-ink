@@ -16,6 +16,8 @@ ink_prelude = { version = "3.0.1", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"], optional = true }
 
+Payload = { path = "../../../message-ink/Payload/", default-features = false, features = ["ink-as-dependency"] }
+
 [lib]
 name = "d_protocol_stack"
 path = "lib.rs"
