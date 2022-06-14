@@ -17,6 +17,8 @@ mod d_protocol_stack {
             SpreadLayout,
             StorageLayout,
             PackedLayout,
+            SpreadAllocate,
+            PackedAllocate,
         },
     };
 
@@ -53,9 +55,16 @@ mod d_protocol_stack {
     }
 
     /// Simulation
-    #[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(SpreadLayout, PackedLayout, SpreadAllocate, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
     pub struct SimNode(u16, u32);
+
+    impl PackedAllocate for SimNode {
+        fn allocate_packed(&mut self, at: &ink_primitives::Key) {
+            PackedAllocate::allocate_packed(&mut self.0, at);
+            PackedAllocate::allocate_packed(&mut self.1, at);
+        }
+    }
 
     /// selection interval
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -86,7 +95,7 @@ mod d_protocol_stack {
         msg_hash: [u8;32],
         // the struct is `IReceivedMessage`
         msg_detail: ink_prelude::vec::Vec<u8>,
-        submitors: ink_prelude::vec::Vec<u16>,
+        submitters: ink_prelude::vec::Vec<u16>,
     }
 
     // use serde_json::json;
@@ -96,32 +105,44 @@ mod d_protocol_stack {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
+    #[derive(SpreadAllocate)]
     pub struct DProtocalStack {
         /// Stores a single `bool` value on the storage.
         value: bool,
         account: AccountId,
 
         sim_routers: ink_prelude::vec::Vec<SimNode>,
+
+        // test: ink_prelude::vec::Vec<SimNode>,
+
+        msg_2_verify: ink_storage::Mapping<ink_prelude::string::String, ink_storage::Mapping<u128, RecvedMessage>>,
     }
 
     impl DProtocalStack {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { 
-                value: init_value,
-                account: Self::env().caller(),
-                sim_routers: ink_prelude::vec![],
-             }
+            // Self { 
+            //     value: init_value,
+            //     account: Self::env().caller(),
+            //     sim_routers: ink_prelude::vec![],
+            //  }
+
+            ink_lang::utils::initialize_contract(|contract: &mut Self| {
+                contract.value = init_value;
+                contract.account = Self::env().caller();
+                contract.sim_routers = ink_prelude::vec![];
+                // contract.test = ink_prelude::vec![];
+            })
         }
 
         /// Constructor that initializes the `bool` value to `false`.
         ///
         /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
+        // #[ink(constructor)]
+        // pub fn default() -> Self {
+        //     Self::new(Default::default())
+        // }
 
         /// A message that can be called on instantiated contracts.
         /// This one flips the value of the stored `bool` from `true`
@@ -284,6 +305,13 @@ mod d_protocol_stack {
             Some(selected)
         }
 
+        /// simulation of submit message
+        /// #param router_id: this is a parameter just for test. In real implementation, this will be `Self::env().caller()`
+        #[ink(message)]
+        pub fn simu_submit_message(&mut self, recv_msg: super::IReceivedMessage, router_id: u16) {
+            
+        }
+
         #[ink(message)]
         pub fn test_input_patameter(&self, n8: u8, n16: u16, n32: u32, n64: u64, n128: u128) -> ink_prelude::string::String{
             // ink_prelude::format!("{:?}, {}, {}, {}", u16::to_be_bytes(n16), n32, n64, n128)
@@ -354,11 +382,11 @@ mod d_protocol_stack {
         use ink_lang as ink;
 
         /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let cross_chain = DProtocalStack::default();
-            assert_eq!(cross_chain.get(), false);
-        }
+        // #[ink::test]
+        // fn default_works() {
+        //     let cross_chain = DProtocalStack::default();
+        //     assert_eq!(cross_chain.get(), false);
+        // }
 
         /// We test a simple use case of our contract.
         #[ink::test]
