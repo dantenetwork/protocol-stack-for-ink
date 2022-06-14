@@ -25,4 +25,5 @@ Let's start with `ink!`.
 
 #### Next step
 * Try to deploy and test on *AStar* Testnet.
-* 
+* SDK(first version) for ink! smart contracts.
+* Related docs.
