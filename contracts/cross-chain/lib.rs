@@ -28,12 +28,14 @@ mod cross_chain {
         SentMessage,
         Context,
         Porters,
+        SQoS,
     };
 
     use payload::message_protocol::MessagePayload;
     use payload::message_define::{
         ISentMessage,
         IReceivedMessage,
+        ISQoS,
     };
 
     /// Trait for owner
@@ -141,6 +143,9 @@ mod cross_chain {
         is_porter: Mapping<AccountId, bool>,
         /// List of porters.
         porters: Vec<AccountId>,
+
+        // SQoS
+        sqos_table: Mapping<AccountId, Vec<SQoS>>,
     }
 
     impl CrossChain {
@@ -195,6 +200,18 @@ mod cross_chain {
             chain_message.push(message);
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
+        }
+
+        /// Registers SQoS
+        #[ink(message)]
+        pub fn register_sqos(&mut self, sqos: Vec<ISQoS>) {
+            let caller = Self::env().caller();
+            let mut v_sqos = Vec::<SQoS>::new();
+            for i in sqos {
+                let s = SQoS::from(i);
+                v_sqos.push(s);
+            }
+            self.sqos_table.insert(caller, &v_sqos);
         }
 
         /// For debug

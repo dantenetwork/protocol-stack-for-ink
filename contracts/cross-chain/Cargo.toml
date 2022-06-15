@@ -16,7 +16,7 @@ ink_prelude = { version = "3.0.1", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.1.2", default-features = false, features = ["derive"] }
 
-payload = { path = "../../../message_ink/payload/", default-features = false, features = ["ink-as-dependency"] }
+payload = { path = "../../../message-ink/payload/", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
 name = "cross_chain"
