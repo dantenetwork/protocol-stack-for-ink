@@ -1,7 +1,6 @@
 use ink_storage::{
     traits::{
         SpreadLayout,
-        StorageLayout,
         PackedLayout,
     },
 };
@@ -18,7 +17,7 @@ use scale::{
     Decode,
 };
 
-use Payload::message_define::{
+use payload::message_define::{
     IError,
     ISQoSType,
     ISession,
@@ -62,7 +61,7 @@ impl Error {
 
 /// Content structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct Content {
     contract: String,
     action: String,
@@ -89,7 +88,7 @@ impl Content {
 
 /// SQOS structure
 #[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub enum SQoSType{
     Reveal,
     Challenge,
@@ -120,7 +119,7 @@ impl SQoSType {
 
 /// SQOS structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct SQoS {
     pub t: SQoSType,
     pub v: Option<String>,
@@ -144,7 +143,7 @@ impl SQoS {
 
 /// Session Structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct Session {
     pub msg_type: u8,
     pub id: u128,
@@ -168,7 +167,7 @@ impl Session {
 
 /// Received message structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct ReceivedMessage {
     pub id: u128,
     pub from_chain: String,
@@ -225,7 +224,7 @@ impl ReceivedMessage {
 
 /// Sent message structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct SentMessage {
     pub id: u128,
     pub from_chain: String,
@@ -272,7 +271,7 @@ impl SentMessage {
 
 /// Context structure
 #[derive(SpreadLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, StorageLayout))]
+#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct Context {
     pub id: u128,
     pub from_chain: String,

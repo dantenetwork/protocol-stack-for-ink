@@ -22,26 +22,16 @@ mod cross_chain {
         string::String,
     };
 
-    use scale::{
-        Encode,
-        Decode,
-    };
-
     use super::message_define::{
         Error,
-        Content,
-        SQoS,
-        SQoSType,
-        Session,
         ReceivedMessage,
         SentMessage,
         Context,
-        Bytes,
         Porters,
     };
 
-    use Payload::message_protocol::MessagePayload;
-    use Payload::message_define::{
+    use payload::message_protocol::MessagePayload;
+    use payload::message_define::{
         ISentMessage,
         IReceivedMessage,
     };
@@ -71,7 +61,7 @@ mod cross_chain {
         fn send_message(&mut self, message: ISentMessage) -> u128;
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
-        fn receive_message(&mut self, message: IReceivedMessage);
+        fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>;
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         #[ink(message)]
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
@@ -120,34 +110,6 @@ mod cross_chain {
         #[ink(message)]
         fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
     }
-
-    /// Defines the wrapper for cross-chain data
-    struct Wrapper {
-        data: ink_prelude::vec::Vec::<u8>,
-    }
-    
-    impl Wrapper {
-        pub fn new(data: ink_prelude::vec::Vec::<u8>) -> Self {
-            Self {
-                data,
-            }
-        }
-    }
-    
-    impl scale::Encode for Wrapper {
-        #[inline]
-        fn size_hint(&self) -> usize {
-            scale::Encode::size_hint(&self.data)
-        }
-    
-        #[inline]
-        fn encode_to<O: scale::Output + ?Sized>(&self, output: &mut O) {
-            output.write(&self.data);
-        }
-    }
-
-    // use serde_json::json;
-    // use serde_json_wasm::{from_str, to_string};
     
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
@@ -286,8 +248,8 @@ mod cross_chain {
 
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
-        fn receive_message(&mut self, message: IReceivedMessage) {
-            self.internal_receive_message(message);
+        fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>  {
+            self.internal_receive_message(message)
         }
 
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
@@ -295,9 +257,7 @@ mod cross_chain {
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
             self.only_owner()?;
 
-            self.internal_abandon_message(from_chain, id, error_code);
-
-            Ok(())
+            self.internal_abandon_message(from_chain, id, error_code)
         }
 
         /// Returns messages that sent from chains `chain_names` and can be executed.
@@ -353,7 +313,7 @@ mod cross_chain {
                 .fire();
 
             if cc_result.is_err() {
-                let e = cc_result.unwrap_err();
+                // let e = cc_result.unwrap_err();
                 return Err(Error::CrossContractCallFailed);
             }
             
@@ -451,7 +411,7 @@ mod cross_chain {
 
         /// Get the message id which needs to be ported by `validator` on chain `chain_name`
         #[ink(message)]
-        fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128 {
+        fn get_msg_porting_task(& self, chain_name: String, _validator: AccountId) -> u128 {
             let num = self.get_received_message_number(chain_name) + 1;
             num
         }
@@ -469,7 +429,7 @@ mod cross_chain {
         use ink_lang as ink;
         use std::{fmt::Write, num::ParseIntError};
         
-        use Payload::message_define::{
+        use payload::message_define::{
             ISession,
             IContent,
             ISQoS,
