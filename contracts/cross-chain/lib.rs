@@ -68,7 +68,7 @@ mod cross_chain {
         fn set_token_contract(&mut self, token: AccountId);
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
-        fn send_message(&mut self, message: ISentMessage);
+        fn send_message(&mut self, message: ISentMessage) -> u128;
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, message: IReceivedMessage);
@@ -272,7 +272,7 @@ mod cross_chain {
 
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
-        fn send_message(&mut self, message: ISentMessage) {
+        fn send_message(&mut self, message: ISentMessage) -> u128 {
             let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(&message.to_chain).unwrap_or(Vec::<SentMessage>::new());
             let id = chain_message.len() + 1;
             let caller = Self::env().caller();
@@ -281,6 +281,7 @@ mod cross_chain {
                 caller, signer, message.clone());
             chain_message.push(sent_message);
             self.sent_message_table.insert(message.to_chain, &chain_message);
+            u128::try_from(id).unwrap()
         }
 
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
