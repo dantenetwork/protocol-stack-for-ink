@@ -201,7 +201,6 @@ mod tokenomics {
                     staking_info.reward += self.sp.r;
                     self.staking_routers.insert(router_addr, &staking_info);
                 } else {
-                    let coe: u128 = 100;
                     staking_info.reward += self.sp.r + self.sp.r * (credibility as u128 - 50) / 50;
                     self.staking_routers.insert(router_addr, &staking_info);
                 }

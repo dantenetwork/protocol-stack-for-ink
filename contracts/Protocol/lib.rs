@@ -3,8 +3,8 @@
 use ink_lang as ink;
 use ink_prelude;
 
-use Payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
-use Payload::message_define::{ISentMessage, IReceivedMessage};
+use payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
+use payload::message_define::{ISentMessage, IReceivedMessage};
 
 /// Note:
 /// This branch is only for algorithms test.
@@ -90,12 +90,36 @@ mod d_protocol_stack {
     /// message simulation
     #[derive(SpreadLayout, PackedLayout, Debug, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
-    pub struct RecvedMessage {
-        msg_id: u128,
+    pub struct MessageInfo {
         msg_hash: [u8;32],
         // the struct is `IReceivedMessage`
         msg_detail: ink_prelude::vec::Vec<u8>,
         submitters: ink_prelude::vec::Vec<u16>,
+    }
+
+    impl MessageInfo {
+        pub fn get_submitter_count(&self) -> u16 {
+            self.submitters.len() as u16
+        }
+    }
+
+    #[derive(SpreadLayout, PackedLayout, Debug, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
+    pub struct RecvedMessage {
+        msg_id: u128,
+        msg_vec: ink_prelude::vec::Vec<MessageInfo>,
+        processed: bool,
+    }
+
+    impl RecvedMessage {
+        pub fn get_submitter_count(&self) -> u16 {
+            let mut count: u16 = 0;
+            for ele in self.msg_vec.iter() {
+                count += ele.get_submitter_count();
+            }
+
+            count
+        }
     }
 
     // use serde_json::json;
@@ -110,12 +134,12 @@ mod d_protocol_stack {
         /// Stores a single `bool` value on the storage.
         value: bool,
         account: AccountId,
-
+        msg_copy_count: u16,
         sim_routers: ink_prelude::vec::Vec<SimNode>,
 
         // test: ink_prelude::vec::Vec<SimNode>,
 
-        msg_2_verify: ink_storage::Mapping<ink_prelude::string::String, ink_storage::Mapping<u128, RecvedMessage>>,
+        msg_2_verify: ink_storage::Mapping<(ink_prelude::string::String, u128), RecvedMessage>,
     }
 
     impl DProtocalStack {
@@ -131,6 +155,7 @@ mod d_protocol_stack {
             ink_lang::utils::initialize_contract(|contract: &mut Self| {
                 contract.value = init_value;
                 contract.account = Self::env().caller();
+                contract.msg_copy_count = 11;
                 contract.sim_routers = ink_prelude::vec![];
                 // contract.test = ink_prelude::vec![];
             })
@@ -205,21 +230,18 @@ mod d_protocol_stack {
             my_return_value
         }
 
-        /// message verification
-        fn message_verification(&mut self){
-
-        }
-
-        /// node evaluation
-        fn node_evaluation(&mut self){
-
-        }
-
-        /// node selection
-        fn select(&self) {
-
-        }
-
+        /// Simulation to the simplest version of the routers selection algoritm in Dante protocol
+        /// 
+        /// Call `random_register_routers` to add some simulation routers with fixed credibility, 
+        /// which will be dynamically adjusted by *router evaluation* algorithm in product implementation.
+        /// 
+        /// `create_intervals` is part of router selection algorithm
+        /// 
+        /// `selection_test` will randomly choose `n` routers according to their credibility
+        /// 
+        /// `selection_statistic` provides an intuitive validation of the 'Probability distribution' results of the router selection algorithm
+        /// parameter `n` is the number of select times
+        /// 
         #[ink(message)]
         pub fn create_intervals(&self, just_for_test: bool) -> ink_prelude::vec::Vec<SelectionInterval>{
             let mut sum: u32 = 0;
@@ -247,6 +269,54 @@ mod d_protocol_stack {
                 self.sim_routers.push(SimNode(start_id, ele));
                 start_id += 1;
             }
+        }
+
+        /// selection statistic
+        /// test interface 
+        #[ink(message)]
+        pub fn selection_statistic(&self, n: u16) -> Option<ink_prelude::vec::Vec<SelectionInterval>>{
+            let mut start_idx: u16 = 0;
+            let mut select_intervals = self.create_intervals(true);
+
+            if select_intervals.len() == 0 {
+                return None;
+            }
+
+            let mut selected = 0;
+
+            while selected < n {
+                let start_seed = u16::to_be_bytes(start_idx);
+                let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&start_seed).unwrap().0;
+                let mut seed_idx = 0;
+
+                while seed_idx < (random_seed.as_ref().len() - 1) {
+                    let two_bytes: [u8; 2] = random_seed.as_ref()[seed_idx..seed_idx+2].try_into().unwrap();
+                    let rand_num = u16::from_be_bytes(two_bytes) as u32;
+
+                    let max = select_intervals[select_intervals.len() - 1].high;
+
+                    // rand_num will multiple 100 in later implementation as the credibility does
+                    let rand_num = rand_num % max;
+
+                    for ele in select_intervals.iter_mut() {
+                        if ele.contains(rand_num) {
+                            selected += 1;
+                            ele.selected += 1;
+                            break;
+                        }
+                    }
+
+                    if selected >= n {
+                        return Some(select_intervals);
+                    }
+
+                    seed_idx += 2;
+                }
+
+                start_idx += 1;
+            }
+
+            Some(select_intervals)
         }
 
         /// Test selection algorithm
@@ -305,11 +375,96 @@ mod d_protocol_stack {
             Some(selected)
         }
 
-        /// simulation of submit message
-        /// #param router_id: this is a parameter just for test. In real implementation, this will be `Self::env().caller()`
+        /// simulation of message verification
+        /// 
+        /// In this simulation, we do not limit the number of message copies to verify a message. 
+        /// And the number determines how many routers one message needs to be delivered parallelly, 
+        /// this will be configured by users through SQoS settings in the product implementation.
+        /// At that time, when enough copies have been delivered, `simu_message_verification` will be called dynamically.
+        /// 
+        /// `simu_submit_message` simulates the submittion of delivered message copies
+        /// #param@router_id: this is a parameter just for test. In product implementation, this will be `Self::env().caller()`
+        /// 
         #[ink(message)]
         pub fn simu_submit_message(&mut self, recv_msg: super::IReceivedMessage, router_id: u16) {
             
+            let key = (recv_msg.from_chain.clone(), recv_msg.id);
+
+            if let Some(mut msg_instance) = self.msg_2_verify.get(&key) {
+                if msg_instance.processed {
+                    return;
+                }
+
+                let msg_hash = recv_msg.into_hash();
+                let mut hash_found = false;
+
+                for ele in msg_instance.msg_vec.iter_mut() {
+                    if ele.msg_hash == msg_hash {
+                        ele.submitters.push(router_id);
+                        hash_found = true;
+                        break;
+                    }
+                }
+
+                if !hash_found {
+                    let mut msg_info = MessageInfo {
+                        msg_hash: msg_hash,
+                        msg_detail: recv_msg.into_bytes(),
+                        submitters: ink_prelude::vec![],
+                    };
+                    msg_info.submitters.push(router_id);
+                    msg_instance.msg_vec.push(msg_info);
+                }
+
+                // we comment off the following lines to manually call `simu_message_verification` for simulation
+                
+                // if msg_instance.get_submitter_count() >= self.msg_copy_count {
+                //     // self.msg_2_verify.remove(&key);
+
+                //     self.simu_message_verification(msg_instance);
+
+                //     let msg_processed = RecvedMessage {
+                //         msg_id: recv_msg.id,
+                //         msg_vec: ink_prelude::vec![],
+                //         processed: true,
+                //     };
+
+                //     self.msg_2_verify.insert(&key, &msg_processed);
+
+                // } else {
+                //     self.msg_2_verify.insert(&key, &msg_instance);
+                // }
+
+            } else {
+                let msg_hash = recv_msg.into_hash();
+
+                let mut msg_instance = RecvedMessage{
+                    msg_id: recv_msg.id,
+                    msg_vec: ink_prelude::vec![],
+                    processed: false,
+                };
+
+                let mut msg_info = MessageInfo {
+                    msg_hash: msg_hash,
+                    msg_detail: recv_msg.into_bytes(),
+                    submitters: ink_prelude::vec![],
+                };
+                msg_info.submitters.push(router_id);
+                msg_instance.msg_vec.push(msg_info);
+                self.msg_2_verify.insert(&key, &msg_instance);
+
+                // at least two message copies 
+            }
+        }
+
+        #[ink(message)]
+        pub fn simu_clear_message(&mut self) {
+
+        }
+
+        #[ink(message)]
+        pub fn simu_message_verification(&self, msg_instance: RecvedMessage) {
+
         }
 
         #[ink(message)]
@@ -321,53 +476,7 @@ mod d_protocol_stack {
             ink_prelude::format!("{:?} \n {:?}", random_seed, random_seed2)
         }
 
-        /// selection statistic
-        /// test interface 
-        #[ink(message)]
-        pub fn selection_statistic(&self, n: u16) -> Option<ink_prelude::vec::Vec<SelectionInterval>>{
-            let mut start_idx: u16 = 0;
-            let mut select_intervals = self.create_intervals(true);
-
-            if select_intervals.len() == 0 {
-                return None;
-            }
-
-            let mut selected = 0;
-
-            while selected < n {
-                let start_seed = u16::to_be_bytes(start_idx);
-                let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&start_seed).unwrap().0;
-                let mut seed_idx = 0;
-
-                while seed_idx < (random_seed.as_ref().len() - 1) {
-                    let two_bytes: [u8; 2] = random_seed.as_ref()[seed_idx..seed_idx+2].try_into().unwrap();
-                    let rand_num = u16::from_be_bytes(two_bytes) as u32;
-
-                    let max = select_intervals[select_intervals.len() - 1].high;
-
-                    // rand_num will multiple 100 in later implementation as the credibility does
-                    let rand_num = rand_num % max;
-
-                    for ele in select_intervals.iter_mut() {
-                        if ele.contains(rand_num) {
-                            selected += 1;
-                            ele.selected += 1;
-                            break;
-                        }
-                    }
-
-                    if selected >= n {
-                        return Some(select_intervals);
-                    }
-
-                    seed_idx += 2;
-                }
-
-                start_idx += 1;
-            }
-
-            Some(select_intervals)
-        }
+        
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`

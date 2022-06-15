@@ -5,13 +5,13 @@ mod test;
 use ink_lang as ink;
 use ink_prelude;
 
-use Payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
-use Payload::message_define::{ISentMessage, IReceivedMessage};
+use payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
+use payload::message_define::{ISentMessage, IReceivedMessage};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 // #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 pub struct MyData {
-    td: Payload::TestData,
+    td: payload::TestData,
 }
 
 #[ink::contract]
