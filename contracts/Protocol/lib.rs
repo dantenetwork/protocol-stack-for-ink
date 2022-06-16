@@ -141,10 +141,9 @@ mod d_protocol_stack {
 
     #[ink(event)]
     pub struct InfoEvent {
-        // #[ink(topic)]
-        topic_name: u32,
-
-        instance: u32,
+        #[ink(topic)]
+        topic_name: ink_prelude::string::String,
+        instance: Option<MessageDetail>,
     }
 
     // use serde_json::json;
@@ -308,8 +307,12 @@ mod d_protocol_stack {
             }
 
             Self::env().emit_event(InfoEvent {
-                topic_name: 73,
-                instance: 128,
+                topic_name: ink_prelude::string::String::from("Super Nika"),
+                instance: Some(MessageDetail {
+                    name: ink_prelude::string::String::from("Dear Nika"),
+                    age: 18,
+                    phones: ink_prelude::vec![],
+                }),
             });
         }
 

@@ -8,9 +8,15 @@ import 'dotenv/config'
 const provider = new WsProvider("ws://127.0.0.1:9944");
 const api = await ApiPromise.create({provider});
 
+const MessageDetail = Struct({
+  name: str,
+  age: u32,
+  phones: Vector(str)
+});
+
 const InfoEvent = Struct({
-  topic_name : u32,
-  instance : u32
+  topic_name : str,
+  instance : Option(MessageDetail)
 });
 
 const keyring = new Keyring({ type: 'sr25519' });
@@ -40,11 +46,10 @@ async function registerRouters() {
       if (result.status.isInBlock) {
 
         for (let ele in result.events) {
-          // console.log(result.events[ele]['topics'].toHuman());
-          // console.log(result.events[ele]['event'].toHuman());
           if (result.events[ele]['event'].method == 'ContractEmitted') {
-              console.log(InfoEvent.dec(result.events[ele]['event'].data[1]));
-              console.log(result.events[ele]['event'].data[1]);
+              let data = result.events[ele]['event'].data[1];
+              console.log(InfoEvent.dec(data.slice(1,data.length)));
+              // console.log(result.events[ele]['event'].data[1]);
           }
         }
 
