@@ -55,7 +55,7 @@ mod d_protocol_stack {
     }
 
     /// Simulation
-    #[derive(SpreadLayout, PackedLayout, SpreadAllocate, Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[derive(SpreadLayout, PackedLayout, SpreadAllocate, Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
     pub struct SimNode(u16, u32);
 
@@ -120,6 +120,18 @@ mod d_protocol_stack {
 
             count
         }
+
+        pub fn contains(&self, router_id: u16) -> bool {
+            for msg_ele in self.msg_vec.iter() {
+                for router_ele in msg_ele.submitters.iter() {
+                    if *router_ele == router_id {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        }
     }
 
     // use serde_json::json;
@@ -135,10 +147,14 @@ mod d_protocol_stack {
         value: bool,
         account: AccountId,
         msg_copy_count: u16,
-        sim_routers: ink_prelude::vec::Vec<SimNode>,
 
-        // test: ink_prelude::vec::Vec<SimNode>,
+        /// This type of storage needs to be optimized in product implementation
+        /// Follow this [issue: Allow iteration over contract storage #11410](https://github.com/paritytech/substrate/issues/11410#issuecomment-1156775111)
+        sim_router_keys: ink_prelude::vec::Vec<u16>,
+        sim_routers: ink_storage::Mapping<u16, SimNode>,
 
+        /// To be optimized
+        msg_v_keys: ink_prelude::vec::Vec<(ink_prelude::string::String, u128)>,
         msg_2_verify: ink_storage::Mapping<(ink_prelude::string::String, u128), RecvedMessage>,
     }
 
@@ -156,8 +172,8 @@ mod d_protocol_stack {
                 contract.value = init_value;
                 contract.account = Self::env().caller();
                 contract.msg_copy_count = 11;
-                contract.sim_routers = ink_prelude::vec![];
-                // contract.test = ink_prelude::vec![];
+                contract.sim_router_keys = ink_prelude::vec![];
+                contract.msg_v_keys = ink_prelude::vec![];
             })
         }
 
@@ -246,15 +262,17 @@ mod d_protocol_stack {
         pub fn create_intervals(&self, just_for_test: bool) -> ink_prelude::vec::Vec<SelectionInterval>{
             let mut sum: u32 = 0;
             let mut select_intervals = ink_prelude::vec![];
-            for router in self.sim_routers.iter() {
-                select_intervals.push(SelectionInterval{
-                    id: router.0,
-                    cre: router.1,
-                    low: sum,
-                    high: sum + router.1,
-                    selected: 0,
-                });
-                sum += router.1;
+            for router_key in self.sim_router_keys.iter() {
+                if let Some(router) = self.sim_routers.get(router_key) {
+                    select_intervals.push(SelectionInterval{
+                        id: router.0,
+                        cre: router.1,
+                        low: sum,
+                        high: sum + router.1,
+                        selected: 0,
+                    });
+                    sum += router.1;
+                } 
             }
 
             select_intervals
@@ -264,11 +282,33 @@ mod d_protocol_stack {
         /// test interface for register
         #[ink(message)]
         pub fn random_register_routers(&mut self, routers: ink_prelude::vec::Vec<u32>) {
-            let mut start_id = self.sim_routers.len() as u16;
+            let mut start_id = self.sim_router_keys.len() as u16;
             for ele in routers {
-                self.sim_routers.push(SimNode(start_id, ele));
+                self.sim_router_keys.push(start_id);
+                self.sim_routers.insert(&start_id, &SimNode(start_id, ele));
                 start_id += 1;
             }
+        }
+
+        #[ink(message)]
+        pub fn get_registered_routers(&self, flag: bool) -> ink_prelude::vec::Vec<SimNode> {
+            let mut reg_routers = ink_prelude::vec![];
+            for ele in self.sim_router_keys.iter() {
+                if let Some(router) = self.sim_routers.get(ele) {
+                    reg_routers.push(router);
+                }
+            }
+
+            reg_routers
+        }
+
+        #[ink(message)]
+        pub fn clear_routers(&mut self, flag: bool) {
+            for ele in self.sim_router_keys.iter() {
+                    self.sim_routers.remove(ele);
+            }
+
+            self.sim_router_keys.clear();
         }
 
         /// selection statistic
@@ -387,11 +427,21 @@ mod d_protocol_stack {
         /// 
         #[ink(message)]
         pub fn simu_submit_message(&mut self, recv_msg: super::IReceivedMessage, router_id: u16) {
-            
+            // `router_id` validation
+            if !self.sim_routers.contains(router_id) {
+                return;
+            }
+
             let key = (recv_msg.from_chain.clone(), recv_msg.id);
 
             if let Some(mut msg_instance) = self.msg_2_verify.get(&key) {
+                // check whether the related message is out of time
                 if msg_instance.processed {
+                    return;
+                }
+
+                // check submit once
+                if msg_instance.contains(router_id) {
                     return;
                 }
 
@@ -415,6 +465,8 @@ mod d_protocol_stack {
                     msg_info.submitters.push(router_id);
                     msg_instance.msg_vec.push(msg_info);
                 }
+
+                self.msg_2_verify.insert(&key, &msg_instance);
 
                 // we comment off the following lines to manually call `simu_message_verification` for simulation
                 
@@ -453,13 +505,31 @@ mod d_protocol_stack {
                 msg_instance.msg_vec.push(msg_info);
                 self.msg_2_verify.insert(&key, &msg_instance);
 
+                self.msg_v_keys.push(key);
+
                 // at least two message copies 
             }
         }
 
         #[ink(message)]
-        pub fn simu_clear_message(&mut self) {
+        pub fn simu_clear_message(&mut self, flag: bool) {
+            for ele in self.msg_v_keys.iter() {
+                self.msg_2_verify.remove(ele);
+            }
 
+            self.msg_v_keys.clear();
+        }
+
+        #[ink(message)]
+        pub fn simu_get_message(&self, flag: bool) -> ink_prelude::vec::Vec<RecvedMessage>{
+            let mut messages = ink_prelude::vec![];
+            for msg_key in self.msg_v_keys.iter() {
+                if let Some(msg) = self.msg_2_verify.get(msg_key) {
+                    messages.push(msg);
+                }
+            }
+
+            messages
         }
 
         #[ink(message)]
@@ -467,6 +537,7 @@ mod d_protocol_stack {
 
         }
 
+        /// 
         #[ink(message)]
         pub fn test_input_patameter(&self, n8: u8, n16: u16, n32: u32, n64: u64, n128: u128) -> ink_prelude::string::String{
             // ink_prelude::format!("{:?}, {}, {}, {}", u16::to_be_bytes(n16), n32, n64, n128)
