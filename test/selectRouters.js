@@ -9,8 +9,8 @@ const provider = new WsProvider("ws://127.0.0.1:9944");
 const api = await ApiPromise.create({provider});
 
 const InfoEvent = Struct({
-  topic_name : str,
-  instance : Option(u128)
+  topic_name : u32,
+  instance : u32
 });
 
 const keyring = new Keyring({ type: 'sr25519' });
@@ -20,6 +20,8 @@ sender.decodePkcs8(process.env.PASSWORD);
 
 const abiFile = fs.readFileSync('../contracts/Protocol/target/ink/metadata.json');
 const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTRACT_ADDRESS);
+
+// console.log(InfoEvent.dec('0x01285375706572204e696b61014c726f7574657273207265676973746572656421'));
 
 async function registerRouters() {
     const value = 0; // only useful on isPayable messages
@@ -41,7 +43,8 @@ async function registerRouters() {
           // console.log(result.events[ele]['topics'].toHuman());
           // console.log(result.events[ele]['event'].toHuman());
           if (result.events[ele]['event'].method == 'ContractEmitted') {
-              console.log(InfoEvent.dec('0x01285375706572204e696b610180000000000000000000000000000000'));
+              console.log(InfoEvent.dec(result.events[ele]['event'].data[1]));
+              console.log(result.events[ele]['event'].data[1]);
           }
         }
 
