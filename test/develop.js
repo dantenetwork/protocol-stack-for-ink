@@ -52,15 +52,20 @@ const sender = keyring.addFromJson(JSON.parse(data.toString()));
 sender.decodePkcs8(process.env.PASSWORD);
 
 // cross-chain contract
-const crossChainABIRaw = fs.readFileSync('./abi/cross_chain.json');
-const crossChainContract = new ContractPromise(api, JSON.parse(crossChainABIRaw), process.env.CONTRACT_ADDRESS);
+// const crossChainABIRaw = fs.readFileSync('./abi/cross_chain.json');
+// const crossChainContract = new ContractPromise(api, JSON.parse(crossChainABIRaw), process.env.CONTRACT_ADDRESS);
+// const crossChainABI = new Abi(JSON.parse(crossChainABIRaw));
+// let m = crossChainABI.findMessage('crossChainBase::executeMessage').toU8a(["A", 1]);
+// console.log('m', toHexString(m));
 
 // locker-mock contract
-const calleeAbiRaw = fs.readFileSync('./abi/callee.json');
-const calleeABI = new Abi(JSON.parse(calleeAbiRaw));
-const calleeContract = new ContractPromise(api, JSON.parse(calleeAbiRaw), process.env.CALLEE_ADDRESS);
+// const calleeAbiRaw = fs.readFileSync('./abi/callee.json');
+// const calleeABI = new Abi(JSON.parse(calleeAbiRaw));
+// console.log('calleeABI', calleeABI.findMessage)
+// const calleeContract = new ContractPromise(api, JSON.parse(calleeAbiRaw), process.env.CALLEE_ADDRESS);
 // const calleeEncode = calleeABI.findMessage('encode_user_multi_params').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}, "hthuang", 666]);
-// const calleeDecode = calleeABI.findMessage('encode_user_multi_params').fromU8a(calleeEncode.subarray(5));
+// // const calleeDecode = calleeABI.findMessage('encode_user_multi_params').fromU8a(calleeEncode.subarray(5));
+// console.log('calleeEncode', calleeEncode)
 
 // const calleeJson = JSON.parse(calleeAbi);
 // let json = {V3: {spec: {messages: []}}};
@@ -266,15 +271,33 @@ async function test_scale_codec() {
     console.log(toHexString(PayloadMessage.enc(payload)));
     return toHexString(PayloadMessage.enc(payload));
 }
-// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
-// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
-// test_scale_codec()
-// test_scale_codec1()
-// query()
-// sendGreeting()
-test_message()
+
+async function get_event() {
+  console.log("get_event")
+  // Subscribe to system events via storage
+  api.query.system.events((events) => {
+    console.log(`\nReceived ${events.length} events:`);
+
+    // Loop through the Vec<EventRecord>
+    events.forEach((record) => {
+      // Extract the phase, event and the event types
+      const { event, phase } = record;
+      const types = event.typeDef;
+
+      // Show what we are busy with
+      console.log(`\t${event.section}:${event.method}:: (phase=${phase.toString()})`);
+      // console.log(`\t\t${event.meta.documentation.toString()}`);
+
+      // Loop through each of the parameters, displaying the type and data
+      event.data.forEach((data, index) => {
+        console.log(`\t\t\t${types[index].type}: ${data.toString()}`);
+      });
+    });
+  });
+}
+
 function addressTest() {
-  console.log(decodeAddress, encodeAddress);
+  // console.log(decodeAddress, encodeAddress);
   let a = [
     164, 193, 205,  72, 150,  30,  15,
     218, 179, 201,  11, 103, 160, 135,
@@ -282,9 +305,26 @@ function addressTest() {
      26, 108, 188, 242, 121, 211, 133,
     132,  84, 142,  76
   ];
-  console.log(toHexString((a)));
+  console.log(toHexString(decodeAddress(("5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL"))));
 }
+
+function decodeEvent() {
+  // let event = "0x00011cbd2d43530a44705ad088af313e18f80b53ef16b36177cd4b77b846f2a5f07c011cbd2d43530a44705ad088af313e18f80b53ef16b36177cd4b77b846f2a5f07c0a000000000000000000000000000000";
+  // let t = Struct({
+  //   from: 
+  // })
+}
+
+// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
+// 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
+// test_scale_codec()
+// test_scale_codec1()
+// query()
+// sendGreeting()
+// test_message()
 
 // addressTest()
 
 // pushMessage()
+
+get_event()
