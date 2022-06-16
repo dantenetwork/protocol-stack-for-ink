@@ -134,6 +134,19 @@ mod d_protocol_stack {
         }
     }
 
+    #[ink(event)]
+    pub struct VerifiedMessage {
+        instance: Option<super::IReceivedMessage>,
+    }
+
+    #[ink(event)]
+    pub struct InfoEvent {
+        #[ink(topic)]
+        topic_name: ink_prelude::string::String,
+
+        instance: Option<u128>,
+    }
+
     // use serde_json::json;
     // use serde_json_wasm::{from_str, to_string};
     
@@ -147,6 +160,7 @@ mod d_protocol_stack {
         value: bool,
         account: AccountId,
         msg_copy_count: u16,
+        vf_threshold: u128,
 
         /// This type of storage needs to be optimized in product implementation
         /// Follow this [issue: Allow iteration over contract storage #11410](https://github.com/paritytech/substrate/issues/11410#issuecomment-1156775111)
@@ -172,6 +186,7 @@ mod d_protocol_stack {
                 contract.value = init_value;
                 contract.account = Self::env().caller();
                 contract.msg_copy_count = 11;
+                contract.vf_threshold = 7000;
                 contract.sim_router_keys = ink_prelude::vec![];
                 contract.msg_v_keys = ink_prelude::vec![];
             })
@@ -189,14 +204,17 @@ mod d_protocol_stack {
         /// This one flips the value of the stored `bool` from `true`
         /// to `false` and vice versa.
         #[ink(message)]
-        pub fn flip(&mut self) {
+        pub fn set_sysinfo(&mut self, msg_copy_count: u16, vf_t: u128) {
+            // just for test without account validation 
             self.value = !self.value;
+            self.msg_copy_count = msg_copy_count;
+            self.vf_threshold = vf_t;
         }
 
         /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn get_sysinfo(&self) -> (bool, u16, u128) {
+            (self.value, self.msg_copy_count, self.vf_threshold)
         }
 
         /// Interface for Sending information from Polkadot
@@ -288,6 +306,11 @@ mod d_protocol_stack {
                 self.sim_routers.insert(&start_id, &SimNode(start_id, ele));
                 start_id += 1;
             }
+
+            Self::env().emit_event(InfoEvent {
+                topic_name: ink_prelude::string::String::from("Super Nika"),
+                instance: Some(128),
+            });
         }
 
         #[ink(message)]
@@ -466,26 +489,23 @@ mod d_protocol_stack {
                     msg_instance.msg_vec.push(msg_info);
                 }
 
-                self.msg_2_verify.insert(&key, &msg_instance);
-
                 // we comment off the following lines to manually call `simu_message_verification` for simulation
-                
-                // if msg_instance.get_submitter_count() >= self.msg_copy_count {
-                //     // self.msg_2_verify.remove(&key);
+                if msg_instance.get_submitter_count() >= self.msg_copy_count {
+                    // self.msg_2_verify.remove(&key);
 
-                //     self.simu_message_verification(msg_instance);
+                    self.simu_message_verification(&msg_instance);
 
-                //     let msg_processed = RecvedMessage {
-                //         msg_id: recv_msg.id,
-                //         msg_vec: ink_prelude::vec![],
-                //         processed: true,
-                //     };
+                    let msg_processed = RecvedMessage {
+                        msg_id: recv_msg.id,
+                        msg_vec: ink_prelude::vec![],
+                        processed: true,
+                    };
 
-                //     self.msg_2_verify.insert(&key, &msg_processed);
+                    self.msg_2_verify.insert(&key, &msg_processed);
 
-                // } else {
-                //     self.msg_2_verify.insert(&key, &msg_instance);
-                // }
+                } else {
+                    self.msg_2_verify.insert(&key, &msg_instance);
+                }
 
             } else {
                 let msg_hash = recv_msg.into_hash();
@@ -532,9 +552,57 @@ mod d_protocol_stack {
             messages
         }
 
-        #[ink(message)]
-        pub fn simu_message_verification(&self, msg_instance: RecvedMessage) {
+        fn simu_message_verification(&self, msg_instance: &RecvedMessage) {
+            if msg_instance.msg_vec.len() > 1 {
+                let mut index_cred = ink_prelude::vec![];
+                let mut idx: u16 = 0;
+                let mut total_cred = 0;
 
+                for msg_ele in msg_instance.msg_vec.iter() {
+                    let mut sum_cred = 0;
+                    for submitter in msg_ele.submitters.iter() {
+                        if let Some(router) = self.sim_routers.get(&submitter) {
+                            sum_cred += router.1;
+                        }
+                    }
+
+                    index_cred.push((idx, sum_cred as u128));
+                    idx += 1;
+                    total_cred += sum_cred as u128;
+                }
+
+                let coe: u128 = 10000;
+
+                let mut max_cred: (u16, u128) = (0, 0);
+
+                for cred_ele in index_cred.iter_mut() {
+                    cred_ele.1 = cred_ele.1 * coe / total_cred;
+                    if max_cred.1 < cred_ele.1 {
+                        max_cred = (cred_ele.0, cred_ele.1);
+                    }
+                }
+
+                if max_cred.1 >= self.vf_threshold {
+                    let vout: super::IReceivedMessage = scale::Decode::decode(&mut msg_instance.msg_vec[max_cred.0 as usize].msg_detail.as_slice()).unwrap();
+                    Self::env().emit_event(VerifiedMessage{
+                        instance: Some(vout),
+                    });
+                } else {
+                    Self::env().emit_event(VerifiedMessage{
+                        instance: None,
+                    });
+                }
+
+            } else if msg_instance.msg_vec.len() == 1{
+                let vout: super::IReceivedMessage = scale::Decode::decode(&mut msg_instance.msg_vec[0].msg_detail.as_slice()).unwrap();
+                Self::env().emit_event(VerifiedMessage{
+                    instance: Some(vout),
+                });
+            } else {
+                Self::env().emit_event(VerifiedMessage{
+                    instance: None,
+                });
+            }
         }
 
         /// 
@@ -546,8 +614,6 @@ mod d_protocol_stack {
             let random_seed2 = ink_env::random::<ink_env::DefaultEnvironment>(&[n8]).unwrap().0;
             ink_prelude::format!("{:?} \n {:?}", random_seed, random_seed2)
         }
-
-        
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -569,14 +635,6 @@ mod d_protocol_stack {
         // }
 
         /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut cross_chain = DProtocalStack::new(false);
-            assert_eq!(cross_chain.get(), false);
-            cross_chain.flip();
-            assert_eq!(cross_chain.get(), true);
-        }
-
         #[ink::test]
         fn test_encode() {
             let mut data = ink_prelude::vec::Vec::<u8>::new();

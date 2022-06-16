@@ -1,10 +1,17 @@
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { Abi, ContractPromise } from '@polkadot/api-contract';
+import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } from 'scale-ts';
 import fs from 'fs';
 import 'dotenv/config'
 
+
 const provider = new WsProvider("ws://127.0.0.1:9944");
 const api = await ApiPromise.create({provider});
+
+const InfoEvent = Struct({
+  topic_name : str,
+  instance : Option(u128)
+});
 
 const keyring = new Keyring({ type: 'sr25519' });
 let data = fs.readFileSync('./.secret/keyPair.json');
@@ -29,8 +36,15 @@ async function registerRouters() {
     .signAndSend(sender, (result) => {
       console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
       if (result.status.isInBlock) {
-        console.log('in a block');
-        // console.log(result);
+
+        for (let ele in result.events) {
+          // console.log(result.events[ele]['topics'].toHuman());
+          // console.log(result.events[ele]['event'].toHuman());
+          if (result.events[ele]['event'].method == 'ContractEmitted') {
+              console.log(InfoEvent.dec('0x01285375706572204e696b610180000000000000000000000000000000'));
+          }
+        }
+
       } else if (result.status.isFinalized) {
         console.log('finalized');
       }
@@ -69,5 +83,5 @@ async function selectRouters() {
     }
 }
 
-// registerRouters()
-selectRouters()
+registerRouters()
+// selectRouters()
