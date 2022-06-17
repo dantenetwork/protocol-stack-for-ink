@@ -298,7 +298,7 @@ mod cross_chain {
 
             message.executed = true;
             self.context = Some(Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
-                message.contract.clone(), message.action.clone()));
+                message.sqos.clone(), message.contract.clone(), message.action.clone()));
 
             // Construct paylaod
             let mut data_slice = message.data.as_slice();
@@ -336,7 +336,7 @@ mod cross_chain {
                 return None;
             }
             
-            Some(self.context.derive())
+            Some(self.context.clone().unwrap().derive())
         }
 
         /// Returns the number of messages sent to chain `chain_name`

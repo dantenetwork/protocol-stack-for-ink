@@ -18,6 +18,7 @@ use scale::{
 };
 
 use payload::message_define::{
+    IContext,
     IError,
     ISQoSType,
     ISession,
@@ -277,27 +278,28 @@ pub struct Context {
     pub from_chain: String,
     pub sender: String,
     pub signer: String,
+    pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: [u8;4],
 }
 
 impl Context {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, contract: AccountId, action: [u8;4]) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: Vec<SQoS>, contract: AccountId, action: [u8;4]) -> Self {
         Self {
             id,
             from_chain,
             sender,
             signer,
+            sqos,
             contract,
             action,
         }
     }
 
     pub fn derive(&self) -> IContext {
-        let c = &self.context;
-        let sqos = Vec::<ISQoS>::new();
+        let mut sqos = Vec::<ISQoS>::new();
         
-        for i: SQoS in self.sqos {
+        for i in &self.sqos {
             let sqos_type = match i.t {
                 SQoSType::Reveal => ISQoSType::Reveal,
                 SQoSType::Challenge => ISQoSType::Challenge,
@@ -309,9 +311,11 @@ impl Context {
                 SQoSType::Isolation => ISQoSType::Isolation,
                 SQoSType::CrossVerify => ISQoSType::CrossVerify,
             };
-            let s = ISQoS::new(sqos_type, i.v);
+            let s = ISQoS::new(sqos_type, i.v.clone());
             sqos.push(s);
         }
-        IContext::new(c.id, c.from_chain, c.sender, c.signer, s, c.contract, c.action)
+
+        let contract: &[u8; 32] = AsRef::<[u8; 32]>::as_ref(&self.contract);
+        IContext::new(self.id, self.from_chain.clone(), self.sender.clone(), self.signer.clone(), sqos, contract.clone(), self.action)
     }
 }
