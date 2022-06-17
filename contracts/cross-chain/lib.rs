@@ -32,6 +32,7 @@ mod cross_chain {
 
     use payload::message_protocol::MessagePayload;
     use payload::message_define::{
+        IContext,
         ISentMessage,
         IReceivedMessage,
     };
@@ -73,7 +74,7 @@ mod cross_chain {
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
         /// Returns the simplified message, this message is reset every time when a contract is called
         #[ink(message)]
-        fn get_context(& self) -> Option<Context>;
+        fn get_context(& self) -> Option<IContext>;
         /// Returns the number of messages sent to chain `chain_name`
         #[ink(message)]
         fn get_sent_message_number(& self, chain_name: String) -> u128;
@@ -330,8 +331,12 @@ mod cross_chain {
 
         /// Returns the simplified message, this message is reset every time when a contract is called
         #[ink(message)]
-        fn get_context(& self) -> Option<Context> {
-            self.context.clone()
+        fn get_context(& self) -> Option<IContext> {
+            if self.context.is_none() {
+                return None;
+            }
+            
+            Some(self.context.derive())
         }
 
         /// Returns the number of messages sent to chain `chain_name`

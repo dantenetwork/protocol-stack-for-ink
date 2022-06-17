@@ -292,4 +292,26 @@ impl Context {
             action,
         }
     }
+
+    pub fn derive(&self) -> IContext {
+        let c = &self.context;
+        let sqos = Vec::<ISQoS>::new();
+        
+        for i: SQoS in self.sqos {
+            let sqos_type = match i.t {
+                SQoSType::Reveal => ISQoSType::Reveal,
+                SQoSType::Challenge => ISQoSType::Challenge,
+                SQoSType::Threshold => ISQoSType::Threshold,
+                SQoSType::Priority => ISQoSType::Priority,
+                SQoSType::ExceptionRollback => ISQoSType::ExceptionRollback,
+                SQoSType::Anonymous => ISQoSType::Anonymous,
+                SQoSType::Identity => ISQoSType::Identity,
+                SQoSType::Isolation => ISQoSType::Isolation,
+                SQoSType::CrossVerify => ISQoSType::CrossVerify,
+            };
+            let s = ISQoS::new(sqos_type, i.v);
+            sqos.push(s);
+        }
+        IContext::new(c.id, c.from_chain, c.sender, c.signer, s, c.contract, c.action)
+    }
 }
