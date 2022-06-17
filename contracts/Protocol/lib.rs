@@ -134,8 +134,8 @@ mod d_protocol_stack {
         }
     }
 
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    #[derive(SpreadLayout, PackedLayout, Debug, Clone, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
     pub struct VerifyInfo {
         cred_sum: u128,
         submitters: ink_prelude::vec::Vec<u16>,
@@ -152,6 +152,14 @@ mod d_protocol_stack {
         // #[ink(topic)]
         topic_name: ink_prelude::string::String,
         instance: Option<MessageDetail>,
+    }
+
+    #[derive(SpreadLayout, PackedLayout, Debug, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
+    pub struct VerifiedCache {
+        msg_id: u128,
+        submitted: ink_prelude::vec::Vec<VerifyInfo>,
+        vf_passed: bool,
     }
 
     // use serde_json::json;
@@ -177,6 +185,11 @@ mod d_protocol_stack {
         /// To be optimized
         msg_v_keys: ink_prelude::vec::Vec<(ink_prelude::string::String, u128)>,
         msg_2_verify: ink_storage::Mapping<(ink_prelude::string::String, u128), RecvedMessage>,
+
+        /// To be optimized
+        /// Just for showing the result of the verification
+        cache_verified_keys: ink_prelude::vec::Vec<u128>,
+        cache_verified: ink_storage::Mapping<u128, VerifiedCache>,
     }
 
     impl DProtocalStack {
@@ -192,10 +205,11 @@ mod d_protocol_stack {
             ink_lang::utils::initialize_contract(|contract: &mut Self| {
                 contract.value = init_value;
                 contract.account = Self::env().caller();
-                contract.msg_copy_count = 11;
+                contract.msg_copy_count = 5;
                 contract.vf_threshold = 7000;
                 contract.sim_router_keys = ink_prelude::vec![];
                 contract.msg_v_keys = ink_prelude::vec![];
+                contract.cache_verified_keys = ink_prelude::vec![];
             })
         }
 
@@ -563,7 +577,7 @@ mod d_protocol_stack {
             messages
         }
 
-        fn simu_message_verification(&self, msg_instance: &RecvedMessage) {
+        fn simu_message_verification(&mut self, msg_instance: &RecvedMessage) {
             if msg_instance.msg_vec.len() > 1 {
                 let mut index_cred = ink_prelude::vec![];
                 let mut idx: u16 = 0;
@@ -572,6 +586,14 @@ mod d_protocol_stack {
                 let mut verified_msg = VerifiedMessage {
                     vf_passed: false,
                     submitted: ink_prelude::vec![],
+                };
+
+                // just for showing the result of the verification
+                self.cache_verified_keys.push(msg_instance.msg_id);
+                let mut cache_verified = VerifiedCache {
+                    msg_id: msg_instance.msg_id,
+                    submitted: ink_prelude::vec![],
+                    vf_passed: false,
                 };
 
                 for msg_ele in msg_instance.msg_vec.iter() {
@@ -590,7 +612,9 @@ mod d_protocol_stack {
                     }
 
                     vf_info.cred_sum = sum_cred as u128;
-                    verified_msg.submitted.push(vf_info);
+                    verified_msg.submitted.push(vf_info.clone());
+                    // just for showing the result of the verification
+                    cache_verified.submitted.push(vf_info);
 
                     index_cred.push((idx, sum_cred as u128));
                     idx += 1;
@@ -610,11 +634,20 @@ mod d_protocol_stack {
 
                 if max_cred.1 >= self.vf_threshold {
                     verified_msg.vf_passed = true;
+                    // just for showing the result of the verification
+                    cache_verified.vf_passed = true;
+
                     Self::env().emit_event(verified_msg);
                 } else {
                     verified_msg.vf_passed = false;
+                    // just for showing the result of the verification
+                    cache_verified.vf_passed = false;
+
                     Self::env().emit_event(verified_msg);
                 }
+
+                // just for showing the result of the verification
+                self.cache_verified.insert(&msg_instance.msg_id, &cache_verified);
 
             } else if msg_instance.msg_vec.len() == 1{
                 let vf_info = VerifyInfo {
@@ -624,8 +657,16 @@ mod d_protocol_stack {
                 
                 let verified_msg = VerifiedMessage {
                     vf_passed: true,
-                    submitted: ink_prelude::vec![vf_info],
+                    submitted: ink_prelude::vec![vf_info.clone()],
                 };
+                
+                // just for showing the result of the verification
+                self.cache_verified_keys.push(msg_instance.msg_id);
+                self.cache_verified.insert(&msg_instance.msg_id, &VerifiedCache {
+                    msg_id: msg_instance.msg_id,
+                    submitted: ink_prelude::vec![vf_info],
+                    vf_passed: true,
+                });
 
                 Self::env().emit_event(verified_msg);
             } else {
@@ -636,6 +677,27 @@ mod d_protocol_stack {
 
                 Self::env().emit_event(verified_msg);
             }
+        }
+
+        #[ink(message)]
+        pub fn get_verified_results(&self, flag: bool) -> ink_prelude::vec::Vec<VerifiedCache> {
+            let mut rst = ink_prelude::vec![];
+            for ele in self.cache_verified_keys.iter() {
+                if let Some(verified) = self.cache_verified.get(ele) {
+                    rst.push(verified);
+                }
+            }
+
+            rst
+        }
+
+        #[ink(message)]
+        pub fn clear_verified_cache(&mut self) {
+            for ele in self.cache_verified_keys.iter() {
+                self.cache_verified.remove(ele);
+            }
+
+            self.cache_verified_keys.clear();
         }
 
         /// 
