@@ -26,6 +26,7 @@ sender.decodePkcs8(process.env.PASSWORD);
 
 const abiFile = fs.readFileSync('../contracts/Protocol/target/ink/metadata.json');
 const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CONTRACT_ADDRESS);
+const abi = new Abi(JSON.parse(abiFile));
 
 // console.log(InfoEvent.dec('0x01285375706572204e696b61014c726f7574657273207265676973746572656421'));
 
@@ -42,17 +43,22 @@ async function registerRouters() {
     await contract.tx
     .randomRegisterRouters({ value, gasLimit }, cres)
     .signAndSend(sender, (result) => {
-      console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
+      // console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
+      // console.log(result.events);
       if (result.status.isInBlock) {
-
-        for (let ele in result.events) {
-          if (result.events[ele]['event'].method == 'ContractEmitted') {
-              let data = result.events[ele]['event'].data[1];
-              console.log(InfoEvent.dec(data.slice(1,data.length)));
-              // console.log(result.events[ele]['event'].data[1]);
+        result.events.forEach(({ event, topics }) => {
+          if (api.events.contracts.ContractEmitted.is(event)) {
+              // console.log(topics.toHuman());
+              const [account_id, contract_evt] = event.data;
+              // console.log(event.index.toHuman());
+              if (account_id.toString() == process.env.CONTRACT_ADDRESS) {
+                const decoded = abi.decodeEvent(contract_evt);
+                if (decoded.event.identifier == 'InfoEvent') {
+                    console.log(InfoEvent.dec(contract_evt.slice(1, contract_evt.length)));
+                }
+              }
           }
-        }
-
+        });
       } else if (result.status.isFinalized) {
         console.log('finalized');
       }

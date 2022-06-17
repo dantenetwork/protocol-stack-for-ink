@@ -134,14 +134,22 @@ mod d_protocol_stack {
         }
     }
 
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct VerifyInfo {
+        cred_sum: u128,
+        submitters: ink_prelude::vec::Vec<u16>,
+    }
+
     #[ink(event)]
     pub struct VerifiedMessage {
-        instance: Option<super::IReceivedMessage>,
+        vf_passed: bool,
+        submitted: ink_prelude::vec::Vec<VerifyInfo>,
     }
 
     #[ink(event)]
     pub struct InfoEvent {
-        #[ink(topic)]
+        // #[ink(topic)]
         topic_name: ink_prelude::string::String,
         instance: Option<MessageDetail>,
     }
@@ -561,13 +569,28 @@ mod d_protocol_stack {
                 let mut idx: u16 = 0;
                 let mut total_cred = 0;
 
+                let mut verified_msg = VerifiedMessage {
+                    vf_passed: false,
+                    submitted: ink_prelude::vec![],
+                };
+
                 for msg_ele in msg_instance.msg_vec.iter() {
+                    let mut vf_info = VerifyInfo {
+                        cred_sum: 0,
+                        submitters: ink_prelude::vec![],
+                    };
+
                     let mut sum_cred = 0;
                     for submitter in msg_ele.submitters.iter() {
                         if let Some(router) = self.sim_routers.get(&submitter) {
                             sum_cred += router.1;
+
+                            vf_info.submitters.push(router.0);
                         }
                     }
+
+                    vf_info.cred_sum = sum_cred as u128;
+                    verified_msg.submitted.push(vf_info);
 
                     index_cred.push((idx, sum_cred as u128));
                     idx += 1;
@@ -586,25 +609,32 @@ mod d_protocol_stack {
                 }
 
                 if max_cred.1 >= self.vf_threshold {
-                    let vout: super::IReceivedMessage = scale::Decode::decode(&mut msg_instance.msg_vec[max_cred.0 as usize].msg_detail.as_slice()).unwrap();
-                    Self::env().emit_event(VerifiedMessage{
-                        instance: Some(vout),
-                    });
+                    verified_msg.vf_passed = true;
+                    Self::env().emit_event(verified_msg);
                 } else {
-                    Self::env().emit_event(VerifiedMessage{
-                        instance: None,
-                    });
+                    verified_msg.vf_passed = false;
+                    Self::env().emit_event(verified_msg);
                 }
 
             } else if msg_instance.msg_vec.len() == 1{
-                let vout: super::IReceivedMessage = scale::Decode::decode(&mut msg_instance.msg_vec[0].msg_detail.as_slice()).unwrap();
-                Self::env().emit_event(VerifiedMessage{
-                    instance: Some(vout),
-                });
+                let vf_info = VerifyInfo {
+                    cred_sum: 100,
+                    submitters: msg_instance.msg_vec[0].submitters.clone(),
+                };
+                
+                let verified_msg = VerifiedMessage {
+                    vf_passed: true,
+                    submitted: ink_prelude::vec![vf_info],
+                };
+
+                Self::env().emit_event(verified_msg);
             } else {
-                Self::env().emit_event(VerifiedMessage{
-                    instance: None,
-                });
+                let verified_msg = VerifiedMessage {
+                    vf_passed: false,
+                    submitted: ink_prelude::vec![],
+                };
+
+                Self::env().emit_event(verified_msg);
             }
         }
 
