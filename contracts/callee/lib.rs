@@ -25,6 +25,12 @@ mod callee {
         phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
     }
 
+    /// event
+    #[ink(event)]
+    pub struct EventRecv2 {
+        triggered: bool,
+    }
+
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
@@ -32,6 +38,7 @@ mod callee {
     pub struct Callee {
         /// Stores a single `bool` value on the storage.
         value: bool,
+        message: u32,
     }
 
     impl Callee {
@@ -40,6 +47,7 @@ mod callee {
         pub fn new(init_value: bool) -> Self {
             Self { 
                 value: init_value, 
+                message: 0,
             }
         }
 
@@ -128,6 +136,60 @@ mod callee {
                                                     ink_prelude::vec![msg.clone(), msg.clone()]);
 
             msg_vec.in_to()
+        }
+
+        /// test corss contract call
+        #[ink(message)]
+        pub fn send_message(&mut self, addr1: AccountId, addr2: AccountId, m: u32) {
+            ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                .call_type(
+                    ink_env::call::Call::new()
+                        .callee(addr1)
+                        .gas_limit(0)
+                        .transferred_value(0))
+                .exec_input(
+                    // call `receive_message` of contract `addr1`
+                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0x3a, 0x6e, 0x96, 0x96]))
+                    .push_arg(addr2)
+                    .push_arg(m)
+                )
+                .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
+                .returns::<()>()
+                .fire().
+                unwrap();
+        }
+
+        #[ink(message)]
+        pub fn receive_message(&mut self, addr: AccountId, i: u32) {
+
+            ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                .call_type(
+                    ink_env::call::Call::new()
+                        .callee(addr)
+                        .gas_limit(0)
+                        .transferred_value(0))
+                .exec_input(
+                    // call `update_message` of contract `addr`
+                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0x03, 0x2a, 0x6f, 0x29]))
+                    .push_arg(i)
+                )
+                .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
+                .returns::<()>()
+                .fire().
+                unwrap();
+        }
+
+        #[ink(message)]
+        pub fn update_message(&mut self, i: u32) {
+            Self::env().emit_event(EventRecv2{
+                triggered: true,
+            });
+            self.message = i;
+        }
+
+        #[ink(message)]
+        pub fn get_message(& self, flag: bool) -> u32 {
+            self.message
         }
     }
 
