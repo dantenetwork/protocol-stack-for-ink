@@ -237,7 +237,7 @@ mod algorithm {
         }
 
         #[ink(message)]
-        pub fn clear_routers(&mut self, flag: bool) {
+        pub fn clear_routers(&mut self) {
             for ele in self.sim_router_keys.iter() {
                     self.sim_routers.remove(ele);
             }
@@ -247,7 +247,7 @@ mod algorithm {
 
         /// selection statistic
         /// This provides an intuitive validation of the 'Probability distribution' results of the router selection algorithm
-        /// Prameter@n: 
+        /// Prameter@n: Sampling times
         #[ink(message)]
         pub fn selection_statistic(&self, n: u16) -> Option<ink_prelude::vec::Vec<SelectionInterval>>{
             let mut start_idx: u16 = 0;
