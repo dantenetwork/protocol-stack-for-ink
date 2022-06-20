@@ -38,6 +38,15 @@ Try the following operations with [polkadot,js/app](https://polkadot.js.org/apps
 ![1655713142879](https://user-images.githubusercontent.com/83746881/174557329-c6015cb6-3018-4b24-bdd0-cc830a4746eb.png)
 
 ### Message verification
+In message verification algorithm prototype, we descide the limitation number of message copies to verify a message by a system paremeter `self.msg_copy_count`. When enough copies have been delivered, `simu_message_verification` will be called dynamically.
 
+And the number determines how many routers one message needs to be delivered parallelly, which will be configured by users through SQoS settings in the product implementation. 
 
 #### Usage
+* Call `setSysinfo` to set message-verification related system paremeters and `getSysinfo` to check the value.
+
+* Call `simuSubmitMessage` to submite message copies manually. Note that message copies belong to the same message only if they have the same `IReceivedMessage::id` and `IReceivedMessage::from_chain`. 
+
+*  When enough message copies are submitted, `simu_message_verification` will be called internally. The result will be cached in order to be checked manually and an event `VerifiedMessage` will be emitted to show the result, but the result event need to be decoded by `Polkadot.js`. 
+
+* Check the cached verification result by `getVerifiedResults`.
