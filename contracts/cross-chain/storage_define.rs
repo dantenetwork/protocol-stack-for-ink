@@ -140,6 +140,21 @@ impl SQoS {
             v: sqos.v,
         }
     }
+
+    pub fn derive(&self) -> ISQoS {        
+        let sqos_type = match self.t {
+            SQoSType::Reveal => ISQoSType::Reveal,
+            SQoSType::Challenge => ISQoSType::Challenge,
+            SQoSType::Threshold => ISQoSType::Threshold,
+            SQoSType::Priority => ISQoSType::Priority,
+            SQoSType::ExceptionRollback => ISQoSType::ExceptionRollback,
+            SQoSType::Anonymous => ISQoSType::Anonymous,
+            SQoSType::Identity => ISQoSType::Identity,
+            SQoSType::Isolation => ISQoSType::Isolation,
+            SQoSType::CrossVerify => ISQoSType::CrossVerify,
+        };
+        ISQoS::new(sqos_type, self.v.clone())
+    }
 }
 
 /// Session Structure
@@ -300,18 +315,7 @@ impl Context {
         let mut sqos = Vec::<ISQoS>::new();
         
         for i in &self.sqos {
-            let sqos_type = match i.t {
-                SQoSType::Reveal => ISQoSType::Reveal,
-                SQoSType::Challenge => ISQoSType::Challenge,
-                SQoSType::Threshold => ISQoSType::Threshold,
-                SQoSType::Priority => ISQoSType::Priority,
-                SQoSType::ExceptionRollback => ISQoSType::ExceptionRollback,
-                SQoSType::Anonymous => ISQoSType::Anonymous,
-                SQoSType::Identity => ISQoSType::Identity,
-                SQoSType::Isolation => ISQoSType::Isolation,
-                SQoSType::CrossVerify => ISQoSType::CrossVerify,
-            };
-            let s = ISQoS::new(sqos_type, i.v.clone());
+            let s = i.derive();
             sqos.push(s);
         }
 

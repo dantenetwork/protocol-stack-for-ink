@@ -2,7 +2,7 @@
 
 use ink_lang as ink;
 
-pub mod message_define;
+pub mod storage_define;
 
 pub use self::cross_chain::{
     CrossChain,
@@ -22,12 +22,13 @@ mod cross_chain {
         string::String,
     };
 
-    use super::message_define::{
+    use super::storage_define::{
         Error,
         ReceivedMessage,
         SentMessage,
         Context,
         Porters,
+        SQoS,
     };
 
     use payload::message_protocol::MessagePayload;
@@ -35,6 +36,7 @@ mod cross_chain {
         IContext,
         ISentMessage,
         IReceivedMessage,
+        ISQoS,
     };
 
     /// Trait for owner
@@ -142,6 +144,9 @@ mod cross_chain {
         is_porter: Mapping<AccountId, bool>,
         /// List of porters.
         porters: Vec<AccountId>,
+
+        // SQoS
+        sqos_table: Mapping<AccountId, Vec<SQoS>>,
     }
 
     impl CrossChain {
@@ -196,6 +201,30 @@ mod cross_chain {
             chain_message.push(message);
             self.received_message_table.insert(from_chain, &chain_message);
             Ok(())
+        }
+
+        /// Registers SQoS
+        #[ink(message)]
+        pub fn set_sqos(&mut self, sqos: Vec<ISQoS>) {
+            let caller = Self::env().caller();
+            let mut v_sqos = Vec::<SQoS>::new();
+            for i in sqos {
+                let s = SQoS::from(i);
+                v_sqos.push(s);
+            }
+            self.sqos_table.insert(caller, &v_sqos);
+        }
+
+        /// Returns SQoS
+        #[ink(message)]
+        pub fn get_sqos(& self) -> Vec<ISQoS> {
+            let caller = Self::env().caller();
+            let sqos = self.sqos_table.get(caller).unwrap_or(Vec::<SQoS>::new());
+            let mut ret = Vec::<ISQoS>::new();
+            for i in sqos {
+                ret.push(i.derive());
+            }
+            ret
         }
 
         /// For debug
