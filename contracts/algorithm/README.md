@@ -26,7 +26,14 @@ We can see in the picture above, that the theoretical value of probability distr
 * We have deployed `algorithm_prototype.contract` on the Testnet of AStar, that is `Shibuya`. The address is *`aX8aZK9Pt9HTgywWYBdskDSdJ9yq6TzLJMDah7vZxfBsYko`*.
 
 ##### Operation
+* Call `randomRegisterRouters` to register simulation off-chain routers. To make this test simple, you can register enough at a time with any credibilities you want in the parameter vector. The id of the routers will be dynamically created. The registered routers can be checked by calling `getRegisteredRouters `. The result will be something like this:
+![1655712763672](https://user-images.githubusercontent.com/83746881/174556149-c6ed625d-b3fa-49fa-b914-bc7b2642a9c9.png)
 
+* Call `selectionTest` to randomly choose `n` routers according to their credibility, the result will be like this:
+![1655713370200](https://user-images.githubusercontent.com/83746881/174558088-f964c9a1-fa5b-4afb-adf3-a3539f667f61.png)
+
+* Call `selection_statistic` to provide an intuitive validation of the 'Probability distribution' results of the router selection algorithm. Parameter `n` is the number of sampling times. The result will be like this:
+![1655713142879](https://user-images.githubusercontent.com/83746881/174557329-c6015cb6-3018-4b24-bdd0-cc830a4746eb.png)
 
 ### Message verification
 
