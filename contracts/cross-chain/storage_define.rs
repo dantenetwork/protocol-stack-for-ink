@@ -43,6 +43,7 @@ pub enum Error {
     InterfaceNotFound,
     DecodeDataFailed,
     CrossContractCallFailed,
+    NotPorter,
 }
 
 impl Error {

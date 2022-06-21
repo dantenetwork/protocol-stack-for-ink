@@ -47,10 +47,10 @@ mod cross_chain {
         fn owner(& self) -> Option<AccountId>;
         /// Renounces ownership of the contract
         #[ink(message)]
-        fn renounce_ownership(&mut self);
+        fn renounce_ownership(&mut self) -> Result<(), Error>;
         /// Transfer ownership to a new account id
         #[ink(message)]
-        fn transfer_ownership(&mut self, new_owner: AccountId);
+        fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), Error>;
     }
 
     /// Trait for basic cross-chain contract
@@ -102,7 +102,7 @@ mod cross_chain {
     pub trait MultiPorters {
         /// Changes porters and requirement.
         #[ink(message)]
-        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16);
+        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) -> Result<(), Error>;
         /// Get porters.
         #[ink(message)]
         fn get_porters(& self) -> Porters;
@@ -165,7 +165,7 @@ mod cross_chain {
             self.chain_name = chain_name;
         }
 
-        /// If caller is the owner of the contract
+        /// If the caller is the owner of the contract
         fn only_owner(& self) -> Result<(), Error> {
             let caller = self.env().caller();
             if self.owner.unwrap() != caller {
@@ -173,6 +173,19 @@ mod cross_chain {
             }
 
             Ok(())
+        }
+
+        /// If the caller is a port
+        fn only_porter(& self) -> Result<(), Error> {
+            let caller = self.env().caller();
+            
+            for i in &self.porters {
+                if i == &caller {
+                    return Ok(())
+                }
+            }
+
+            Err(Error::NotPorter)
         }
 
         /// Receives message
@@ -229,9 +242,13 @@ mod cross_chain {
 
         /// For debug
         #[ink(message)]
-        pub fn clear_messages(&mut self, chain_name: String) {
+        pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
+            self.only_owner()?;
+
             self.received_message_table.remove(chain_name.clone());
-            self.sent_message_table.remove(chain_name)
+            self.sent_message_table.remove(chain_name);
+
+            Ok(())
         }
 
         /// For debug
@@ -250,14 +267,22 @@ mod cross_chain {
 
         /// Renounces ownership of the contract
         #[ink(message)]
-        fn renounce_ownership(&mut self) {
+        fn renounce_ownership(&mut self) -> Result<(), Error> {
+            self.only_owner()?;
+
             self.owner = None;
+
+            Ok(())
         }
 
         /// Transfer ownership to a new account id
         #[ink(message)]
-        fn transfer_ownership(&mut self, new_owner: AccountId) {
+        fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), Error> {
+            self.only_owner()?;
+
             self.owner = Some(new_owner);
+
+            Ok(())
         }
     }
 
@@ -285,6 +310,7 @@ mod cross_chain {
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>  {
+            self.only_porter()?;
             self.internal_receive_message(message)
         }
 
@@ -422,7 +448,9 @@ mod cross_chain {
     impl MultiPorters for CrossChain {
         /// Changes porters and requirement.
         #[ink(message)]
-        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) {
+        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) -> Result<(), Error> {
+            self.only_owner()?;
+            
             // Clear porters
             for i in &self.porters {
                 self.is_porter.remove(i);
@@ -435,6 +463,8 @@ mod cross_chain {
 
             self.porters = porters;
             self.required = requirement;
+
+            Ok(())
         }
 
         /// Get porters.
