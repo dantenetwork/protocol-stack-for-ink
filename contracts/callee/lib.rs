@@ -141,6 +141,8 @@ mod callee {
         /// test corss contract call
         #[ink(message)]
         pub fn send_message(&mut self, addr1: AccountId, addr2: AccountId, m: u32) {
+            self.flush();
+
             ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
                     ink_env::call::Call::new()
@@ -157,10 +159,13 @@ mod callee {
                 .returns::<()>()
                 .fire().
                 unwrap();
+
+            self.load();
         }
 
         #[ink(message)]
         pub fn receive_message(&mut self, addr: AccountId, i: u32) {
+            // self.flush();
 
             ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                 .call_type(
@@ -173,10 +178,12 @@ mod callee {
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new([0x03, 0x2a, 0x6f, 0x29]))
                     .push_arg(i)
                 )
-                .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
+                // .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
                 .returns::<()>()
                 .fire().
                 unwrap();
+
+            // self.load();
         }
 
         #[ink(message)]
@@ -190,6 +197,26 @@ mod callee {
         #[ink(message)]
         pub fn get_message(& self, flag: bool) -> u32 {
             self.message
+        }
+
+        /// Method flushes the current state of `Self` into storage.
+        /// ink! recursively calculate a key of each field.
+        /// So if you want to flush the correct state of the contract,
+        /// you have to this method on storage struct.
+        fn flush(&self) {
+            let root_key = ::ink_primitives::Key::from([0x00; 32]);
+            ::ink_storage::traits::push_spread_root::<Self>(self, &root_key);
+        }
+
+        /// Method loads the current state of `Self` from storage.
+        /// ink! recursively calculate a key of each field.
+        /// So if you want to load the correct state of the contract,
+        /// you have to this method on storage struct.
+        fn load(&mut self) {
+            let root_key = ::ink_primitives::Key::from([0x00; 32]);
+            let mut state = ::ink_storage::traits::pull_spread_root::<Self>(&root_key);
+            core::mem::swap(self, &mut state);
+            let _ = core::mem::ManuallyDrop::new(state);
         }
     }
 
