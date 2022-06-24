@@ -52,8 +52,8 @@ const sender = keyring.addFromJson(JSON.parse(data.toString()));
 sender.decodePkcs8(process.env.PASSWORD);
 
 // cross-chain contract
-// const crossChainABIRaw = fs.readFileSync('./abi/cross_chain.json');
-// const crossChainContract = new ContractPromise(api, JSON.parse(crossChainABIRaw), process.env.CONTRACT_ADDRESS);
+const crossChainABIRaw = fs.readFileSync('./abi/cross_chain.json');
+const crossChainContract = new ContractPromise(api, JSON.parse(crossChainABIRaw), process.env.CONTRACT_ADDRESS);
 // const crossChainABI = new Abi(JSON.parse(crossChainABIRaw));
 // let m = crossChainABI.findMessage('crossChainBase::executeMessage').toU8a(["A", 1]);
 // console.log('m', toHexString(m));
@@ -90,8 +90,8 @@ async function query() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-  const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getReceivedMessage'](sender.address, {value, gasLimit }, 
-                                          "ETHEREUM", 1);
+  const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getContext'](sender.address, {value, gasLimit }, 
+                                          );
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
@@ -121,13 +121,13 @@ async function test_message() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // let payload = await test_scale_codec1();
-  let payload = '0x0104206772656574696e670bd81020504f4c4b41444f54244772656574696e6773584772656574696e672066726f6d20504f4c4b41444f5428323032322d30362d3038';
+  let payload = '0x0104106e756d7313340ce40700000600000011000000';
   
   let revert = PayloadMessage.dec(payload);
   console.log('revert', JSON.stringify(revert.items[0].n));
   console.log('revert', JSON.stringify(revert.items[0].t));
   console.log('revert', toHexString(revert.items[0].v));
-  let a = Vector(str).dec(toHexString(revert.items[0].v));
+  let a = Vector(u32).dec(toHexString(revert.items[0].v));
   console.log('a', a);
 }
 
@@ -209,6 +209,12 @@ function toHexString(byteArray) {
     }).join('')
 }
 
+async function test_scale_codec2() {
+  let enc_param1 = u128.enc(-666n);
+
+  console.log('enc_param', enc_param1);
+}
+
 async function test_scale_codec1() {
   let data = [ 'POLKADOT', 'Greetings', 'Greeting from POLKADOT', '2022-06-01' ];
 
@@ -280,9 +286,11 @@ async function get_event() {
 
     // Loop through the Vec<EventRecord>
     events.forEach((record) => {
+      console.log('record', record.toHuman());
       // Extract the phase, event and the event types
       const { event, phase } = record;
       const types = event.typeDef;
+      // console.log('types', types);
 
       // Show what we are busy with
       console.log(`\t${event.section}:${event.method}:: (phase=${phase.toString()})`);
@@ -290,10 +298,15 @@ async function get_event() {
 
       // Loop through each of the parameters, displaying the type and data
       event.data.forEach((data, index) => {
+        console.log('data', data, index);
         console.log(`\t\t\t${types[index].type}: ${data.toString()}`);
       });
     });
   });
+}
+
+async function test_decode() {
+  let a = '466c69707065723a3a5472616e736665727265640000000000000000000000';
 }
 
 function addressTest() {
@@ -305,7 +318,7 @@ function addressTest() {
      26, 108, 188, 242, 121, 211, 133,
     132,  84, 142,  76
   ];
-  console.log(toHexString(decodeAddress(("5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL"))));
+  console.log(toHexString(decodeAddress(("5DjnsVKymEKMsE7yei4CRi72TQKiQaxG9nb3f12ttGNqh93R"))));
 }
 
 function decodeEvent() {
@@ -318,7 +331,7 @@ function decodeEvent() {
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // test_scale_codec()
-// test_scale_codec1()
+test_scale_codec1()
 // query()
 // sendGreeting()
 // test_message()
@@ -327,4 +340,8 @@ function decodeEvent() {
 
 // pushMessage()
 
-get_event()
+// get_event()
+
+// test_decode()
+
+// test_scale_codec2()
