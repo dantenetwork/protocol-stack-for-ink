@@ -11,14 +11,14 @@ let data = fs.readFileSync('./.secret/keyPair.json');
 const sender = keyring.addFromJson(JSON.parse(data.toString()));
 sender.decodePkcs8(process.env.PASSWORD);
 
-const abiFile = fs.readFileSync('./abi/payload.json');
+const abiFile = fs.readFileSync('../contracts/Payload/target/ink/metadata.json');
 const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.PAYLOAD_CONTRACT);
 
 // test encoder
 const payloadABI = new Abi(JSON.parse(abiFile));
 const payed = payloadABI.findMessage('getMessage').toU8a([{'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': '0x99887766'}]}]);
 const payedDecode = payloadABI.findMessage('getMessage').fromU8a(payed.subarray(5));
-console.log(payedDecode.args[0].toHuman().vecs[0]);
+// console.log(payedDecode.args[0].toHuman());
 // console.log(payedDecode.args[0].toJSON().vecs[0]);
 
 // Read from the contract via an RPC call
@@ -83,4 +83,37 @@ async function query() {
       });
   }
 
+async function queryNewDetail() {
+    const value = 0; // only useful on isPayable messages
+    // NOTE the apps UI specified these in mega units
+    const gasLimit = -1;
+    
+    // const storage_deposit_limit = 3n * 1000000n;
+    
+    // Perform the actual read (with one param, which is an user defined struct)
+    // (We perform the send from an account, here using address created from a Json)
+    // const { gasConsumed, result, output } = await contract.query['submitMessage'](sender.address, { value, gasLimit }, 
+    //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
+
+    // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
+    const { gasConsumed, result, output } = await contract.query['detailItemSR'](sender.address, {value, gasLimit }, 
+                                                                              {n: 'Hello Nika', tv: {IOU64Array: [77, 88]}});
+    
+    // The actual result from RPC as `ContractExecResult`
+    console.log(result.toHuman());
+    
+    // gas consumed
+    console.log(gasConsumed.toHuman());
+
+    // check if the call was successful
+    if (result.isOk) {
+      // should output 123 as per our initial set (output here is an i32)
+      console.log('Success', output.toHuman());
+
+    } else {
+      console.error('Error', result.asErr);
+    }
+}
+
   // query();
+  queryNewDetail();

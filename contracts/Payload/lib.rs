@@ -39,6 +39,23 @@ mod Payload {
 
     use ink_storage::traits::{SpreadAllocate};
 
+    /// test enum value
+    #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub enum DetailTypes {
+        IOString(ink_prelude::string::String),
+        IOU32(u32),
+        IOU64Array(ink_prelude::vec::Vec<u64>),
+        None,
+    }
+
+    #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    pub struct DetailItem {
+        pub n: ink_prelude::string::String,
+        pub tv: DetailTypes,
+    }
+
     /// for test
     #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
@@ -120,17 +137,17 @@ mod Payload {
                 s = s + "\n";
             }
 
-            if let Some(m_vec) = m_payload.get_vec(ink_prelude::string::String::from("11")) {
-                let mut ss = m_vec.v.as_slice();
-                let msgs: ink_prelude::vec::Vec<MessageDetail> = scale::Decode::decode(&mut ss).unwrap();
-                
-                for msg_data in msgs.iter() {
-                    s = s + &ink_prelude::format!("{:?}", msg_data);
-                    s = s + "\n";
-                }
-            }
-
             s
+        }
+
+        #[ink(message)]
+        pub fn detail_item_s_r(&self, d_item: DetailItem) -> DetailItem {
+            // DetailItem {
+            //     n: ink_prelude::string::String::from("Message Rabbit"),
+            //     tv: DetailTypes::IOU64Array(ink_prelude::vec![18, 24]),
+            // }
+
+            d_item
         }
     }
 
@@ -211,28 +228,31 @@ mod Payload {
 
             assert_eq!(msg_item, msg_item2);
 
-            assert_eq!(msg_payload.add_item(msg_item), true);
+            assert_eq!(msg_payload.push_item(ink_prelude::string::String::from("1"), 
+                                                super::super::message_protocol::MsgType::UserData, 
+                                                msg.clone()), 
+                                            true);
 
-            let mut vec_eles: ink_prelude::vec::Vec<MessageDetail> = ink_prelude::vec::Vec::new();
-            vec_eles.push(msg.clone());
-            vec_eles.push(msg.clone());
+            // let mut vec_eles: ink_prelude::vec::Vec<MessageDetail> = ink_prelude::vec::Vec::new();
+            // vec_eles.push(msg.clone());
+            // vec_eles.push(msg.clone());
 
-            let mut vv: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
-            scale::Encode::encode_to(&vec_eles, &mut vv);
+            // let mut vv: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
+            // scale::Encode::encode_to(&vec_eles, &mut vv);
 
-            let msg_vec = super::super::message_protocol::MessageVec{
-                n: ink_prelude::string::String::from("11"),
-                t: super::super::message_protocol::MsgType::UserData,
-                v: vv,
-            };
+            // let msg_vec = super::super::message_protocol::MessageVec{
+            //     n: ink_prelude::string::String::from("11"),
+            //     t: super::super::message_protocol::MsgType::UserData,
+            //     v: vv,
+            // };
 
-            let msg_vec2 = super::super::message_protocol::MessageVec::from(ink_prelude::string::String::from("11"), 
-                                                                            super::super::message_protocol::MsgType::UserData, 
-                                                                            vec_eles);
+            // let msg_vec2 = super::super::message_protocol::MessageVec::from(ink_prelude::string::String::from("11"), 
+            //                                                                 super::super::message_protocol::MsgType::UserData, 
+            //                                                                 vec_eles);
 
-            assert_eq!(msg_vec, msg_vec2);
+            // assert_eq!(msg_vec, msg_vec2);
 
-            assert_eq!(msg_payload.add_vec(msg_vec), true);
+            // assert_eq!(msg_payload.add_vec(msg_vec), true);
             
             // simulate encode `MessagePayload` from routers(off-chain js)
             let mut pl_code: ink_prelude::vec::Vec::<u8> = ink_prelude::vec::Vec::<u8>::new();
