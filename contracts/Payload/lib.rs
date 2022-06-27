@@ -41,12 +41,29 @@ mod Payload {
 
     /// test enum value
     #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+    // #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub enum DetailTypes {
         IOString(ink_prelude::string::String),
         IOU32(u32),
         IOU64Array(ink_prelude::vec::Vec<u64>),
         None,
+    }
+
+    impl ::scale_info::TypeInfo for DetailTypes {
+        type Identity = Self;
+
+        fn type_info() -> ::scale_info::Type {
+            ::scale_info::Type::builder()
+                            .path(::scale_info::Path::new("DetailTypes", module_path!()))
+                            .variant(
+                                ::scale_info::build::Variants::new()
+                                    .variant("IOString", |v| v.index(0).fields(::scale_info::build::Fields::unnamed().field(|f| f.ty::<ink_prelude::string::String>())))
+                                    .variant("IOU32", |v| v.index(1).fields(::scale_info::build::Fields::unnamed().field(|f| f.ty::<u32>())))
+                                    .variant("IOU64Array", |v| v.index(2).fields(::scale_info::build::Fields::unnamed().field(|f| f.ty::<ink_prelude::vec::Vec<u64>>())))
+                                    .variant("None", |v| v.index(3))
+                            )
+
+        }
     }
 
     #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
