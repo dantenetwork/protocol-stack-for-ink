@@ -3,7 +3,7 @@
 use ink_lang as ink;
 use ink_prelude;
 
-use payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
+use payload::message_protocol::{ MessagePayload, MessageItem};
 use payload::message_define::{ISentMessage, IReceivedMessage};
 
 /// Note:

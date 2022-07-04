@@ -5,7 +5,7 @@ mod test;
 use ink_lang as ink;
 use ink_prelude;
 
-use payload::message_protocol::{ MessagePayload, MessageItem, MsgDetail, InMsgType};
+use payload::message_protocol::{ MessagePayload, MessageItem, MsgDetail};
 use payload::message_define::{ISentMessage, IReceivedMessage};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -17,6 +17,8 @@ pub struct MyData {
 #[ink::contract]
 mod callee {
 
+    use payload::message_protocol::InMsgType;
+
     #[derive(Debug, PartialEq, Clone, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
     pub struct MessageDetail{
@@ -27,9 +29,9 @@ mod callee {
 
     /// This is an example to impl `payload::message_protocol::InMsgType` for a user defined struct, 
     /// such that `MessageDetail` can be read directly through `payload::message_protocol::MessageItem::in_to::<MessageDetail>()`
-    impl super::InMsgType for MessageDetail {
+    impl InMsgType for MessageDetail {
         type MyType = MessageDetail;
-        fn get_value<MyType>(type_value: & super::MsgDetail) -> Option<Self::MyType> {
+        fn get_value(type_value: & super::MsgDetail) -> Option<Self::MyType> {
             if let super::MsgDetail::UserData(val1, val2) = type_value.clone() {
                 if val1 != 73 {
                     let mut v_ref = val2.as_slice();
@@ -40,6 +42,14 @@ mod callee {
             } else {
                 None
             }
+        }
+
+        /// items from traits can only be used if the trait is in scope
+        fn create_message(msg_detail: Self::MyType) -> super::MsgDetail {
+            let mut v = ink_prelude::vec::Vec::new();
+            scale::Encode::encode_to(&msg_detail, &mut v);
+            
+            super::MsgDetail::UserData(73, v)
         }
     }
 
@@ -150,12 +160,11 @@ mod callee {
         }
 
         #[ink(message)]
-        pub fn test_ud_en_de_vec(&self, msg: MessageDetail) -> ink_prelude::vec::Vec<MessageDetail> {
+        pub fn test_ud_en_de_other(&self, msg: MessageDetail) -> Option<MessageDetail> {
             let msg_vec = super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
-                                                    super::MsgType::InkU32, 
-                                                    ink_prelude::vec![msg.clone(), msg.clone()]);
+                                                    MessageDetail::create_message(msg));
 
-            msg_vec.in_to()
+            msg_vec.in_to::<MessageDetail>()
         }
 
         /// test corss contract call
@@ -282,15 +291,12 @@ mod callee {
             let mut pl = super::super::MessagePayload::new();
             let mut msg_item = super::super::MessageItem{
                 n: ink_prelude::string::String::from("1"),
-                t: super::super::MsgType::InkU16,
-                v: v_vec,
+                tv: super::super::MsgDetail::InkU16(18),
             };
 
-            pl.push_item(ink_prelude::string::String::from("1"), super::super::MsgType::InkU16, v_u16);
-            msg_item.t = super::super::MsgType::InkU8;
-            assert_eq!(pl.push_item(ink_prelude::string::String::from("1"), super::super::MsgType::InkU16, v_u16), false);
-            // msg_item.n = 2;
-            msg_item.v.push(100);
+            pl.push_item(ink_prelude::string::String::from("1"), super::super::MsgDetail::InkU16(24));
+            msg_item.tv = super::super::MsgDetail::InkU8(255);
+            assert_eq!(pl.push_item(ink_prelude::string::String::from("1"), super::super::MsgDetail::InkU16(v_u16)), false);
 
             // Attention, `assert_eq` use the concrete implementation of `PartialEq` to chack equal
             // So it doesn't matter whether the `t` and `v` is the same
@@ -300,10 +306,9 @@ mod callee {
         /// test `MessageItem::from`, `MessageItem::into` 
         fn test_from_into(){
             let mut msg_item = super::super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
-                                                            super::super::MsgType::InkU32, 
-                                                            128 as u32);
+                                                            super::super::MsgDetail::InkU32(128));
 
-            let num: u32 = msg_item.in_to();
+            let num: u32 = msg_item.in_to::<u32>().unwrap();
 
             assert_eq!(num, 128 as u32);
         }
