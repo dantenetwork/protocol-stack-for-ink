@@ -5,7 +5,7 @@ mod test;
 use ink_lang as ink;
 use ink_prelude;
 
-use payload::message_protocol::{ MessagePayload, MessageItem, MsgType};
+use payload::message_protocol::{ MessagePayload, MessageItem, MsgDetail, InMsgType};
 use payload::message_define::{ISentMessage, IReceivedMessage};
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -23,6 +23,24 @@ mod callee {
         name: ink_prelude::string::String,
         age: u32,
         phones: ink_prelude::vec::Vec<ink_prelude::string::String>,
+    }
+
+    /// This is an example to impl `payload::message_protocol::InMsgType` for a user defined struct, 
+    /// such that `MessageDetail` can be read directly through `payload::message_protocol::MessageItem::in_to::<MessageDetail>()`
+    impl super::InMsgType for MessageDetail {
+        type MyType = MessageDetail;
+        fn get_value<MyType>(type_value: & super::MsgDetail) -> Option<Self::MyType> {
+            if let super::MsgDetail::UserData(val1, val2) = type_value.clone() {
+                if val1 != 73 {
+                    let mut v_ref = val2.as_slice();
+                    Some(scale::Decode::decode(&mut v_ref).unwrap())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
     }
 
     /// event
@@ -121,12 +139,14 @@ mod callee {
         }
 
         #[ink(message)]
-        pub fn test_ud_en_de(&self, msg: MessageDetail) -> MessageDetail {
-            let msg_item = super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
-                                                    super::MsgType::InkU32, 
-                                                    msg);
+        pub fn test_ud_en_de(&self, msg: MessageDetail) -> Option<MessageDetail> {
+            let mut v = ink_prelude::vec::Vec::new();
+            scale::Encode::encode_to(&msg, &mut v);
 
-            msg_item.in_to()
+            let msg_item = super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
+                                                    super::MsgDetail::UserData(73, v));
+
+            msg_item.in_to::<MessageDetail>()
         }
 
         #[ink(message)]
