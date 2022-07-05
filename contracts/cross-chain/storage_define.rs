@@ -165,22 +165,22 @@ impl SQoS {
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
 pub struct Session {
-    pub msg_type: u8,
     pub id: u128,
+    pub callback: Option<Bytes>,
 }
 
 impl Session {
-    pub fn new(msg_type: u8, id: u128) -> Self {
+    pub fn new(id: u128, callback: Option<Bytes>) -> Self {
         Self {
-            msg_type,
             id,
+            callback,
         }
     }
 
     pub fn from(session: ISession) -> Self {
         Self {
-            msg_type: session.msg_type,
             id: session.id,
+            callback: session.callback,
         }
     }
 }
@@ -234,7 +234,7 @@ impl ReceivedMessage {
             contract: AccountId::default(),
             action: [0, 0, 0, 0],
             data: Bytes::new(),
-            session: Session::new(0, 0),
+            session: Session::new(0, None),
             executed: false,
             error_code,
         };
@@ -300,10 +300,11 @@ pub struct Context {
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: [u8;4],
+    pub session: Session,
 }
 
 impl Context {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: Vec<SQoS>, contract: AccountId, action: [u8;4]) -> Self {
+    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: Vec<SQoS>, contract: AccountId, action: [u8;4], session: Session) -> Self {
         Self {
             id,
             from_chain,
@@ -312,6 +313,7 @@ impl Context {
             sqos,
             contract,
             action,
+            session,
         }
     }
 
@@ -324,6 +326,8 @@ impl Context {
         }
 
         let contract: &[u8; 32] = AsRef::<[u8; 32]>::as_ref(&self.contract);
-        IContext::new(self.id, self.from_chain.clone(), self.sender.clone(), self.signer.clone(), sqos, contract.clone(), self.action)
+
+        let session = ISession::new(self.session.id, self.session.callback.clone());
+        IContext::new(self.id, self.from_chain.clone(), self.sender.clone(), self.signer.clone(), sqos, contract.clone(), self.action, session)
     }
 }

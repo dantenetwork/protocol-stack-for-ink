@@ -317,7 +317,7 @@ mod cross_chain {
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         #[ink(message)]
         fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
-            self.only_owner()?;
+            self.only_porter()?;
 
             self.internal_abandon_message(from_chain, id, error_code)
         }
@@ -353,7 +353,7 @@ mod cross_chain {
 
             message.executed = true;
             self.context = Some(Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
-                message.sqos.clone(), message.contract.clone(), message.action.clone()));
+                message.sqos.clone(), message.contract.clone(), message.action.clone(), message.session.clone()));
 
             // Construct paylaod
             let mut data_slice = message.data.as_slice();
