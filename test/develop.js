@@ -90,8 +90,7 @@ async function query() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-  const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getContext'](sender.address, {value, gasLimit }, 
-                                          );
+  const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getContext'](sender.address, {value, gasLimit });
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
@@ -331,8 +330,8 @@ function decodeEvent() {
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // 0x010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600
 // test_scale_codec()
-test_scale_codec1()
-// query()
+// test_scale_codec1()
+query()
 // sendGreeting()
 // test_message()
 

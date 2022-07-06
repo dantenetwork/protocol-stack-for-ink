@@ -240,6 +240,26 @@ mod cross_chain {
             ret
         }
 
+        /// Method flushes the current state of `Self` into storage.
+        /// ink! recursively calculate a key of each field.
+        /// So if you want to flush the correct state of the contract,
+        /// you have to this method on storage struct.
+        fn flush(&self) {
+            let root_key = ::ink_primitives::Key::from([0x00; 32]);
+            ::ink_storage::traits::push_spread_root::<Self>(self, &root_key);
+        }
+
+        /// Method loads the current state of `Self` from storage.
+        /// ink! recursively calculate a key of each field.
+        /// So if you want to load the correct state of the contract,
+        /// you have to this method on storage struct.
+        fn load(&mut self) {
+            let root_key = ::ink_primitives::Key::from([0x00; 32]);
+            let mut state = ::ink_storage::traits::pull_spread_root::<Self>(&root_key);
+            core::mem::swap(self, &mut state);
+            let _ = core::mem::ManuallyDrop::new(state);
+        }
+
         /// For debug
         #[ink(message)]
         pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
@@ -359,6 +379,8 @@ mod cross_chain {
             let mut data_slice = message.data.as_slice();
             let payload: MessagePayload = scale::Decode::decode(&mut data_slice).ok().ok_or(Error::DecodeDataFailed)?;
 
+            self.flush();
+
             // Cross-contract call
             let selector: [u8; 4] = message.action.clone().try_into().unwrap();
             let cc_result: Result<String, ink_env::Error> = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
@@ -371,8 +393,11 @@ mod cross_chain {
                     ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
                     .push_arg(payload)
                 )
+                .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
                 .returns::<String>()
                 .fire();
+
+            self.load();
 
             if cc_result.is_err() {
                 // let e = cc_result.unwrap_err();
