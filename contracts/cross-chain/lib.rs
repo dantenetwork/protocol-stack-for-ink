@@ -89,12 +89,6 @@ mod cross_chain {
         /// Returns the message with id `id` received from chain `chain_name`
         #[ink(message)]
         fn get_received_message(& self, chain_name: String, id: u128) -> Result<ReceivedMessage, Error>;
-        /// Registers external callable interface information
-        #[ink(message)]
-        fn register_interface(&mut self, action: String, interface: String);
-        /// Returns interface information of contract `contract` and action `action`
-        #[ink(message)]
-        fn get_interface(& self, contract: AccountId, action: String) -> Result<String, Error>;
     }
 
     /// Trait for multi porters
@@ -454,20 +448,6 @@ mod cross_chain {
             let message: &ReceivedMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
             Ok(message.clone())
         }
-
-        /// Registers external callable interface information
-        #[ink(message)]
-        fn register_interface(&mut self, action: String, interface: String) {
-            let caller = self.env().caller();
-            self.interfaces.insert((caller, action), &interface);
-        }
-
-        /// Returns interface information of contract `contract` and action `action`
-        #[ink(message)]
-        fn get_interface(& self, contract: AccountId, action: String) -> Result<String, Error> {
-            let interface = self.interfaces.get((contract, action)).ok_or(Error::InterfaceNotFound)?;
-            Ok(interface)
-        }
     }
 
     impl MultiPorters for CrossChain {
@@ -755,21 +735,6 @@ mod cross_chain {
             // Received message is Ok.
             let message = cross_chain.get_received_message(from_chain, 1);
             assert_eq!(message.is_ok(), true);
-        }
-
-        #[ink::test]
-        fn register_interface_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-            // Create a new contract instance.
-            let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-            // Received message is Ok.
-            let action = "ETHERERUM_ACTION".to_string();
-            let interface = "INTERFACE".to_string();
-            cross_chain.register_interface(action.clone(), interface);
-            // Check registered interface.
-            let i = cross_chain.get_interface(accounts.alice, action);
-            assert_eq!(i.is_ok(), true);
         }
 
         // Tests for trait MultiPorters
