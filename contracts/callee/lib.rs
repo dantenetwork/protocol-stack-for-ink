@@ -32,13 +32,9 @@ mod callee {
     impl InMsgType for MessageDetail {
         type MyType = MessageDetail;
         fn get_value(type_value: & super::MsgDetail) -> Option<Self::MyType> {
-            if let super::MsgDetail::UserData(val1, val2) = type_value.clone() {
-                if val1 != 73 {
-                    let mut v_ref = val2.as_slice();
-                    Some(scale::Decode::decode(&mut v_ref).unwrap())
-                } else {
-                    None
-                }
+            if let super::MsgDetail::UserData(val) = type_value.clone() {
+                let mut v_ref = val.as_slice();
+                Some(scale::Decode::decode(&mut v_ref).unwrap())
             } else {
                 None
             }
@@ -49,7 +45,7 @@ mod callee {
             let mut v = ink_prelude::vec::Vec::new();
             scale::Encode::encode_to(&msg_detail, &mut v);
             
-            super::MsgDetail::UserData(73, v)
+            super::MsgDetail::UserData(v)
         }
     }
 
@@ -154,7 +150,7 @@ mod callee {
             scale::Encode::encode_to(&msg, &mut v);
 
             let msg_item = super::MessageItem::from(ink_prelude::string::String::from("Nika"), 
-                                                    super::MsgDetail::UserData(73, v));
+                                                    super::MsgDetail::UserData(v));
 
             msg_item.in_to::<MessageDetail>()
         }
