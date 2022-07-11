@@ -26,6 +26,9 @@ pub enum Error {
     DecodeDataFailed,
     CrossContractCallFailed,
     NotRouter,
+    AheadOfId,
+    AlreadReceived,
+    ReceiveCompleted
 }
 
 impl Error {
@@ -179,9 +182,8 @@ impl Session {
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
 )]
-pub struct ExecutableMessage {
+pub struct AbandonedMessage {
     pub message: Message,
-    pub executed: bool,
     pub error_code: u16,
 }
 
@@ -202,6 +204,27 @@ pub struct Message {
     pub session: Session,
 }
 
+impl Message {
+    pub fn new(message: IReceivedMessage) -> Self {
+        let mut sqos = Vec::<SQoS>::new();
+        for s in message.sqos {
+            sqos.push(SQoS::from(s));
+        }
+
+        Self {
+            id: message.id,
+            from_chain: message.from_chain,
+            sender: message.sender,
+            signer: message.signer,
+            sqos,
+            contract: AccountId::from(message.contract),
+            action: message.action,
+            data: message.data,
+            session: Session::from(message.session),
+        }
+    }
+}
+
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
@@ -215,7 +238,18 @@ pub struct Group {
     pub credibility_weight: u32,
 }
 
-impl ExecutableMessage {
+impl Group {
+    pub fn contains(&self, router: &AccountId) -> bool {
+        for r in self.routers.iter() {
+            if router == r {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+impl AbandonedMessage {
     pub fn new(message: IReceivedMessage) -> Self {
         let mut sqos = Vec::<SQoS>::new();
         for s in message.sqos {
@@ -234,7 +268,6 @@ impl ExecutableMessage {
                 data: message.data,
                 session: Session::from(message.session),
             },
-            executed: false,
             error_code: 0,
         }
     }
@@ -252,7 +285,6 @@ impl ExecutableMessage {
                 data: Bytes::new(),
                 session: Session::new(0, None),
             },
-            executed: false,
             error_code,
         };
         m
@@ -434,4 +466,21 @@ pub struct Evaluation {
     pub routers: Vec<(AccountId, u32)>,
     pub initial_credibility_value: u32,
     pub selected_number: u8,
+}
+
+impl Evaluation {
+    pub fn get_router_credibility(&self, router: &AccountId) -> u32 {
+        for r in self.routers.iter() {
+            if r.0 == *router {
+                return r.1
+            }
+        }
+        0
+    }
+
+    pub fn update_router_credibility(&mut self, router: &AccountId, credibility: u32) {
+        for r in self.routers.iter_mut() {
+            r.1 = credibility;
+        }
+    }
 }
