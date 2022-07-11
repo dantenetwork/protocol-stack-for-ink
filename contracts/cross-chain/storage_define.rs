@@ -28,7 +28,7 @@ pub enum Error {
     NotRouter,
     AheadOfId,
     AlreadReceived,
-    ReceiveCompleted
+    ReceiveCompleted,
 }
 
 impl Error {
@@ -183,7 +183,9 @@ impl Session {
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
 )]
 pub struct AbandonedMessage {
-    pub message: Message,
+    pub id: u128,
+    pub from_chain: String,
+    pub routers: Vec<AccountId>,
     pub error_code: u16,
 }
 
@@ -249,47 +251,47 @@ impl Group {
     }
 }
 
-impl AbandonedMessage {
-    pub fn new(message: IReceivedMessage) -> Self {
-        let mut sqos = Vec::<SQoS>::new();
-        for s in message.sqos {
-            sqos.push(SQoS::from(s));
-        }
+// impl AbandonedMessage {
+//     pub fn new(message: IReceivedMessage) -> Self {
+//         let mut sqos = Vec::<SQoS>::new();
+//         for s in message.sqos {
+//             sqos.push(SQoS::from(s));
+//         }
 
-        Self {
-            message: Message {
-                id: message.id,
-                from_chain: message.from_chain,
-                sender: message.sender,
-                signer: message.signer,
-                sqos,
-                contract: AccountId::from(message.contract),
-                action: message.action,
-                data: message.data,
-                session: Session::from(message.session),
-            },
-            error_code: 0,
-        }
-    }
+//         Self {
+//             message: Message {
+//                 id: message.id,
+//                 from_chain: message.from_chain,
+//                 sender: message.sender,
+//                 signer: message.signer,
+//                 sqos,
+//                 contract: AccountId::from(message.contract),
+//                 action: message.action,
+//                 data: message.data,
+//                 session: Session::from(message.session),
+//             },
+//             error_code: 0,
+//         }
+//     }
 
-    pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
-        let m = Self {
-            message: Message {
-                id,
-                from_chain,
-                sender: String::try_from("").unwrap(),
-                signer: String::try_from("").unwrap(),
-                sqos: Vec::<SQoS>::new(),
-                contract: AccountId::default(),
-                action: [0, 0, 0, 0],
-                data: Bytes::new(),
-                session: Session::new(0, None),
-            },
-            error_code,
-        };
-        m
-    }
-}
+//     pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
+//         let m = Self {
+//             message: Message {
+//                 id,
+//                 from_chain,
+//                 sender: String::try_from("").unwrap(),
+//                 signer: String::try_from("").unwrap(),
+//                 sqos: Vec::<SQoS>::new(),
+//                 contract: AccountId::default(),
+//                 action: [0, 0, 0, 0],
+//                 data: Bytes::new(),
+//                 session: Session::new(0, None),
+//             },
+//             error_code,
+//         };
+//         m
+//     }
+// }
 
 /// Sent message structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
@@ -472,7 +474,7 @@ impl Evaluation {
     pub fn get_router_credibility(&self, router: &AccountId) -> u32 {
         for r in self.routers.iter() {
             if r.0 == *router {
-                return r.1
+                return r.1;
             }
         }
         0

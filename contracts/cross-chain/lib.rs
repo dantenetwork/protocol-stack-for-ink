@@ -14,7 +14,7 @@ pub mod cross_chain {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     // use crate::storage_define::Evaluation;
     use crate::storage_define::{
-        Context, Error, Evaluation, AbandonedMessage, Group, Message, Routers, SQoS, SentMessage,
+        AbandonedMessage, Context, Error, Evaluation, Group, Message, Routers, SQoS, SentMessage,
         Threshold,
     };
     // use String as ChainId;
@@ -113,8 +113,8 @@ pub mod cross_chain {
         final_received_message_id: Mapping<(String, AccountId), u128>,
         /// Table of executable messages
         executable_message_table: Mapping<String, Vec<Message>>,
-        
-        abandoned_message: Mapping<String, Vec<AbandonedMessage>>,
+
+        abandoned_message: Mapping<(String, u128), AbandonedMessage>,
 
         /// Context of a cross-contract call
         context: Option<Context>,
@@ -233,23 +233,36 @@ pub mod cross_chain {
             let _ = core::mem::ManuallyDrop::new(state);
         }
 
-        fn message_verify(&mut self, key: &(String, u128), total_credibility: u64) -> (Vec<AccountId>, Vec<AccountId>, Vec<(Vec<AccountId>, u32)>) {
-            let mut aggregation: Vec<Group> = self.received_message_table.get(&key).unwrap().into_iter().map(|group| {
-                let mut reture_value = group.clone();
-                reture_value.credibility_weight = (group.group_credibility_value * 10000 / total_credibility) as u32;
-                reture_value
-            }).collect();
+        fn message_verify(
+            &mut self,
+            key: &(String, u128),
+            total_credibility: u64,
+        ) -> (Vec<AccountId>, Vec<AccountId>, Vec<(Vec<AccountId>, u32)>) {
+            let mut aggregation: Vec<Group> = self
+                .received_message_table
+                .get(&key)
+                .unwrap()
+                .into_iter()
+                .map(|group| {
+                    let mut reture_value = group.clone();
+                    reture_value.credibility_weight =
+                        (group.group_credibility_value * 10000 / total_credibility) as u32;
+                    reture_value
+                })
+                .collect();
             aggregation.sort_by(|a, b| b.credibility_weight.cmp(&a.credibility_weight));
             let mut trusted: Vec<AccountId> = Vec::new();
             let mut untrusted: Vec<AccountId> = Vec::new();
             let mut exeception: Vec<(Vec<AccountId>, u32)> = Vec::new();
             if aggregation[0].credibility_weight
                 >= self.evaluation.threshold.credibility_weight_threshold
-            {   
-                let mut executable = self.executable_message_table.get(&key.0).unwrap_or(Vec::new());
+            {
+                let mut executable = self
+                    .executable_message_table
+                    .get(&key.0)
+                    .unwrap_or(Vec::new());
                 executable.push(aggregation[0].message.clone());
-                self.executable_message_table
-                    .insert(&key.0, &executable);
+                self.executable_message_table.insert(&key.0, &executable);
                 trusted = aggregation.remove(0).routers;
                 for group in aggregation {
                     untrusted.extend(group.routers);
@@ -277,12 +290,8 @@ pub mod cross_chain {
             let coefficient = self.evaluation.evaluation_coefficient.clone();
             // update current trusted validators credibility
             for router in trusted {
-                let origin_router_credibility = self
-                    .evaluation
-                    .get_router_credibility(&router);
-                if origin_router_credibility
-                    < coefficient.middle_credibility
-                {
+                let origin_router_credibility = self.evaluation.get_router_credibility(&router);
+                if origin_router_credibility < coefficient.middle_credibility {
                     credibility_value = coefficient.success_step
                         * (origin_router_credibility - coefficient.min_credibility)
                         / coefficient.range_crediblility
@@ -293,33 +302,32 @@ pub mod cross_chain {
                         / coefficient.range_crediblility
                         + origin_router_credibility;
                 }
-                self.evaluation.update_router_credibility(&router, credibility_value);
+                self.evaluation
+                    .update_router_credibility(&router, credibility_value);
             }
-    
+
             // update current untrusted validators credibility
             for router in untrusted {
-                let origin_node_credibility = self
-                    .evaluation
-                    .get_router_credibility(&router);
+                let origin_node_credibility = self.evaluation.get_router_credibility(&router);
                 credibility_value = origin_node_credibility
                     - coefficient.do_evil_step
                         * (origin_node_credibility - coefficient.min_credibility)
                         / coefficient.range_crediblility;
-                self.evaluation.update_router_credibility(&router, credibility_value);
+                self.evaluation
+                    .update_router_credibility(&router, credibility_value);
             }
             // update current exeception validators credibility
             for (routers, credibility_weight) in exeception {
                 for router in routers {
-                    let origin_node_credibility = self
-                        .evaluation
-                        .get_router_credibility(&router);
+                    let origin_node_credibility = self.evaluation.get_router_credibility(&router);
                     credibility_value = origin_node_credibility
                         - coefficient.exception_step
                             * (origin_node_credibility - coefficient.min_credibility)
                             / coefficient.range_crediblility
                             * (10_000 - credibility_weight)
                             / 10_000;
-                    self.evaluation.update_router_credibility(&router, credibility_value);
+                    self.evaluation
+                        .update_router_credibility(&router, credibility_value);
                 }
             }
         }
@@ -329,7 +337,7 @@ pub mod cross_chain {
         pub fn clear_messages(&mut self, chain_name: String, id: u128) -> Result<(), Error> {
             self.only_owner()?;
             let total = self.latest_message_id.get(&chain_name).unwrap();
-            
+
             self.received_message_table.remove((chain_name.clone(), id));
             // self.sent_message_table.remove(chain_name);
 
@@ -376,7 +384,8 @@ pub mod cross_chain {
         #[ink(message)]
         fn set_token_contract(&mut self, _token: AccountId) {}
 
-        /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
+        /// Cross-chain calls method `action` of contract `contract` on chain
+        /// `to_chain` with data `data`
         #[ink(message)]
         fn send_message(&mut self, message: ISentMessage) -> u128 {
             let mut chain_message: Vec<SentMessage> = self
@@ -399,7 +408,8 @@ pub mod cross_chain {
             u128::try_from(id).unwrap()
         }
 
-        /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
+        /// Cross-chain receives message from chain `from_chain`, the message
+        /// will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
             self.only_router()?;
@@ -416,11 +426,12 @@ pub mod cross_chain {
             }
 
             let router_key = (message.from_chain.clone(), router);
-            let final_received_message_id = self.final_received_message_id.get(&router_key).unwrap_or(0);
+            let final_received_message_id =
+                self.final_received_message_id.get(&router_key).unwrap_or(0);
             if id != final_received_message_id {
                 return Err(Error::AlreadReceived);
             }
-            
+
             if id < final_received_message_id
                 || (id < latest_message_id + 1 && final_received_message_id == 0)
             {
@@ -477,6 +488,7 @@ pub mod cross_chain {
             if len >= self.evaluation.selected_number {
                 let (trusted, untrusted, exeception) = self.message_verify(&key, total_credibility);
                 self.update_validator_credibility(trusted, untrusted, exeception);
+                // TODO remove immediate?
                 self.received_message_table.remove(&key);
             }
             Ok(())

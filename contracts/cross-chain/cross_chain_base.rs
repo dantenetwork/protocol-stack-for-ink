@@ -1,4 +1,4 @@
-use crate::storage_define::{Error, Message, Group, SentMessage};
+use crate::storage_define::{Error, Group, Message, SentMessage};
 use ink_env::AccountId;
 /// Trait for basic cross-chain contract
 use ink_lang as ink;
