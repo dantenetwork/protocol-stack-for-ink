@@ -1,35 +1,17 @@
-use ink_storage::{
-    traits::{
-        SpreadLayout,
-        PackedLayout,
-    },
-};
+use ink_storage::traits::{PackedLayout, SpreadAllocate, SpreadLayout};
 
 use ink_env::AccountId;
 
-use ink_prelude::{
-    vec::Vec,
-    string::String,
-};
+use ink_prelude::{string::String, vec::Vec};
 
-use scale::{
-    Encode,
-    Decode,
-};
+use scale::{Decode, Encode};
 
 use payload::message_define::{
-    IContext,
-    IError,
-    ISQoSType,
-    ISession,
-    ISQoS,
-    ISentMessage,
-    IReceivedMessage,
-    IContent,
+    IContent, IContext, IError, IReceivedMessage, ISQoS, ISQoSType, ISentMessage, ISession,
 };
-    
+
 pub type Bytes = Vec<u8>;
-pub type Porters = Vec<AccountId>;
+pub type Routers = Vec<AccountId>;
 
 /// Errors for cross-chain contract
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Copy, Clone)]
@@ -43,7 +25,7 @@ pub enum Error {
     InterfaceNotFound,
     DecodeDataFailed,
     CrossContractCallFailed,
-    NotPorter,
+    NotRouter,
 }
 
 impl Error {
@@ -63,7 +45,10 @@ impl Error {
 
 /// Content structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
 pub struct Content {
     contract: String,
     action: String,
@@ -90,8 +75,11 @@ impl Content {
 
 /// SQOS structure
 #[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub enum SQoSType{
+#[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub enum SQoSType {
     Reveal,
     Challenge,
     Threshold,
@@ -123,7 +111,10 @@ impl SQoSType {
 
 /// SQOS structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
 pub struct SQoS {
     pub t: SQoSType,
     pub v: Option<String>,
@@ -131,10 +122,7 @@ pub struct SQoS {
 
 impl SQoS {
     pub fn new(t: SQoSType, v: Option<String>) -> Self {
-        Self {
-            t,
-            v,
-        }
+        Self { t, v }
     }
 
     pub fn from(sqos: ISQoS) -> Self {
@@ -144,7 +132,7 @@ impl SQoS {
         }
     }
 
-    pub fn derive(&self) -> ISQoS {        
+    pub fn derive(&self) -> ISQoS {
         let sqos_type = match self.t {
             SQoSType::Reveal => ISQoSType::Reveal,
             SQoSType::Challenge => ISQoSType::Challenge,
@@ -163,7 +151,10 @@ impl SQoS {
 
 /// Session Structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
 pub struct Session {
     pub id: u128,
     pub callback: Option<Bytes>,
@@ -171,10 +162,7 @@ pub struct Session {
 
 impl Session {
     pub fn new(id: u128, callback: Option<Bytes>) -> Self {
-        Self {
-            id,
-            callback,
-        }
+        Self { id, callback }
     }
 
     pub fn from(session: ISession) -> Self {
@@ -187,22 +175,47 @@ impl Session {
 
 /// Received message structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct ReceivedMessage {
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct ExecutableMessage {
+    pub message: Message,
+    pub executed: bool,
+    pub error_code: u16,
+}
+
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct Message {
     pub id: u128,
     pub from_chain: String,
     pub sender: String,
     pub signer: String,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
-    pub action: [u8;4],
+    pub action: [u8; 4],
     pub data: Bytes,
     pub session: Session,
-    pub executed: bool,
-    pub error_code: u16,
 }
 
-impl ReceivedMessage {
+#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct Group {
+    pub message_hash: [u8; 32],
+    pub message: Message,
+    pub routers: Vec<AccountId>,
+    pub group_credibility_value: u64,
+    pub credibility_weight: u32,
+}
+
+impl ExecutableMessage {
     pub fn new(message: IReceivedMessage) -> Self {
         let mut sqos = Vec::<SQoS>::new();
         for s in message.sqos {
@@ -210,15 +223,17 @@ impl ReceivedMessage {
         }
 
         Self {
-            id: message.id,
-            from_chain: message.from_chain,
-            sender: message.sender,
-            signer: message.signer,
-            sqos,
-            contract: AccountId::from(message.contract),
-            action: message.action,
-            data: message.data,
-            session: Session::from(message.session),
+            message: Message {
+                id: message.id,
+                from_chain: message.from_chain,
+                sender: message.sender,
+                signer: message.signer,
+                sqos,
+                contract: AccountId::from(message.contract),
+                action: message.action,
+                data: message.data,
+                session: Session::from(message.session),
+            },
             executed: false,
             error_code: 0,
         }
@@ -226,15 +241,17 @@ impl ReceivedMessage {
 
     pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
         let m = Self {
-            id,
-            from_chain,
-            sender: String::try_from("").unwrap(),
-            signer: String::try_from("").unwrap(),
-            sqos: Vec::<SQoS>::new(),
-            contract: AccountId::default(),
-            action: [0, 0, 0, 0],
-            data: Bytes::new(),
-            session: Session::new(0, None),
+            message: Message {
+                id,
+                from_chain,
+                sender: String::try_from("").unwrap(),
+                signer: String::try_from("").unwrap(),
+                sqos: Vec::<SQoS>::new(),
+                contract: AccountId::default(),
+                action: [0, 0, 0, 0],
+                data: Bytes::new(),
+                session: Session::new(0, None),
+            },
             executed: false,
             error_code,
         };
@@ -244,7 +261,10 @@ impl ReceivedMessage {
 
 /// Sent message structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
 pub struct SentMessage {
     pub id: u128,
     pub from_chain: String,
@@ -257,7 +277,13 @@ pub struct SentMessage {
 }
 
 impl SentMessage {
-    pub fn new(id: u128, from_chain: String, sender: AccountId, signer: AccountId, message: ISentMessage) -> Self {
+    pub fn new(
+        id: u128,
+        from_chain: String,
+        sender: AccountId,
+        signer: AccountId,
+        message: ISentMessage,
+    ) -> Self {
         let mut sqos = Vec::<SQoS>::new();
         for s in message.sqos {
             sqos.push(SQoS::from(s));
@@ -275,7 +301,12 @@ impl SentMessage {
         }
     }
 
-    pub fn new_sending_message(to_chain: String, sqos: Vec<SQoS>, content: Content, session: Session) -> Self {
+    pub fn new_sending_message(
+        to_chain: String,
+        sqos: Vec<SQoS>,
+        content: Content,
+        session: Session,
+    ) -> Self {
         Self {
             id: 0,
             from_chain: String::try_from("").unwrap(),
@@ -291,7 +322,10 @@ impl SentMessage {
 
 /// Context structure
 #[derive(SpreadLayout, Clone, Decode, Encode)]
-#[cfg_attr(feature = "std", derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
 pub struct Context {
     pub id: u128,
     pub from_chain: String,
@@ -299,12 +333,21 @@ pub struct Context {
     pub signer: String,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
-    pub action: [u8;4],
+    pub action: [u8; 4],
     pub session: Session,
 }
 
 impl Context {
-    pub fn new(id: u128, from_chain: String, sender: String, signer: String, sqos: Vec<SQoS>, contract: AccountId, action: [u8;4], session: Session) -> Self {
+    pub fn new(
+        id: u128,
+        from_chain: String,
+        sender: String,
+        signer: String,
+        sqos: Vec<SQoS>,
+        contract: AccountId,
+        action: [u8; 4],
+        session: Session,
+    ) -> Self {
         Self {
             id,
             from_chain,
@@ -319,7 +362,7 @@ impl Context {
 
     pub fn derive(&self) -> IContext {
         let mut sqos = Vec::<ISQoS>::new();
-        
+
         for i in &self.sqos {
             let s = i.derive();
             sqos.push(s);
@@ -328,6 +371,67 @@ impl Context {
         let contract: &[u8; 32] = AsRef::<[u8; 32]>::as_ref(&self.contract);
 
         let session = ISession::new(self.session.id, self.session.callback.clone());
-        IContext::new(self.id, self.from_chain.clone(), self.sender.clone(), self.signer.clone(), sqos, contract.clone(), self.action, session)
+        IContext::new(
+            self.id,
+            self.from_chain.clone(),
+            self.sender.clone(),
+            self.signer.clone(),
+            sqos,
+            contract.clone(),
+            self.action,
+            session,
+        )
     }
+}
+
+// Router Evaluation
+#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct EvaluationCoefficient {
+    pub min_credibility: u32,
+    pub max_credibility: u32,
+    pub middle_credibility: u32,
+    pub range_crediblility: u32,
+    pub success_step: u32,
+    pub do_evil_step: u32,
+    pub exception_step: u32,
+}
+
+#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct CredibilitySelectionRatio {
+    pub upper_limit: u32,
+    pub lower_limit: u32,
+}
+
+#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct Threshold {
+    pub credibility_weight_threshold: u32,
+    pub min_seleted_threshold: u32,
+    pub trustworthy_threshold: u32,
+}
+
+#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[cfg_attr(
+    feature = "std",
+    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+)]
+pub struct Evaluation {
+    pub threshold: Threshold,
+    pub credibility_selection_ratio: CredibilitySelectionRatio,
+    pub evaluation_coefficient: EvaluationCoefficient,
+    pub current_routers: Vec<AccountId>,
+    pub routers: Vec<(AccountId, u32)>,
+    pub initial_credibility_value: u32,
+    pub selected_number: u8,
 }

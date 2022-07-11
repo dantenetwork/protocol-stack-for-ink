@@ -2,49 +2,31 @@
 
 use ink_lang as ink;
 
+pub mod cross_chain_base;
 pub mod storage_define;
-
-pub use self::cross_chain::{
-    CrossChain,
-    CrossChainRef,
-};
+// pub mod evaluation;
 
 #[ink::contract]
-mod cross_chain {
-    use ink_lang as ink;    
-    use ink_storage::{
-        traits::SpreadAllocate,
-        Mapping,
+pub mod cross_chain {
+    use crate::cross_chain_base::CrossChainBase;
+    use ink_lang as ink;
+    use ink_prelude::{string::String, vec::Vec};
+    use ink_storage::{traits::SpreadAllocate, Mapping};
+    // use crate::storage_define::Evaluation;
+    use crate::storage_define::{
+        Context, Error, Evaluation, ExecutableMessage, Group, Message, Routers, SQoS, SentMessage,
+        Threshold,
     };
 
-    use ink_prelude::{
-        vec::Vec,
-        string::String,
-    };
-
-    use super::storage_define::{
-        Error,
-        ReceivedMessage,
-        SentMessage,
-        Context,
-        Porters,
-        SQoS,
-    };
-
+    use payload::message_define::{IContext, IReceivedMessage, ISQoS, ISentMessage};
     use payload::message_protocol::MessagePayload;
-    use payload::message_define::{
-        IContext,
-        ISentMessage,
-        IReceivedMessage,
-        ISQoS,
-    };
 
     /// Trait for owner
     #[ink::trait_definition]
     pub trait Ownable {
         /// Returns the account id of the current owner
         #[ink(message)]
-        fn owner(& self) -> Option<AccountId>;
+        fn owner(&self) -> Option<AccountId>;
         /// Renounces ownership of the contract
         #[ink(message)]
         fn renounce_ownership(&mut self) -> Result<(), Error>;
@@ -53,61 +35,61 @@ mod cross_chain {
         fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), Error>;
     }
 
-    /// Trait for basic cross-chain contract
-    #[ink::trait_definition]
-    pub trait CrossChainBase {
-        /// Sets DAT token contract address
-        #[ink(message)]
-        fn set_token_contract(&mut self, token: AccountId);
-        /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
-        #[ink(message)]
-        fn send_message(&mut self, message: ISentMessage) -> u128;
-        /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
-        #[ink(message)]
-        fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>;
-        /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
-        #[ink(message)]
-        fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
-        /// Returns messages that sent from chains `chain_names` and can be executed.
-        #[ink(message)]
-        fn get_executable_messages(& self, chain_names: Vec<String>) -> Vec<ReceivedMessage>;
-        /// Triggers execution of a message sent from chain `chain_name` with id `id`
-        #[ink(message)]
-        fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
-        /// Returns the simplified message, this message is reset every time when a contract is called
-        #[ink(message)]
-        fn get_context(& self) -> Option<IContext>;
-        /// Returns the number of messages sent to chain `chain_name`
-        #[ink(message)]
-        fn get_sent_message_number(& self, chain_name: String) -> u128;
-        /// Returns the number of messages received from chain `chain_name`
-        #[ink(message)]
-        fn get_received_message_number(& self, chain_name: String) -> u128;
-        /// Returns the message with id `id` sent to chain `chain_name`
-        #[ink(message)]
-        fn get_sent_message(& self, chain_name: String, id: u128) -> Result<SentMessage, Error>;
-        /// Returns the message with id `id` received from chain `chain_name`
-        #[ink(message)]
-        fn get_received_message(& self, chain_name: String, id: u128) -> Result<ReceivedMessage, Error>;
-    }
+    // /// Trait for basic cross-chain contract
+    // #[ink::trait_definition]
+    // pub trait CrossChainBase {
+    //     /// Sets DAT token contract address
+    //     #[ink(message)]
+    //     fn set_token_contract(&mut self, token: AccountId);
+    //     /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
+    //     #[ink(message)]
+    //     fn send_message(&mut self, message: ISentMessage) -> u128;
+    //     /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
+    //     #[ink(message)]
+    //     fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>;
+    //     /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
+    //     #[ink(message)]
+    //     fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
+    //     /// Returns messages that sent from chains `chain_names` and can be executed.
+    //     #[ink(message)]
+    //     fn get_executable_messages(& self, chain_names: Vec<String>) -> Vec<ReceivedMessage>;
+    //     /// Triggers execution of a message sent from chain `chain_name` with id `id`
+    //     #[ink(message)]
+    //     fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
+    //     /// Returns the simplified message, this message is reset every time when a contract is called
+    //     #[ink(message)]
+    //     fn get_context(& self) -> Option<IContext>;
+    //     /// Returns the number of messages sent to chain `chain_name`
+    //     #[ink(message)]
+    //     fn get_sent_message_number(& self, chain_name: String) -> u128;
+    //     /// Returns the number of messages received from chain `chain_name`
+    //     #[ink(message)]
+    //     fn get_received_message_number(& self, chain_name: String) -> u128;
+    //     /// Returns the message with id `id` sent to chain `chain_name`
+    //     #[ink(message)]
+    //     fn get_sent_message(& self, chain_name: String, id: u128) -> Result<SentMessage, Error>;
+    //     /// Returns the message with id `id` received from chain `chain_name`
+    //     #[ink(message)]
+    //     fn get_received_message(& self, chain_name: String, id: u128) -> Result<ReceivedMessage, Error>;
+    // }
 
-    /// Trait for multi porters
-    #[ink::trait_definition]
-    pub trait MultiPorters {
-        /// Changes porters and requirement.
-        #[ink(message)]
-        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) -> Result<(), Error>;
-        /// Get porters.
-        #[ink(message)]
-        fn get_porters(& self) -> Porters;
-        /// Get requirement
-        #[ink(message)]
-        fn get_requirement(& self) -> u16;
-        /// Get the message id which needs to be ported by `validator` on chain `chain_name`
-        #[ink(message)]
-        fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
-    }
-    
+    /// Trait for multi routers
+    // #[ink::trait_definition]
+    // pub trait MultiRouters {
+    //     /// Changes routers and requirement.
+    //     #[ink(message)]
+    //     fn change_routers_and_requirement(&mut self, routers: Routers, requirement: u16) -> Result<(), Error>;
+    //     /// Get routers.
+    //     #[ink(message)]
+    //     fn get_routers(& self) -> Routers;
+    //     /// Get requirement
+    //     #[ink(message)]
+    //     fn get_requirement(& self) -> u16;
+    //     /// Get the message id which needs to be ported by `validator` on chain `chain_name`
+    //     #[ink(message)]
+    //     fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
+    // }
+
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
@@ -117,28 +99,20 @@ mod cross_chain {
         // Data for Ownable
         /// Account id of owner
         owner: Option<AccountId>,
-
         // Data for CrossChainBase
         /// Current chain name
         chain_name: String,
-        /// Map for interfaces
-        interfaces: Mapping<(AccountId, String), String>,
         /// Dante token contract
         /// Table of sent messages
         sent_message_table: Mapping<String, Vec<SentMessage>>,
         /// Table of received messages
-        received_message_table: Mapping<String, Vec<ReceivedMessage>>,
+        received_message_table: Mapping<(String, u128), Vec<Group>>,
+        /// Table of executable messages
+        executable_message_table: Mapping<String, Vec<ExecutableMessage>>,
         /// Context of a cross-contract call
         context: Option<Context>,
 
-        // Data for MultiPorters
-        /// Required number of porters.
-        required: u16,
-        /// Mapping of porters.
-        is_porter: Mapping<AccountId, bool>,
-        /// List of porters.
-        porters: Vec<AccountId>,
-
+        evalutaion: Evaluation,
         // SQoS
         sqos_table: Mapping<AccountId, Vec<SQoS>>,
     }
@@ -147,9 +121,7 @@ mod cross_chain {
         /// Constructor that initializes `chain_name`.
         #[ink(constructor)]
         pub fn new(chain_name: String) -> Self {
-            ink_lang::utils::initialize_contract(|contract| {
-                Self::new_init(contract, chain_name)
-            })
+            ink_lang::utils::initialize_contract(|contract| Self::new_init(contract, chain_name))
         }
 
         /// Initializes the contract with the specified chain name.
@@ -160,7 +132,7 @@ mod cross_chain {
         }
 
         /// If the caller is the owner of the contract
-        fn only_owner(& self) -> Result<(), Error> {
+        fn only_owner(&self) -> Result<(), Error> {
             let caller = self.env().caller();
             if self.owner.unwrap() != caller {
                 return Err(Error::NotOwner);
@@ -170,45 +142,45 @@ mod cross_chain {
         }
 
         /// If the caller is a port
-        fn only_porter(& self) -> Result<(), Error> {
+        fn only_router(&self) -> Result<(), Error> {
             let caller = self.env().caller();
-            
-            for i in &self.porters {
-                if i == &caller {
-                    return Ok(())
+
+            for i in &self.evalutaion.routers {
+                if i.0 == caller {
+                    return Ok(());
                 }
             }
 
-            Err(Error::NotPorter)
+            Err(Error::NotRouter)
         }
 
         /// Receives message
-        fn internal_receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
-            let mut chain_message = self.received_message_table.get(&message.from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
-            let current_id = chain_message.len() + 1;
-            if current_id != message.id.try_into().unwrap() {
-                return Err(Error::IdNotMatch)
-            }
+        // fn internal_receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
+        //     let mut chain_message = self.received_message_table.get(&message.from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+        //     let current_id = chain_message.len() + 1;
+        //     if current_id != message.id.try_into().unwrap() {
+        //         return Err(Error::IdNotMatch)
+        //     }
 
-            let m = ReceivedMessage::new(message.clone());
-            chain_message.push(m);
-            self.received_message_table.insert(message.from_chain, &chain_message);
-            Ok(())
-        }
+        //     let m = ReceivedMessage::new(message.clone());
+        //     chain_message.push(m);
+        //     self.received_message_table.insert(message.from_chain, &chain_message);
+        //     Ok(())
+        // }
 
-        /// Abandons message
-        fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
-            let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
-            let current_id = chain_message.len() + 1;
-            if current_id != (id as usize) {
-                return Err(Error::IdNotMatch)
-            }
+        // /// Abandons message
+        // fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
+        //     let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+        //     let current_id = chain_message.len() + 1;
+        //     if current_id != (id as usize) {
+        //         return Err(Error::IdNotMatch)
+        //     }
 
-            let message = ReceivedMessage::new_with_error(id, from_chain.clone(), error_code);
-            chain_message.push(message);
-            self.received_message_table.insert(from_chain, &chain_message);
-            Ok(())
-        }
+        //     let message = ReceivedMessage::new_with_error(id, from_chain.clone(), error_code);
+        //     chain_message.push(message);
+        //     self.received_message_table.insert(from_chain, &chain_message);
+        //     Ok(())
+        // }
 
         /// Registers SQoS
         #[ink(message)]
@@ -224,7 +196,7 @@ mod cross_chain {
 
         /// Returns SQoS
         #[ink(message)]
-        pub fn get_sqos(& self) -> Vec<ISQoS> {
+        pub fn get_sqos(&self) -> Vec<ISQoS> {
             let caller = Self::env().caller();
             let sqos = self.sqos_table.get(caller).unwrap_or(Vec::<SQoS>::new());
             let mut ret = Vec::<ISQoS>::new();
@@ -258,7 +230,7 @@ mod cross_chain {
         #[ink(message)]
         pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
             self.only_owner()?;
-
+;
             self.received_message_table.remove(chain_name.clone());
             self.sent_message_table.remove(chain_name);
 
@@ -267,7 +239,7 @@ mod cross_chain {
 
         /// For debug
         #[ink(message)]
-        pub fn get_chain_name(& self) -> String {
+        pub fn get_chain_name(&self) -> String {
             self.chain_name.clone()
         }
     }
@@ -275,7 +247,7 @@ mod cross_chain {
     impl Ownable for CrossChain {
         /// Returns the account id of the current owner
         #[ink(message)]
-        fn owner(& self) -> Option<AccountId> {
+        fn owner(&self) -> Option<AccountId> {
             self.owner
         }
 
@@ -303,54 +275,66 @@ mod cross_chain {
     impl CrossChainBase for CrossChain {
         /// Sets DAT token contract address
         #[ink(message)]
-        fn set_token_contract(&mut self, _token: AccountId) {
-
-        }
+        fn set_token_contract(&mut self, _token: AccountId) {}
 
         /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
         #[ink(message)]
         fn send_message(&mut self, message: ISentMessage) -> u128 {
-            let mut chain_message: Vec<SentMessage> = self.sent_message_table.get(&message.to_chain).unwrap_or(Vec::<SentMessage>::new());
+            let mut chain_message: Vec<SentMessage> = self
+                .sent_message_table
+                .get(&message.to_chain)
+                .unwrap_or(Vec::<SentMessage>::new());
             let id = chain_message.len() + 1;
             let caller = Self::env().caller();
             let signer = caller.clone();
-            let sent_message: SentMessage = SentMessage::new(id.try_into().unwrap(), self.chain_name.clone(),
-                caller, signer, message.clone());
+            let sent_message: SentMessage = SentMessage::new(
+                id.try_into().unwrap(),
+                self.chain_name.clone(),
+                caller,
+                signer,
+                message.clone(),
+            );
             chain_message.push(sent_message);
-            self.sent_message_table.insert(message.to_chain, &chain_message);
+            self.sent_message_table
+                .insert(message.to_chain, &chain_message);
             u128::try_from(id).unwrap()
         }
 
         /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
-        fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>  {
-            self.only_porter()?;
+        fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
+            self.only_router()?;
             self.internal_receive_message(message)
         }
 
         /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
         #[ink(message)]
-        fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
-            self.only_porter()?;
+        fn abandon_message(
+            &mut self,
+            from_chain: String,
+            id: u128,
+            error_code: u16,
+        ) -> Result<(), Error> {
+            self.only_router()?;
 
             self.internal_abandon_message(from_chain, id, error_code)
         }
 
         /// Returns messages that sent from chains `chain_names` and can be executed.
         #[ink(message)]
-        fn get_executable_messages(& self, chain_names: Vec<String>) -> Vec<ReceivedMessage> {
-            let mut ret = Vec::<ReceivedMessage>::new();
-            
-            for chain_name in chain_names {
-                let chain_message_option: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
-                if let Some(chain_message) = chain_message_option {
-                    for message in chain_message {
-                        if (message.error_code == 0) && (!message.executed) {
-                            ret.push(message.clone());
-                        }
-                    }
-                }
-            }
+        fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<ExecutableMessage> {
+            let mut ret = Vec::<ExecutableMessage>::new();
+
+            // for chain_name in chain_names {
+            //     let chain_message_option: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
+            //     if let Some(chain_message) = chain_message_option {
+            //         for message in chain_message {
+            //             if (message.error_code == 0) && (!message.executed) {
+            //                 ret.push(message.clone());
+            //             }
+            //         }
+            //     }
+            // }
 
             ret
         }
@@ -358,38 +342,55 @@ mod cross_chain {
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
-            let mut chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let mut message: &mut ReceivedMessage = chain_message.get_mut(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
+            let mut chain_message: Vec<Group> = self
+                .received_message_table
+                .get(&chain_name)
+                .ok_or(Error::ChainMessageNotFound)?;
+            let mut message: &mut Group = chain_message
+                .get_mut(usize::try_from(id - 1).unwrap())
+                .ok_or(Error::IdOutOfBound)?;
 
             if message.executed {
                 return Err(Error::AlreadyExecuted);
             }
 
             message.executed = true;
-            self.context = Some(Context::new(message.id, message.from_chain.clone(), message.sender.clone(), message.signer.clone(),
-                message.sqos.clone(), message.contract.clone(), message.action.clone(), message.session.clone()));
+            self.context = Some(Context::new(
+                message.id,
+                message.from_chain.clone(),
+                message.sender.clone(),
+                message.signer.clone(),
+                message.sqos.clone(),
+                message.contract.clone(),
+                message.action.clone(),
+                message.session.clone(),
+            ));
 
             // Construct paylaod
             let mut data_slice = message.data.as_slice();
-            let payload: MessagePayload = scale::Decode::decode(&mut data_slice).ok().ok_or(Error::DecodeDataFailed)?;
+            let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
+                .ok()
+                .ok_or(Error::DecodeDataFailed)?;
 
             self.flush();
 
             // Cross-contract call
             let selector: [u8; 4] = message.action.clone().try_into().unwrap();
-            let cc_result: Result<String, ink_env::Error> = ink_env::call::build_call::<ink_env::DefaultEnvironment>()
-                .call_type(
-                    ink_env::call::Call::new()
-                        .callee(message.contract)
-                        .gas_limit(0)
-                        .transferred_value(0))
-                .exec_input(
-                    ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
-                    .push_arg(payload)
-                )
-                .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
-                .returns::<String>()
-                .fire();
+            let cc_result: Result<String, ink_env::Error> =
+                ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                    .call_type(
+                        ink_env::call::Call::new()
+                            .callee(message.contract)
+                            .gas_limit(0)
+                            .transferred_value(0),
+                    )
+                    .exec_input(
+                        ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
+                            .push_arg(payload),
+                    )
+                    .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
+                    .returns::<String>()
+                    .fire();
 
             self.load();
 
@@ -397,25 +398,26 @@ mod cross_chain {
                 // let e = cc_result.unwrap_err();
                 return Err(Error::CrossContractCallFailed);
             }
-            
-            self.received_message_table.insert(chain_name, &chain_message);
-            
+
+            self.received_message_table
+                .insert(chain_name, &chain_message);
+
             Ok(cc_result.unwrap())
         }
 
         /// Returns the simplified message, this message is reset every time when a contract is called
         #[ink(message)]
-        fn get_context(& self) -> Option<IContext> {
+        fn get_context(&self) -> Option<IContext> {
             if self.context.is_none() {
                 return None;
             }
-            
+
             Some(self.context.clone().unwrap().derive())
         }
 
         /// Returns the number of messages sent to chain `chain_name`
         #[ink(message)]
-        fn get_sent_message_number(& self, chain_name: String) -> u128 {
+        fn get_sent_message_number(&self, chain_name: String) -> u128 {
             let chain_message: Option<Vec<SentMessage>> = self.sent_message_table.get(chain_name);
             if chain_message.is_none() {
                 return 0;
@@ -425,72 +427,83 @@ mod cross_chain {
 
         /// Returns the number of messages received from chain `chain_name`
         #[ink(message)]
-        fn get_received_message_number(& self, chain_name: String) -> u128 {
-            let chain_message: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
-            if chain_message.is_none() {
-                return 0;
-            }
-            chain_message.unwrap().len().try_into().unwrap()
+        fn get_received_message_number(&self, chain_name: String) -> u128 {
+            0
+            // let chain_message: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
+            // if chain_message.is_none() {
+            //     return 0;
+            // }
+            // chain_message.unwrap().len().try_into().unwrap()
         }
 
         /// Returns the message with id `id` sent to chain `chain_name`
         #[ink(message)]
-        fn get_sent_message(& self, chain_name: String, id: u128) -> Result<SentMessage, Error> {
-            let chain_message: Vec<SentMessage> = self.sent_message_table.get(chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let message: &SentMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
+        fn get_sent_message(&self, chain_name: String, id: u128) -> Result<SentMessage, Error> {
+            let chain_message: Vec<SentMessage> = self
+                .sent_message_table
+                .get(chain_name)
+                .ok_or(Error::ChainMessageNotFound)?;
+            let message: &SentMessage = chain_message
+                .get(usize::try_from(id - 1).unwrap())
+                .ok_or(Error::IdOutOfBound)?;
             Ok(message.clone())
         }
 
         /// Returns the message with id `id` received from chain `chain_name`
         #[ink(message)]
-        fn get_received_message(& self, chain_name: String, id: u128) -> Result<ReceivedMessage, Error> {
-            let chain_message: Vec<ReceivedMessage> = self.received_message_table.get(&chain_name).ok_or(Error::ChainMessageNotFound)?;
-            let message: &ReceivedMessage = chain_message.get(usize::try_from(id - 1).unwrap()).ok_or(Error::IdOutOfBound)?;
+        fn get_received_message(&self, chain_name: String, id: u128) -> Result<Vec<Group>, Error> {
+            let chain_message: Vec<Group> = self
+                .received_message_table
+                .get(&chain_name)
+                .ok_or(Error::ChainMessageNotFound)?;
+            let message: &Group = chain_message
+                .get(usize::try_from(id - 1).unwrap())
+                .ok_or(Error::IdOutOfBound)?;
             Ok(message.clone())
         }
     }
 
-    impl MultiPorters for CrossChain {
-        /// Changes porters and requirement.
-        #[ink(message)]
-        fn change_porters_and_requirement(&mut self, porters: Porters, requirement: u16) -> Result<(), Error> {
-            self.only_owner()?;
-            
-            // Clear porters
-            for i in &self.porters {
-                self.is_porter.remove(i);
-            }
+    // impl MultiRouters for CrossChain {
+    //     /// Changes routers and requirement.
+    //     #[ink(message)]
+    //     fn change_routers_and_requirement(&mut self, routers: Routers, requirement: u16) -> Result<(), Error> {
+    //         self.only_owner()?;
 
-            // self.porters.resize(porters.len(), AccountId::default());
-            for i in &porters {
-                self.is_porter.insert(i, &true);
-            }
+    //         // Clear routers
+    //         for i in &self.routers {
+    //             self.is_router.remove(i);
+    //         }
 
-            self.porters = porters;
-            self.required = requirement;
+    //         // self.routers.resize(routers.len(), AccountId::default());
+    //         for i in &routers {
+    //             self.is_router.insert(i, &true);
+    //         }
 
-            Ok(())
-        }
+    //         self.routers = routers;
+    //         self.required = requirement;
 
-        /// Get porters.
-        #[ink(message)]
-        fn get_porters(& self) -> Porters {
-            self.porters.clone()
-        }
+    //         Ok(())
+    //     }
 
-        /// Get requirement
-        #[ink(message)]
-        fn get_requirement(& self) -> u16 {
-            self.required
-        }
+    //     /// Get routers.
+    //     #[ink(message)]
+    //     fn get_routers(& self) -> Routers {
+    //         self.routers.clone()
+    //     }
 
-        /// Get the message id which needs to be ported by `validator` on chain `chain_name`
-        #[ink(message)]
-        fn get_msg_porting_task(& self, chain_name: String, _validator: AccountId) -> u128 {
-            let num = self.get_received_message_number(chain_name) + 1;
-            num
-        }
-    }
+    //     /// Get requirement
+    //     #[ink(message)]
+    //     fn get_requirement(& self) -> u16 {
+    //         self.required
+    //     }
+
+    //     /// Get the message id which needs to be ported by `validator` on chain `chain_name`
+    //     #[ink(message)]
+    //     fn get_msg_porting_task(& self, chain_name: String, _validator: AccountId) -> u128 {
+    //         let num = self.get_received_message_number(chain_name) + 1;
+    //         num
+    //     }
+    // }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
     /// module and test functions are marked with a `#[test]` attribute.
@@ -502,14 +515,9 @@ mod cross_chain {
 
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
+        use ink_prelude::vec::Vec as Bytes;
+        use payload::message_define::{IContent, ISQoS, ISQoSType, ISession};
         use std::{fmt::Write, num::ParseIntError};
-        
-        use payload::message_define::{
-            ISession,
-            IContent,
-            ISQoS,
-            ISQoSType,
-        };
 
         fn set_caller(sender: AccountId) {
             ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
@@ -535,8 +543,10 @@ mod cross_chain {
             let sqos = Vec::<ISQoS>::new();
             let raw_data = "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600".to_string();
             let data = decode_hex(&raw_data).unwrap();
-            let session = ISession::new(0, 0);
-            let message = IReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
+            let session = ISession::new(0, None);
+            let message = IReceivedMessage::new(
+                id, from_chain, sender, signer, sqos, contract, action, data, session,
+            );
             cross_chain.receive_message(message);
             cross_chain
         }
@@ -544,13 +554,14 @@ mod cross_chain {
         fn create_contract_with_sent_message() -> CrossChain {
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+
             // Send message.
             let to_chain = "ETHEREUM".to_string();
             let contract = "ETHEREUM_CONTRACT".to_string();
             let action = "ETHERERUM_ACTION".to_string();
             let data = Bytes::new();
             let sqos = Vec::<ISQoS>::new();
-            let session = ISession::new(0, 0);
+            let session = ISession::new(0, None);
             let content = IContent::new(contract, action, data);
             let message = ISentMessage::new(to_chain.clone(), sqos, content, session);
             cross_chain.send_message(message);
@@ -567,8 +578,7 @@ mod cross_chain {
         /// Tests for trait Ownable
         #[ink::test]
         fn owner_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             set_caller(accounts.bob);
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
@@ -578,8 +588,7 @@ mod cross_chain {
 
         #[ink::test]
         fn renounce_ownership_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
             // Renounce ownership.
@@ -590,8 +599,7 @@ mod cross_chain {
 
         #[ink::test]
         fn transfer_ownership_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
             // Transfer ownership.
@@ -602,8 +610,7 @@ mod cross_chain {
 
         #[ink::test]
         fn only_owner_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
             // Call of only_owner should return Ok.
@@ -613,8 +620,7 @@ mod cross_chain {
 
         #[ink::test]
         fn not_owner_only_owner_should_fail() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
             // Call of only_owner should return Err.
@@ -631,20 +637,23 @@ mod cross_chain {
             let num = cross_chain.sent_message_table.get(&to_chain).unwrap().len();
             assert_eq!(num, 1);
         }
-        
+
         #[ink::test]
         fn receive_message_works() {
             let from_chain = "ETHEREUM".to_string();
             let cross_chain = create_contract_with_received_message();
             // Number of sent messages is 1.
-            let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
+            let num = cross_chain
+                .received_message_table
+                .get(&from_chain)
+                .unwrap()
+                .len();
             assert_eq!(num, 1);
         }
-        
+
         #[ink::test]
         fn abandon_message_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
             // Receive message.
@@ -653,7 +662,11 @@ mod cross_chain {
             let error_code = 1;
             cross_chain.abandon_message(from_chain.clone(), id, error_code);
             // Number of sent messages is 1.
-            let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
+            let num = cross_chain
+                .received_message_table
+                .get(&from_chain)
+                .unwrap()
+                .len();
             assert_eq!(num, 1);
         }
 
@@ -662,7 +675,11 @@ mod cross_chain {
             let from_chain = "ETHEREUM".to_string();
             let mut cross_chain = create_contract_with_received_message();
             // Number of sent messages is 1.
-            let num = cross_chain.received_message_table.get(&from_chain).unwrap().len();
+            let num = cross_chain
+                .received_message_table
+                .get(&from_chain)
+                .unwrap()
+                .len();
             assert_eq!(num, 1);
             // Get executable messages
             let mut chains = Vec::<String>::new();
@@ -671,7 +688,7 @@ mod cross_chain {
             // Number of messages is 1
             assert_eq!(messages.len(), 1);
         }
-        
+
         #[ink::test]
         fn execute_message_works() {
             // let from_chain = "ETHEREUM".to_string();
@@ -682,7 +699,7 @@ mod cross_chain {
             // assert_eq!(ret, Ok(()));
             println!("Cross-contract call can not be tested");
         }
-        
+
         #[ink::test]
         fn get_context_works() {
             // let from_chain = "ETHEREUM".to_string();
@@ -696,7 +713,7 @@ mod cross_chain {
             // assert_eq!(context.is_some(), true);
             println!("Cross-contract call can not be tested");
         }
-        
+
         #[ink::test]
         fn get_sent_message_number_works() {
             let to_chain = "ETHEREUM".to_string();
@@ -706,7 +723,7 @@ mod cross_chain {
             let num = cross_chain.get_sent_message_number(to_chain);
             assert_eq!(num, 1);
         }
-        
+
         #[ink::test]
         fn get_received_message_number_works() {
             let from_chain = "ETHEREUM".to_string();
@@ -737,31 +754,29 @@ mod cross_chain {
             assert_eq!(message.is_ok(), true);
         }
 
-        // Tests for trait MultiPorters
+        // Tests for trait MultiRouters
         #[ink::test]
-        fn change_porters_and_requirement_works() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+        fn change_routers_and_requirement_works() {
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
             // Resister.
-            let mut porters = Porters::new();
-            porters.push(accounts.alice);
-            porters.push(accounts.bob);
+            let mut routers = Routers::new();
+            routers.push(accounts.alice);
+            routers.push(accounts.bob);
             let required = 2;
-            cross_chain.change_porters_and_requirement(porters.clone(), required);
+            cross_chain.change_routers_and_requirement(routers.clone(), required);
             // Requirement is 2.
             let r = cross_chain.get_requirement();
             assert_eq!(r, 2);
-            // Check porters.
-            let p = cross_chain.get_porters();
-            assert_eq!(p, porters);
+            // Check routers.
+            let p = cross_chain.get_routers();
+            assert_eq!(p, routers);
         }
 
         #[ink::test]
         fn get_msg_porting_task() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             let from_chain = "ETHEREUM".to_string();
             let id = 1;
             let mut cross_chain = create_contract_with_received_message();
@@ -776,10 +791,9 @@ mod cross_chain {
 
         #[ink::test]
         fn get_selector() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
-            let s = vec![0x3a,0x6e,0x96,0x96];
+            let s = vec![0x3a, 0x6e, 0x96, 0x96];
             let selector: [u8; 4] = s.clone().try_into().unwrap();
             println!("{:?}", selector);
         }
