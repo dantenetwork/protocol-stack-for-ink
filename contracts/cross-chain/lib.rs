@@ -4,7 +4,7 @@ use ink_lang as ink;
 
 pub mod cross_chain_base;
 pub mod storage_define;
-// pub mod evaluation;
+pub mod evaluation;
 
 #[ink::contract]
 pub mod cross_chain {
@@ -17,6 +17,7 @@ pub mod cross_chain {
         Context, Error, Evaluation, ExecutableMessage, Group, Message, Routers, SQoS, SentMessage,
         Threshold,
     };
+    use super::evaluation::RoutersCore;
 
     use payload::message_define::{IContext, IReceivedMessage, ISQoS, ISentMessage};
     use payload::message_protocol::MessagePayload;
@@ -460,6 +461,137 @@ pub mod cross_chain {
                 .get(usize::try_from(id - 1).unwrap())
                 .ok_or(Error::IdOutOfBound)?;
             Ok(message.clone())
+        }
+    }
+
+    impl RoutersCore for CrossChain {
+        #[ink(message)]
+        fn select_routers(&mut self) {
+            struct Candidate {
+                id: AccountId,
+                low: u32,
+                high: u32,
+                selected: bool,
+                credit: u32,
+            };
+
+            let mut total_credit = 0_u32;
+            let mut candidates = Vec::<Candidate>::new();
+            let mut trustworthy_all: u32 = 0;
+            for index in 0..self.evalutaion.routers {
+                if index.1 >= self.evaluation.threshold.min_seleted_threshold {
+                    let c = Candidate {
+                        id: index.0,
+                        low: total_credit,
+                        high: total_credit + index.1,
+                        selected: false,
+                        credit: index.1,
+                    };
+                    
+                    total_credit = c.high;
+                    candidates.push(c);
+                }
+            }
+
+            if candidates.len() <= self.evaluation.selected_number {
+
+            }
+            else {
+                // Compute total trustworthy value
+                for c in candidates {
+                    if c.credit >= self.evaluation.threshold.trustworthy_threshold {
+                        let probability = PRECISION * c.credit / total_credit;
+                        trustworthy_all += probability;
+                    }
+                }
+
+                // Number of credibility selecting
+                let credibility_selected_ratio = trustworthy_all;
+                if credibility_selected_ratio > self.evaluation.credibility_selection_ratio.upper_limit {
+                    credibility_selected_ratio = self.evaluation.credibility_selection_ratio.upper_limit;
+                }
+                if credibility_selected_ratio < self.evaluation.credibility_selection_ratio.lower_limit {
+                    credibility_selected_ratio = self.evaluation.credibility_selection_ratio.lower_limit;
+                }
+                let credibility_selected_num = self.evaluation.selected_number * credibility_selected_ratio;
+
+                // Select routers according to credibility
+                let selected_routers = Vec::<AccountId>::new();
+                let mut start_index = 0;
+                while (selected_routers.len() < credibility_selected_num) {
+                    let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
+                    let mut seed_index = 0;
+
+                    while seed_index < (random_seed.as_ref().len() - 1) {
+                        let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
+                        let rand_num = u16::from_be_bytes(two_bytes) as u32;
+    
+                        let rand_num = rand_num % total_credit;
+    
+                        let mut choose_next = false;
+                        for c in candidates.iter_mut() {
+                            if c.contains(rand_num) {
+                                if c.selected == false {
+                                    selected_routers.push(c);
+                                    c.selected = true;
+                                    break;
+                                }
+                                else {
+                                    choose_next = true;
+                                }
+
+                                if choose_next && !c.selected {
+                                    selected_routers.push(c);
+                                    c.selected = true;
+                                    break;
+                                }
+                            }
+                        }
+    
+                        if (selected_routers.len() as u16) >= credibility_selected_num {
+                            break;
+                        }
+    
+                        seed_index += 2;
+                    }
+    
+                    start_index += 1;
+                }
+
+                // Select routers randomly
+                start_index += 1;
+                while selected_routers.len() < self.evaluation.selected_number {
+                    let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
+                    let mut seed_index = 0;
+
+                    while seed_index < (random_seed.as_ref().len() - 1) {
+                        let left_router_num = candidates.len() - selected_routers.len();
+                        let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
+                        let rand_num = u16::from_be_bytes(two_bytes) as u32;
+                        let position = rand_num * left_router_num / u16::MAX;
+
+                        let pos_index = 0;
+                        for i in candidates {
+                            if !c.selected {
+                                if position == pos_index {
+                                    selected_routers.push(c);
+                                    c.selected = true;
+                                    break;
+                                }
+                                pos_index++;
+                            }
+                        }
+
+                        if selected_routers.len() >= self.evaluation.selected_number {
+                            break;
+                        }
+
+                        seed_index += 2;
+                    }
+
+                    start_index += 1;
+                }
+            }
         }
     }
 
