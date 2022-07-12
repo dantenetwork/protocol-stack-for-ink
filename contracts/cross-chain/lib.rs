@@ -17,7 +17,7 @@ pub mod cross_chain {
     // use crate::evaluation::{ICredibilitySelectionRatio, IEvaluationCoefficient, IThreshold};
     use crate::storage_define::{
         Context, Error, Evaluation, ExecutableMessage, Group, Message, Routers, SQoS, SentMessage,
-        Threshold, CredibilitySelectionRatio, 
+        Threshold, CredibilitySelectionRatio, EvaluationCoefficient, AbandonedMessage
     };
     use super::evaluation::{
         RoutersCore,
@@ -569,18 +569,18 @@ pub mod cross_chain {
             executable_messages.remove(index);
             let message = message.unwrap();
             self.context = Some(Context::new(
-                message.message.id,
-                message.message.from_chain.clone(),
-                message.message.sender.clone(),
-                message.message.signer.clone(),
-                message.message.sqos.clone(),
-                message.message.contract.clone(),
-                message.message.action.clone(),
-                message.message.session.clone(),
+                message.id,
+                message.from_chain.clone(),
+                message.sender.clone(),
+                message.signer.clone(),
+                message.sqos.clone(),
+                message.contract.clone(),
+                message.action.clone(),
+                message.session.clone(),
             ));
 
             // Construct paylaod
-            let mut data_slice = message.message.data.as_slice();
+            let mut data_slice = message.data.as_slice();
             let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
                 .ok()
                 .ok_or(Error::DecodeDataFailed)?;
@@ -588,12 +588,12 @@ pub mod cross_chain {
             self.flush();
 
             // Cross-contract call
-            let selector: [u8; 4] = message.message.action.clone().try_into().unwrap();
+            let selector: [u8; 4] = message.action.clone().try_into().unwrap();
             let cc_result: Result<String, ink_env::Error> =
                 ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                     .call_type(
                         ink_env::call::Call::new()
-                            .callee(message.message.contract)
+                            .callee(message.contract)
                             .gas_limit(0)
                             .transferred_value(0),
                     )

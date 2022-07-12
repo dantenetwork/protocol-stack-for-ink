@@ -3,7 +3,7 @@ use ink_lang as ink;
 use ink_prelude::vec::Vec;
 use ink_storage::traits::{PackedLayout, SpreadLayout};
 
-use crate::storage_define::{CredibilitySelectionRatio, Threshold};
+use crate::storage_define::{CredibilitySelectionRatio, Threshold, Error};
 
 #[ink::trait_definition]
 pub trait RoutersCore {
