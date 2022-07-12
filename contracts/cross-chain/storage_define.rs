@@ -26,6 +26,9 @@ pub enum Error {
     DecodeDataFailed,
     CrossContractCallFailed,
     NotRouter,
+    AheadOfId,
+    AlreadReceived,
+    ReceiveCompleted,
 }
 
 impl Error {
@@ -179,9 +182,8 @@ impl Session {
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
 )]
-pub struct ExecutableMessage {
-    pub message: Message,
-    pub executed: bool,
+pub struct AbandonedMessage {
+    pub id: u128,
     pub error_code: u16,
 }
 
@@ -200,6 +202,29 @@ pub struct Message {
     pub action: [u8; 4],
     pub data: Bytes,
     pub session: Session,
+    pub error_code: Option<u16>,
+}
+
+impl Message {
+    pub fn new(message: IReceivedMessage) -> Self {
+        let mut sqos = Vec::<SQoS>::new();
+        for s in message.sqos {
+            sqos.push(SQoS::from(s));
+        }
+
+        Self {
+            id: message.id,
+            from_chain: message.from_chain,
+            sender: message.sender,
+            signer: message.signer,
+            sqos,
+            contract: AccountId::from(message.contract),
+            action: message.action,
+            data: message.data,
+            session: Session::from(message.session),
+            error_code: None,
+        }
+    }
 }
 
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
@@ -215,49 +240,58 @@ pub struct Group {
     pub credibility_weight: u32,
 }
 
-impl ExecutableMessage {
-    pub fn new(message: IReceivedMessage) -> Self {
-        let mut sqos = Vec::<SQoS>::new();
-        for s in message.sqos {
-            sqos.push(SQoS::from(s));
+impl Group {
+    pub fn contains(&self, router: &AccountId) -> bool {
+        for r in self.routers.iter() {
+            if router == r {
+                return true;
+            }
         }
-
-        Self {
-            message: Message {
-                id: message.id,
-                from_chain: message.from_chain,
-                sender: message.sender,
-                signer: message.signer,
-                sqos,
-                contract: AccountId::from(message.contract),
-                action: message.action,
-                data: message.data,
-                session: Session::from(message.session),
-            },
-            executed: false,
-            error_code: 0,
-        }
-    }
-
-    pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
-        let m = Self {
-            message: Message {
-                id,
-                from_chain,
-                sender: String::try_from("").unwrap(),
-                signer: String::try_from("").unwrap(),
-                sqos: Vec::<SQoS>::new(),
-                contract: AccountId::default(),
-                action: [0, 0, 0, 0],
-                data: Bytes::new(),
-                session: Session::new(0, None),
-            },
-            executed: false,
-            error_code,
-        };
-        m
+        false
     }
 }
+
+// impl AbandonedMessage {
+//     pub fn new(message: IReceivedMessage) -> Self {
+//         let mut sqos = Vec::<SQoS>::new();
+//         for s in message.sqos {
+//             sqos.push(SQoS::from(s));
+//         }
+
+//         Self {
+//             message: Message {
+//                 id: message.id,
+//                 from_chain: message.from_chain,
+//                 sender: message.sender,
+//                 signer: message.signer,
+//                 sqos,
+//                 contract: AccountId::from(message.contract),
+//                 action: message.action,
+//                 data: message.data,
+//                 session: Session::from(message.session),
+//             },
+//             error_code: 0,
+//         }
+//     }
+
+//     pub fn new_with_error(id: u128, from_chain: String, error_code: u16) -> Self {
+//         let m = Self {
+//             message: Message {
+//                 id,
+//                 from_chain,
+//                 sender: String::try_from("").unwrap(),
+//                 signer: String::try_from("").unwrap(),
+//                 sqos: Vec::<SQoS>::new(),
+//                 contract: AccountId::default(),
+//                 action: [0, 0, 0, 0],
+//                 data: Bytes::new(),
+//                 session: Session::new(0, None),
+//             },
+//             error_code,
+//         };
+//         m
+//     }
+// }
 
 /// Sent message structure
 #[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
@@ -434,4 +468,50 @@ pub struct Evaluation {
     pub routers: Vec<(AccountId, u32)>,
     pub initial_credibility_value: u32,
     pub selected_number: u8,
+}
+
+impl Evaluation {
+    pub fn get_router_credibility(&self, router: &AccountId) -> u32 {
+        for r in self.routers.iter() {
+            if r.0 == *router {
+                return r.1;
+            }
+        }
+        0
+    }
+
+    pub fn update_router_credibility(&mut self, router: &AccountId, credibility: u32) {
+        for r in self.routers.iter_mut() {
+            if r.0 == *router {
+                r.1 = credibility;
+            }
+        }
+    }
+
+    pub fn new_default_evaluation() -> Evaluation {
+        Self {
+            threshold: Threshold {
+                credibility_weight_threshold: 4000,
+                min_seleted_threshold: 3500,
+                trustworthy_threshold: 3500,
+            },
+            credibility_selection_ratio: CredibilitySelectionRatio {
+                upper_limit: 8000,
+                lower_limit: 6000,
+            },
+            evaluation_coefficient: EvaluationCoefficient {
+                min_credibility: 0,
+                max_credibility: 10_000,
+                middle_credibility: (10_000 - 0) / 2,
+                range_crediblility: 10_000 - 0,
+                success_step: 100,
+                do_evil_step: 200,
+                exception_step: 100,
+            },
+            current_routers: Vec::new(),
+            routers: Vec::new(),
+            initial_credibility_value: 4000,
+            selected_number: 13,
+        }
+    }
 }
