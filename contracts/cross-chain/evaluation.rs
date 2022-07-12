@@ -1,16 +1,9 @@
-
-use ink_lang as ink;
 use ink_env::AccountId;
+use ink_lang as ink;
 use ink_prelude::vec::Vec;
-use ink_storage::{
-  traits::{
-      SpreadLayout,
-      PackedLayout,
-  }
-};
-use crate::storage_define::{
-  Context, Error, Threshold, CredibilitySelectionRatio
-};
+use ink_storage::traits::{PackedLayout, SpreadLayout};
+
+use crate::storage_define::{CredibilitySelectionRatio, Threshold};
 
 #[ink::trait_definition]
 pub trait RoutersCore {
@@ -52,19 +45,3 @@ pub trait RoutersCore {
     #[ink(message)]
     fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio) -> Result<(), Error>;
 }
-
-// #[ink::trait_definition]
-// pub trait MultiPorters {
-//     /// Changes routers and requirement.
-//     #[ink(message)]
-//     fn change_routers_and_requirement(&mut self, routers: Porters, requirement: u16) -> Result<(), Error>;
-//     /// Get routers.
-//     #[ink(message)]
-//     fn get_routers(& self) -> Porters;
-//     /// Get requirement
-//     #[ink(message)]
-//     fn get_requirement(& self) -> u16;
-//     /// Get the message id which needs to be ported by `validator` on chain `chain_name`
-//     #[ink(message)]
-//     fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
-// }
