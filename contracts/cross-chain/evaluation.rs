@@ -8,46 +8,9 @@ use ink_storage::{
       PackedLayout,
   }
 };
-
-
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct IEvaluationCoefficient {
-  pub min_credibility: u32,
-  pub max_credibility: u32,
-  pub middle_credibility: u32,
-  pub range_crediblility: u32,
-  pub success_step: u32,
-  pub do_evil_step: u32,
-  pub exception_step: u32,
-}
-
-/// SQOS structure
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct ICredibilitySelectionRatio {
-  pub upper_limit: u32,
-  pub lower_limit: u32,
-}
-
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct IThreshold {
-  pub credibility_weight_threshold: u32,
-  pub min_seleted_threshold: u32,
-  pub trustworthy_threshold: u32,
-}
-
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct IEvaluation {
-  pub threshold: IThreshold,
-  pub credibility_selection_ratio: ICredibilitySelectionRatio,
-  pub evaluation_coefficient: IEvaluationCoefficient,
-  pub initial_credibility_value: u32,
-  pub selected_number: u8,
-}
-
+use crate::storage_define::{
+  Context, Error, Threshold, CredibilitySelectionRatio
+};
 
 #[ink::trait_definition]
 pub trait RoutersCore {
@@ -56,7 +19,7 @@ pub trait RoutersCore {
     /// @dev Refresh the begining and end of the current time stage if the current period ended.
     /// Cross contract call to `cross-chain protocol contract` to `select_routers` new routers
     #[ink(message)]
-    fn select_routers(&mut self);
+    fn select_routers(&mut self) -> Result<(), Error>;
     
     /// @notice Called from `msg verify contract` to get the credibilities of routers to take weighted aggregation verification of messages
     ///
@@ -68,26 +31,26 @@ pub trait RoutersCore {
     /// @notice Called from off-chain router to register themselves as the cross chain router.
     /// Get router accountId through `Self::env::caller()`.
     #[ink(message)]
-    fn register_router(&mut self, routers: AccountId);
+    fn register_router(&mut self, router: AccountId) -> Result<(), Error>;
 
     /// @notice Called from off-chain router to unregister.
     /// Get node address through `Self::env::caller()`.
     #[ink(message)]
-    fn unregister_router(&mut self, router: AccountId);
+    fn unregister_router(&mut self, router: AccountId) -> Result<(), Error>;
 
     /// set the initial value of the credibility of the newly added router
     #[ink(message)]
-    fn set_initial_credibility(&mut self, value: u32);
+    fn set_initial_credibility(&mut self, value: u32) -> Result<(), Error>;
 
     /// set the number of routers to be selected
     #[ink(message)]
-    fn set_selected_number(&mut self, number: u8);
+    fn set_selected_number(&mut self, number: u8) -> Result<(), Error>;
 
     #[ink(message)]
-    fn set_threshold(&mut self, threshold: IThreshold);
+    fn set_threshold(&mut self, threshold: Threshold) -> Result<(), Error>;
 
     #[ink(message)]
-    fn set_credibility_selection_ratio(&mut self, ratio: ICredibilitySelectionRatio);
+    fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio) -> Result<(), Error>;
 }
 
 // #[ink::trait_definition]

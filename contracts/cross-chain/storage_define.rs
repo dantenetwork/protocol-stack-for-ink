@@ -7,7 +7,7 @@ use ink_prelude::{string::String, vec::Vec};
 use scale::{Decode, Encode};
 
 use payload::message_define::{
-    IContent, IContext, IError, IReceivedMessage, ISQoS, ISQoSType, ISentMessage, ISession,
+    IContent, IContext, IError, IReceivedMessage, ISQoS, ISQoSType, ISentMessage, ISession, 
 };
 
 pub type Bytes = Vec<u8>;
@@ -26,6 +26,8 @@ pub enum Error {
     DecodeDataFailed,
     CrossContractCallFailed,
     NotRouter,
+    RouterNotExist,
+    RemoveRouterError,
 }
 
 impl Error {

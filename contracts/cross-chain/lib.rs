@@ -8,6 +8,7 @@ pub mod evaluation;
 
 #[ink::contract]
 pub mod cross_chain {
+    pub const PRECISION: u32 = 10_000;
     use crate::cross_chain_base::CrossChainBase;
     use ink_lang as ink;
     use ink_prelude::{string::String, vec::Vec};
@@ -15,12 +16,32 @@ pub mod cross_chain {
     // use crate::storage_define::Evaluation;
     use crate::storage_define::{
         Context, Error, Evaluation, ExecutableMessage, Group, Message, Routers, SQoS, SentMessage,
-        Threshold,
+        Threshold, CredibilitySelectionRatio, 
     };
-    use super::evaluation::RoutersCore;
+    use super::evaluation::{
+        RoutersCore,
+    };
 
     use payload::message_define::{IContext, IReceivedMessage, ISQoS, ISentMessage};
     use payload::message_protocol::MessagePayload;
+
+    struct Candidate {
+        id: AccountId,
+        low: u32,
+        high: u32,
+        selected: bool,
+        credit: u32,
+    }
+
+    impl Candidate {
+        pub fn contains(&self, value: u32) -> bool {
+            if value >= self.low && value < self.high {
+                true
+            } else {
+                false
+            }
+        }
+    }
 
     /// Trait for owner
     #[ink::trait_definition]
@@ -113,7 +134,7 @@ pub mod cross_chain {
         /// Context of a cross-contract call
         context: Option<Context>,
 
-        evalutaion: Evaluation,
+        evaluation: Evaluation,
         // SQoS
         sqos_table: Mapping<AccountId, Vec<SQoS>>,
     }
@@ -146,7 +167,7 @@ pub mod cross_chain {
         fn only_router(&self) -> Result<(), Error> {
             let caller = self.env().caller();
 
-            for i in &self.evalutaion.routers {
+            for i in &self.evaluation.routers {
                 if i.0 == caller {
                     return Ok(());
                 }
@@ -156,32 +177,32 @@ pub mod cross_chain {
         }
 
         /// Receives message
-        // fn internal_receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
-        //     let mut chain_message = self.received_message_table.get(&message.from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
-        //     let current_id = chain_message.len() + 1;
-        //     if current_id != message.id.try_into().unwrap() {
-        //         return Err(Error::IdNotMatch)
-        //     }
+        fn internal_receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
+            // let mut chain_message = self.received_message_table.get(&message.from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+            // let current_id = chain_message.len() + 1;
+            // if current_id != message.id.try_into().unwrap() {
+            //     return Err(Error::IdNotMatch)
+            // }
 
-        //     let m = ReceivedMessage::new(message.clone());
-        //     chain_message.push(m);
-        //     self.received_message_table.insert(message.from_chain, &chain_message);
-        //     Ok(())
-        // }
+            // let m = ReceivedMessage::new(message.clone());
+            // chain_message.push(m);
+            // self.received_message_table.insert(message.from_chain, &chain_message);
+            Ok(())
+        }
 
-        // /// Abandons message
-        // fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
-        //     let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
-        //     let current_id = chain_message.len() + 1;
-        //     if current_id != (id as usize) {
-        //         return Err(Error::IdNotMatch)
-        //     }
+        /// Abandons message
+        fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
+            // let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
+            // let current_id = chain_message.len() + 1;
+            // if current_id != (id as usize) {
+            //     return Err(Error::IdNotMatch)
+            // }
 
-        //     let message = ReceivedMessage::new_with_error(id, from_chain.clone(), error_code);
-        //     chain_message.push(message);
-        //     self.received_message_table.insert(from_chain, &chain_message);
-        //     Ok(())
-        // }
+            // let message = ReceivedMessage::new_with_error(id, from_chain.clone(), error_code);
+            // chain_message.push(message);
+            // self.received_message_table.insert(from_chain, &chain_message);
+            Ok(())
+        }
 
         /// Registers SQoS
         #[ink(message)]
@@ -232,7 +253,7 @@ pub mod cross_chain {
         pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
             self.only_owner()?;
 ;
-            self.received_message_table.remove(chain_name.clone());
+            // self.received_message_table.remove(chain_name.clone());
             self.sent_message_table.remove(chain_name);
 
             Ok(())
@@ -343,11 +364,11 @@ pub mod cross_chain {
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
-            let mut chain_message: Vec<Group> = self
-                .received_message_table
+            let mut chain_message: Vec<ExecutableMessage> = self
+                .executable_message_table
                 .get(&chain_name)
                 .ok_or(Error::ChainMessageNotFound)?;
-            let mut message: &mut Group = chain_message
+            let mut message: &mut ExecutableMessage = chain_message
                 .get_mut(usize::try_from(id - 1).unwrap())
                 .ok_or(Error::IdOutOfBound)?;
 
@@ -357,18 +378,18 @@ pub mod cross_chain {
 
             message.executed = true;
             self.context = Some(Context::new(
-                message.id,
-                message.from_chain.clone(),
-                message.sender.clone(),
-                message.signer.clone(),
-                message.sqos.clone(),
-                message.contract.clone(),
-                message.action.clone(),
-                message.session.clone(),
+                message.message.id,
+                message.message.from_chain.clone(),
+                message.message.sender.clone(),
+                message.message.signer.clone(),
+                message.message.sqos.clone(),
+                message.message.contract.clone(),
+                message.message.action.clone(),
+                message.message.session.clone(),
             ));
 
             // Construct paylaod
-            let mut data_slice = message.data.as_slice();
+            let mut data_slice = message.message.data.as_slice();
             let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
                 .ok()
                 .ok_or(Error::DecodeDataFailed)?;
@@ -376,12 +397,12 @@ pub mod cross_chain {
             self.flush();
 
             // Cross-contract call
-            let selector: [u8; 4] = message.action.clone().try_into().unwrap();
+            let selector: [u8; 4] = message.message.action.clone().try_into().unwrap();
             let cc_result: Result<String, ink_env::Error> =
                 ink_env::call::build_call::<ink_env::DefaultEnvironment>()
                     .call_type(
                         ink_env::call::Call::new()
-                            .callee(message.contract)
+                            .callee(message.message.contract)
                             .gas_limit(0)
                             .transferred_value(0),
                     )
@@ -400,7 +421,7 @@ pub mod cross_chain {
                 return Err(Error::CrossContractCallFailed);
             }
 
-            self.received_message_table
+            self.executable_message_table
                 .insert(chain_name, &chain_message);
 
             Ok(cc_result.unwrap())
@@ -466,19 +487,13 @@ pub mod cross_chain {
 
     impl RoutersCore for CrossChain {
         #[ink(message)]
-        fn select_routers(&mut self) {
-            struct Candidate {
-                id: AccountId,
-                low: u32,
-                high: u32,
-                selected: bool,
-                credit: u32,
-            };
+        fn select_routers(&mut self) -> Result<(), Error>{
+            self.only_owner()?;
 
             let mut total_credit = 0_u32;
             let mut candidates = Vec::<Candidate>::new();
             let mut trustworthy_all: u32 = 0;
-            for index in 0..self.evalutaion.routers {
+            for index in self.evaluation.routers {
                 if index.1 >= self.evaluation.threshold.min_seleted_threshold {
                     let c = Candidate {
                         id: index.0,
@@ -493,8 +508,10 @@ pub mod cross_chain {
                 }
             }
 
-            if candidates.len() <= self.evaluation.selected_number {
-
+            if candidates.len() <= (self.evaluation.selected_number as usize) {
+                let selected_routers: Vec<AccountId> =
+                    candidates.into_iter().map(|c| c.id).collect();
+                self.evaluation.current_routers = selected_routers;
             }
             else {
                 // Compute total trustworthy value
@@ -513,12 +530,12 @@ pub mod cross_chain {
                 if credibility_selected_ratio < self.evaluation.credibility_selection_ratio.lower_limit {
                     credibility_selected_ratio = self.evaluation.credibility_selection_ratio.lower_limit;
                 }
-                let credibility_selected_num = self.evaluation.selected_number * credibility_selected_ratio;
+                let credibility_selected_num = (self.evaluation.selected_number as u32 )* (credibility_selected_ratio as u32) / PRECISION;
 
                 // Select routers according to credibility
                 let selected_routers = Vec::<AccountId>::new();
                 let mut start_index = 0;
-                while (selected_routers.len() < credibility_selected_num) {
+                while (selected_routers.len() < (credibility_selected_num as usize)) {
                     let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
                     let mut seed_index = 0;
 
@@ -532,7 +549,7 @@ pub mod cross_chain {
                         for c in candidates.iter_mut() {
                             if c.contains(rand_num) {
                                 if c.selected == false {
-                                    selected_routers.push(c);
+                                    selected_routers.push(c.id);
                                     c.selected = true;
                                     break;
                                 }
@@ -541,14 +558,14 @@ pub mod cross_chain {
                                 }
 
                                 if choose_next && !c.selected {
-                                    selected_routers.push(c);
+                                    selected_routers.push(c.id);
                                     c.selected = true;
                                     break;
                                 }
                             }
                         }
     
-                        if (selected_routers.len() as u16) >= credibility_selected_num {
+                        if selected_routers.len() >= (credibility_selected_num as usize) {
                             break;
                         }
     
@@ -560,29 +577,29 @@ pub mod cross_chain {
 
                 // Select routers randomly
                 start_index += 1;
-                while selected_routers.len() < self.evaluation.selected_number {
+                while selected_routers.len() < (self.evaluation.selected_number as usize) {
                     let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
                         let left_router_num = candidates.len() - selected_routers.len();
                         let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
-                        let rand_num = u16::from_be_bytes(two_bytes) as u32;
-                        let position = rand_num * left_router_num / u16::MAX;
+                        let rand_num = u16::from_be_bytes(two_bytes) as u16;
+                        let position = rand_num * (left_router_num as u16) / u16::MAX;
 
                         let pos_index = 0;
-                        for i in candidates {
-                            if !c.selected {
+                        for i in candidates.mut_iter() {
+                            if !i.selected {
                                 if position == pos_index {
-                                    selected_routers.push(c);
-                                    c.selected = true;
+                                    selected_routers.push(i.id);
+                                    i.selected = true;
                                     break;
                                 }
-                                pos_index++;
+                                pos_index += 1;
                             }
                         }
 
-                        if selected_routers.len() >= self.evaluation.selected_number {
+                        if selected_routers.len() >= (self.evaluation.selected_number as usize) {
                             break;
                         }
 
@@ -591,7 +608,88 @@ pub mod cross_chain {
 
                     start_index += 1;
                 }
+                self.evaluation.current_routers = selected_routers;
             }
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        fn get_routers(&self, routers: Option<Vec<AccountId>>) -> Vec<(AccountId, u32)> {
+            self.evaluation.routers.clone()
+        }
+
+        #[ink(message)]
+        fn register_router(&mut self, router: AccountId) -> Result<(), Error> {
+            self.only_owner()?;
+
+            self.evaluation.routers.push((router, self.evaluation.initial_credibility_value));
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        fn unregister_router(&mut self, router: AccountId) -> Result<(), Error> {
+            self.only_owner()?;
+
+            let index = 0;
+            let found = false;
+            for i in 0..self.evaluation.routers.len() {
+                if self.evaluation.routers[i].0 == router {
+                    found = true;
+                    index = i;
+                }
+            }
+
+            if !found {
+                return Err(Error::RouterNotExist);
+            }
+
+            if (index == self.evaluation.routers.len() - 1) {
+                self.evaluation.routers.pop().ok_or(Error::RemoveRouterError)?;
+            }
+            else {
+                let last_router = self.evaluation.routers.pop().ok_or(Error::RemoveRouterError)?;
+                self.evaluation.routers[index] = last_router;
+            }
+            
+            Ok(())
+        }
+
+        #[ink(message)]
+        fn set_initial_credibility(&mut self, value: u32) -> Result<(), Error> {
+            self.only_owner()?;
+
+            self.evaluation.initial_credibility_value = value;
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        fn set_selected_number(&mut self, number: u8) -> Result<(), Error> {
+            self.only_owner()?;
+
+            self.evaluation.selected_number = number;
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        fn set_threshold(&mut self, threshold: Threshold) -> Result<(), Error> {
+            self.only_owner()?;
+
+            self.evaluation.threshold = threshold;
+
+            Ok(())
+        }
+
+        #[ink(message)]
+        fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio) -> Result<(), Error> {
+            self.only_owner()?;
+
+            self.evaluation.credibility_selection_ratio = ratio;
+
+            Ok(())
         }
     }
 
