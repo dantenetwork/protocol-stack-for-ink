@@ -184,8 +184,6 @@ impl Session {
 )]
 pub struct AbandonedMessage {
     pub id: u128,
-    pub from_chain: String,
-    pub routers: Vec<AccountId>,
     pub error_code: u16,
 }
 
@@ -204,6 +202,7 @@ pub struct Message {
     pub action: [u8; 4],
     pub data: Bytes,
     pub session: Session,
+    pub error_code: Option<u16>,
 }
 
 impl Message {
@@ -223,6 +222,7 @@ impl Message {
             action: message.action,
             data: message.data,
             session: Session::from(message.session),
+            error_code: None,
         }
     }
 }
@@ -482,7 +482,36 @@ impl Evaluation {
 
     pub fn update_router_credibility(&mut self, router: &AccountId, credibility: u32) {
         for r in self.routers.iter_mut() {
-            r.1 = credibility;
+            if r.0 == *router {
+                r.1 = credibility;
+            }
+        }
+    }
+
+    pub fn new_default_evaluation() -> Evaluation {
+        Self {
+            threshold: Threshold {
+                credibility_weight_threshold: 4000,
+                min_seleted_threshold: 3500,
+                trustworthy_threshold: 3500,
+            },
+            credibility_selection_ratio: CredibilitySelectionRatio {
+                upper_limit: 8000,
+                lower_limit: 6000,
+            },
+            evaluation_coefficient: EvaluationCoefficient {
+                min_credibility: 0,
+                max_credibility: 10_000,
+                middle_credibility: (10_000 - 0) / 2,
+                range_crediblility: 10_000 - 0,
+                success_step: 100,
+                do_evil_step: 200,
+                exception_step: 100,
+            },
+            current_routers: Vec::new(),
+            routers: Vec::new(),
+            initial_credibility_value: 4000,
+            selected_number: 13,
         }
     }
 }

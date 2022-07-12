@@ -1,53 +1,9 @@
-
-use ink_lang as ink;
 use ink_env::AccountId;
+use ink_lang as ink;
 use ink_prelude::vec::Vec;
-use ink_storage::{
-  traits::{
-      SpreadLayout,
-      PackedLayout,
-  }
-};
+use ink_storage::traits::{PackedLayout, SpreadLayout};
 
-
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct IEvaluationCoefficient {
-  pub min_credibility: u32,
-  pub max_credibility: u32,
-  pub middle_credibility: u32,
-  pub range_crediblility: u32,
-  pub success_step: u32,
-  pub do_evil_step: u32,
-  pub exception_step: u32,
-}
-
-/// SQOS structure
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct ICredibilitySelectionRatio {
-  pub upper_limit: u32,
-  pub lower_limit: u32,
-}
-
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct IThreshold {
-  pub credibility_weight_threshold: u32,
-  pub min_seleted_threshold: u32,
-  pub trustworthy_threshold: u32,
-}
-
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout))]
-pub struct IEvaluation {
-  pub threshold: IThreshold,
-  pub credibility_selection_ratio: ICredibilitySelectionRatio,
-  pub evaluation_coefficient: IEvaluationCoefficient,
-  pub initial_credibility_value: u32,
-  pub selected_number: u8,
-}
-
+use crate::storage_define::{CredibilitySelectionRatio, Threshold};
 
 #[ink::trait_definition]
 pub trait RoutersCore {
@@ -57,7 +13,7 @@ pub trait RoutersCore {
     /// Cross contract call to `cross-chain protocol contract` to `select_routers` new routers
     #[ink(message)]
     fn select_routers(&mut self);
-    
+
     /// @notice Called from `msg verify contract` to get the credibilities of routers to take weighted aggregation verification of messages
     ///
     /// @dev
@@ -84,24 +40,8 @@ pub trait RoutersCore {
     fn set_selected_number(&mut self, number: u8);
 
     #[ink(message)]
-    fn set_threshold(&mut self, threshold: IThreshold);
+    fn set_threshold(&mut self, threshold: Threshold);
 
     #[ink(message)]
-    fn set_credibility_selection_ratio(&mut self, ratio: ICredibilitySelectionRatio);
+    fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio);
 }
-
-// #[ink::trait_definition]
-// pub trait MultiPorters {
-//     /// Changes routers and requirement.
-//     #[ink(message)]
-//     fn change_routers_and_requirement(&mut self, routers: Porters, requirement: u16) -> Result<(), Error>;
-//     /// Get routers.
-//     #[ink(message)]
-//     fn get_routers(& self) -> Porters;
-//     /// Get requirement
-//     #[ink(message)]
-//     fn get_requirement(& self) -> u16;
-//     /// Get the message id which needs to be ported by `validator` on chain `chain_name`
-//     #[ink(message)]
-//     fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
-// }

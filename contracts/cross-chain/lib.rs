@@ -3,8 +3,8 @@
 use ink_lang as ink;
 
 pub mod cross_chain_base;
+pub mod evaluation;
 pub mod storage_define;
-// pub mod evaluation;
 
 #[ink::contract]
 pub mod cross_chain {
@@ -13,9 +13,10 @@ pub mod cross_chain {
     use ink_prelude::{string::String, vec::Vec};
     use ink_storage::{traits::SpreadAllocate, Mapping};
     // use crate::storage_define::Evaluation;
+    // use crate::evaluation::{ICredibilitySelectionRatio, IEvaluationCoefficient, IThreshold};
     use crate::storage_define::{
-        AbandonedMessage, Context, Error, Evaluation, Group, Message, Routers, SQoS, SentMessage,
-        Threshold,
+        AbandonedMessage, Context, CredibilitySelectionRatio, Error, Evaluation,
+        EvaluationCoefficient, Group, Message, Routers, SQoS, SentMessage, Threshold,
     };
     // use String as ChainId;
     use payload::message_define::{IContext, IReceivedMessage, ISQoS, ISentMessage};
@@ -35,61 +36,6 @@ pub mod cross_chain {
         fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), Error>;
     }
 
-    // /// Trait for basic cross-chain contract
-    // #[ink::trait_definition]
-    // pub trait CrossChainBase {
-    //     /// Sets DAT token contract address
-    //     #[ink(message)]
-    //     fn set_token_contract(&mut self, token: AccountId);
-    //     /// Cross-chain calls method `action` of contract `contract` on chain `to_chain` with data `data`
-    //     #[ink(message)]
-    //     fn send_message(&mut self, message: ISentMessage) -> u128;
-    //     /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
-    //     #[ink(message)]
-    //     fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>;
-    //     /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
-    //     #[ink(message)]
-    //     fn abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error>;
-    //     /// Returns messages that sent from chains `chain_names` and can be executed.
-    //     #[ink(message)]
-    //     fn get_executable_messages(& self, chain_names: Vec<String>) -> Vec<ReceivedMessage>;
-    //     /// Triggers execution of a message sent from chain `chain_name` with id `id`
-    //     #[ink(message)]
-    //     fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
-    //     /// Returns the simplified message, this message is reset every time when a contract is called
-    //     #[ink(message)]
-    //     fn get_context(& self) -> Option<IContext>;
-    //     /// Returns the number of messages sent to chain `chain_name`
-    //     #[ink(message)]
-    //     fn get_sent_message_number(& self, chain_name: String) -> u128;
-    //     /// Returns the number of messages received from chain `chain_name`
-    //     #[ink(message)]
-    //     fn get_received_message_number(& self, chain_name: String) -> u128;
-    //     /// Returns the message with id `id` sent to chain `chain_name`
-    //     #[ink(message)]
-    //     fn get_sent_message(& self, chain_name: String, id: u128) -> Result<SentMessage, Error>;
-    //     /// Returns the message with id `id` received from chain `chain_name`
-    //     #[ink(message)]
-    //     fn get_received_message(& self, chain_name: String, id: u128) -> Result<ReceivedMessage, Error>;
-    // }
-
-    /// Trait for multi routers
-    // #[ink::trait_definition]
-    // pub trait MultiRouters {
-    //     /// Changes routers and requirement.
-    //     #[ink(message)]
-    //     fn change_routers_and_requirement(&mut self, routers: Routers, requirement: u16) -> Result<(), Error>;
-    //     /// Get routers.
-    //     #[ink(message)]
-    //     fn get_routers(& self) -> Routers;
-    //     /// Get requirement
-    //     #[ink(message)]
-    //     fn get_requirement(& self) -> u16;
-    //     /// Get the message id which needs to be ported by `validator` on chain `chain_name`
-    //     #[ink(message)]
-    //     fn get_msg_porting_task(& self, chain_name: String, validator: AccountId) -> u128;
-    // }
-
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
@@ -104,9 +50,11 @@ pub mod cross_chain {
         chain_name: String,
         /// Dante token contract
         /// Table of sent messages
-        sent_message_table: Mapping<String, Vec<SentMessage>>,
+        sent_message_table: Mapping<(String, u128), SentMessage>,
+        /// latest sent message id
+        latest_sent_message_id: Mapping<String, u128>,
         /// Table of received messages
-        received_message_table: Mapping<(String, u128), Vec<Group>>,
+        received_message_table: Mapping<(String, u128), (Vec<Group>, bool)>,
         /// latest received message id
         latest_message_id: Mapping<String, u128>,
         /// router final received message id
@@ -114,8 +62,7 @@ pub mod cross_chain {
         /// Table of executable messages
         executable_message_table: Mapping<String, Vec<Message>>,
 
-        abandoned_message: Mapping<(String, u128), AbandonedMessage>,
-
+        abandoned_message: Mapping<String, Vec<AbandonedMessage>>,
         /// Context of a cross-contract call
         context: Option<Context>,
 
@@ -127,15 +74,41 @@ pub mod cross_chain {
     impl CrossChain {
         /// Constructor that initializes `chain_name`.
         #[ink(constructor)]
-        pub fn new(chain_name: String) -> Self {
-            ink_lang::utils::initialize_contract(|contract| Self::new_init(contract, chain_name))
+        pub fn new_default(chain_name: String) -> Self {
+            ink_lang::utils::initialize_contract(|contract| {
+                Self::new_init(contract, chain_name, Evaluation::new_default_evaluation())
+            })
+        }
+
+        #[ink(constructor)]
+        pub fn new(
+            chain_name: String,
+            threshold: Threshold,
+            credibility_selection_ratio: CredibilitySelectionRatio,
+            evaluation_coefficient: EvaluationCoefficient,
+            initial_credibility_value: u32,
+            selected_number: u8,
+        ) -> Self {
+            ink_lang::utils::initialize_contract(|contract| {
+                let evaluation = Evaluation {
+                    threshold,
+                    credibility_selection_ratio,
+                    evaluation_coefficient,
+                    current_routers: Vec::new(),
+                    routers: Vec::new(),
+                    initial_credibility_value,
+                    selected_number,
+                };
+                Self::new_init(contract, chain_name, evaluation)
+            })
         }
 
         /// Initializes the contract with the specified chain name.
-        fn new_init(&mut self, chain_name: String) {
+        fn new_init(&mut self, chain_name: String, evaluation: Evaluation) {
             let caller = Self::env().caller();
             self.owner = Some(caller);
             self.chain_name = chain_name;
+            self.evaluation = evaluation;
         }
 
         /// If the caller is the owner of the contract
@@ -242,6 +215,7 @@ pub mod cross_chain {
                 .received_message_table
                 .get(&key)
                 .unwrap()
+                .0
                 .into_iter()
                 .map(|group| {
                     let mut reture_value = group.clone();
@@ -257,15 +231,28 @@ pub mod cross_chain {
             if aggregation[0].credibility_weight
                 >= self.evaluation.threshold.credibility_weight_threshold
             {
-                let mut executable = self
-                    .executable_message_table
-                    .get(&key.0)
-                    .unwrap_or(Vec::new());
-                executable.push(aggregation[0].message.clone());
-                self.executable_message_table.insert(&key.0, &executable);
-                trusted = aggregation.remove(0).routers;
-                for group in aggregation {
-                    untrusted.extend(group.routers);
+                if aggregation[0].message.error_code.is_some() {
+                    let mut abandoned_messages = self
+                        .abandoned_message
+                        .get(&aggregation[0].message.from_chain)
+                        .unwrap_or(Vec::new());
+                    abandoned_messages.push(AbandonedMessage {
+                        id: aggregation[0].message.id,
+                        error_code: aggregation[0].message.error_code.unwrap(),
+                    });
+                    self.abandoned_message
+                        .insert(&aggregation[0].message.from_chain, &abandoned_messages);
+                } else {
+                    let mut executable = self
+                        .executable_message_table
+                        .get(&key.0)
+                        .unwrap_or(Vec::new());
+                    executable.push(aggregation[0].message.clone());
+                    self.executable_message_table.insert(&key.0, &executable);
+                    trusted = aggregation.remove(0).routers;
+                    for group in aggregation {
+                        untrusted.extend(group.routers);
+                    }
                 }
             } else {
                 for group in aggregation {
@@ -334,13 +321,18 @@ pub mod cross_chain {
 
         /// For debug
         #[ink(message)]
-        pub fn clear_messages(&mut self, chain_name: String, id: u128) -> Result<(), Error> {
+        pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
             self.only_owner()?;
             let total = self.latest_message_id.get(&chain_name).unwrap();
-
-            self.received_message_table.remove((chain_name.clone(), id));
-            // self.sent_message_table.remove(chain_name);
-
+            for i in 0..total {
+                if self
+                    .received_message_table
+                    .get(&(chain_name.clone(), i))
+                    .is_some()
+                {
+                    self.received_message_table.remove(&(chain_name.clone(), i));
+                }
+            }
             Ok(())
         }
 
@@ -388,11 +380,11 @@ pub mod cross_chain {
         /// `to_chain` with data `data`
         #[ink(message)]
         fn send_message(&mut self, message: ISentMessage) -> u128 {
-            let mut chain_message: Vec<SentMessage> = self
-                .sent_message_table
+            let latest_sent_message_id = self
+                .latest_sent_message_id
                 .get(&message.to_chain)
-                .unwrap_or(Vec::<SentMessage>::new());
-            let id = chain_message.len() + 1;
+                .unwrap_or(0);
+            let id = latest_sent_message_id + 1;
             let caller = Self::env().caller();
             let signer = caller.clone();
             let sent_message: SentMessage = SentMessage::new(
@@ -402,14 +394,19 @@ pub mod cross_chain {
                 signer,
                 message.clone(),
             );
-            chain_message.push(sent_message);
             self.sent_message_table
-                .insert(message.to_chain, &chain_message);
-            u128::try_from(id).unwrap()
+                .insert(&(message.to_chain, id), &sent_message);
+            id
         }
 
-        /// Cross-chain receives message from chain `from_chain`, the message
-        /// will be handled by method `action` of contract `to` with data `data`
+        // #[ink(message)]
+        // fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
+        //     self.only_owner()?;
+        //     let messsage = Message::new(message);
+
+        // }
+        // /// Cross-chain receives message from chain `from_chain`, the message
+        // /// will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
             self.only_router()?;
@@ -435,7 +432,9 @@ pub mod cross_chain {
             if id < final_received_message_id
                 || (id < latest_message_id + 1 && final_received_message_id == 0)
             {
-                if !self.received_message_table.contains(&key) {
+                if !self.received_message_table.contains(&key)
+                    || self.received_message_table.get(&key).unwrap().1
+                {
                     return Err(Error::ReceiveCompleted);
                 }
             }
@@ -445,7 +444,7 @@ pub mod cross_chain {
             }
             let router_credibility = self.evaluation.get_router_credibility(&router);
             match self.received_message_table.get(&key) {
-                Some(mut groups) => {
+                Some((mut groups, completed)) => {
                     let mut hash_found = false;
                     for group in groups.iter_mut() {
                         if group.message_hash == message_hash {
@@ -464,7 +463,8 @@ pub mod cross_chain {
                         };
                         groups.push(group);
                     }
-                    self.received_message_table.insert(&key, &groups);
+                    self.received_message_table
+                        .insert(&key, &(groups, completed));
                 }
                 None => {
                     let groups = ink_prelude::vec![Group {
@@ -474,13 +474,13 @@ pub mod cross_chain {
                         group_credibility_value: router_credibility as u64,
                         credibility_weight: 0,
                     }];
-                    self.received_message_table.insert(&key, &groups);
+                    self.received_message_table.insert(&key, &(groups, false));
                 }
             }
 
             let mut len: u8 = 0;
             let mut total_credibility: u64 = 0;
-            for group in self.received_message_table.get(&key).unwrap() {
+            for group in self.received_message_table.get(&key).unwrap().0 {
                 len += group.routers.len() as u8;
                 total_credibility += group.group_credibility_value;
             }
@@ -489,6 +489,7 @@ pub mod cross_chain {
                 let (trusted, untrusted, exeception) = self.message_verify(&key, total_credibility);
                 self.update_validator_credibility(trusted, untrusted, exeception);
                 // TODO remove immediate?
+                // self.received_message_table.get(&key).as_mut().and_then(|received_message|{received_message.1 = true;})
                 self.received_message_table.remove(&key);
             }
             Ok(())
@@ -508,190 +509,132 @@ pub mod cross_chain {
         //     self.internal_abandon_message(from_chain, id, error_code)
         // }
 
-        // /// Returns messages that sent from chains `chain_names` and can be executed.
-        // #[ink(message)]
-        // fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<ExecutableMessage> {
-        //     let mut ret = Vec::<ExecutableMessage>::new();
+        /// Returns messages that sent from chains `chain_names` and can be executed.
+        #[ink(message)]
+        fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<Message> {
+            let mut ret = Vec::<Message>::new();
 
-        //     // for chain_name in chain_names {
-        //     //     let chain_message_option: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
-        //     //     if let Some(chain_message) = chain_message_option {
-        //     //         for message in chain_message {
-        //     //             if (message.error_code == 0) && (!message.executed) {
-        //     //                 ret.push(message.clone());
-        //     //             }
-        //     //         }
-        //     //     }
-        //     // }
+            for chain_name in chain_names {
+                let messages: Vec<Message> = self
+                    .executable_message_table
+                    .get(&chain_name)
+                    .unwrap_or(Vec::new());
+                ret.extend(messages);
+            }
+            ret
+        }
 
-        //     ret
-        // }
+        /// Triggers execution of a message sent from chain `chain_name` with id `id`
+        #[ink(message)]
+        fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
+            let mut executable_messages: Vec<Message> = self
+                .executable_message_table
+                .get(&chain_name)
+                .ok_or(Error::ChainMessageNotFound)?;
+            let mut message: Option<Message> = None;
+            let mut index: usize = 0;
+            for (i, m) in executable_messages.iter().enumerate() {
+                // for m in executable_messages.iter() {
+                if m.id == id {
+                    message = Some(m.clone());
+                    index = i;
+                    break;
+                }
+            }
+            if message.is_none() {
+                return Err(Error::IdOutOfBound);
+            }
+            executable_messages.remove(index);
+            let message = message.unwrap();
+            self.context = Some(Context::new(
+                message.id,
+                message.from_chain.clone(),
+                message.sender.clone(),
+                message.signer.clone(),
+                message.sqos.clone(),
+                message.contract.clone(),
+                message.action.clone(),
+                message.session.clone(),
+            ));
 
-        // /// Triggers execution of a message sent from chain `chain_name` with id `id`
-        // #[ink(message)]
-        // fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
-        //     let mut chain_message: Vec<Group> = self
-        //         .received_message_table
-        //         .get(&chain_name)
-        //         .ok_or(Error::ChainMessageNotFound)?;
-        //     let mut message: &mut Group = chain_message
-        //         .get_mut(usize::try_from(id - 1).unwrap())
-        //         .ok_or(Error::IdOutOfBound)?;
+            // Construct paylaod
+            let mut data_slice = message.data.as_slice();
+            let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
+                .ok()
+                .ok_or(Error::DecodeDataFailed)?;
 
-        //     if message.executed {
-        //         return Err(Error::AlreadyExecuted);
-        //     }
+            self.flush();
 
-        //     message.executed = true;
-        //     self.context = Some(Context::new(
-        //         message.id,
-        //         message.from_chain.clone(),
-        //         message.sender.clone(),
-        //         message.signer.clone(),
-        //         message.sqos.clone(),
-        //         message.contract.clone(),
-        //         message.action.clone(),
-        //         message.session.clone(),
-        //     ));
+            // Cross-contract call
+            let selector: [u8; 4] = message.action.clone().try_into().unwrap();
+            let cc_result: Result<String, ink_env::Error> =
+                ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                    .call_type(
+                        ink_env::call::Call::new()
+                            .callee(message.contract)
+                            .gas_limit(0)
+                            .transferred_value(0),
+                    )
+                    .exec_input(
+                        ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
+                            .push_arg(payload),
+                    )
+                    .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
+                    .returns::<String>()
+                    .fire();
 
-        //     // Construct paylaod
-        //     let mut data_slice = message.data.as_slice();
-        //     let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
-        //         .ok()
-        //         .ok_or(Error::DecodeDataFailed)?;
+            self.load();
 
-        //     self.flush();
+            if cc_result.is_err() {
+                // let e = cc_result.unwrap_err();
+                return Err(Error::CrossContractCallFailed);
+            }
 
-        //     // Cross-contract call
-        //     let selector: [u8; 4] = message.action.clone().try_into().unwrap();
-        //     let cc_result: Result<String, ink_env::Error> =
-        //         ink_env::call::build_call::<ink_env::DefaultEnvironment>()
-        //             .call_type(
-        //                 ink_env::call::Call::new()
-        //                     .callee(message.contract)
-        //                     .gas_limit(0)
-        //                     .transferred_value(0),
-        //             )
-        //             .exec_input(
-        //                 ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
-        //                     .push_arg(payload),
-        //             )
-        //             .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
-        //             .returns::<String>()
-        //             .fire();
+            Ok(cc_result.unwrap())
+        }
 
-        //     self.load();
+        /// Returns the simplified message, this message is reset every time when a contract is called
+        #[ink(message)]
+        fn get_context(&self) -> Option<IContext> {
+            if self.context.is_none() {
+                return None;
+            }
 
-        //     if cc_result.is_err() {
-        //         // let e = cc_result.unwrap_err();
-        //         return Err(Error::CrossContractCallFailed);
-        //     }
+            Some(self.context.clone().unwrap().derive())
+        }
 
-        //     self.received_message_table
-        //         .insert(chain_name, &chain_message);
+        /// Returns the number of messages sent to chain `chain_name`
+        #[ink(message)]
+        fn get_sent_message_number(&self, chain_name: String) -> u128 {
+            self.latest_sent_message_id.get(&chain_name).unwrap_or(0)
+        }
 
-        //     Ok(cc_result.unwrap())
-        // }
+        /// Returns the number of messages received from chain `chain_name`
+        #[ink(message)]
+        fn get_received_message_number(&self, chain_name: String) -> u128 {
+            self.latest_message_id.get(&chain_name).unwrap_or(0)
+        }
 
-        // /// Returns the simplified message, this message is reset every time when a contract is called
-        // #[ink(message)]
-        // fn get_context(&self) -> Option<IContext> {
-        //     if self.context.is_none() {
-        //         return None;
-        //     }
+        /// Returns the message with id `id` sent to chain `chain_name`
+        #[ink(message)]
+        fn get_sent_message(&self, chain_name: String, id: u128) -> Result<SentMessage, Error> {
+            self.sent_message_table
+                .get(&(chain_name, id))
+                .ok_or(Error::ChainMessageNotFound)
+        }
 
-        //     Some(self.context.clone().unwrap().derive())
-        // }
-
-        // /// Returns the number of messages sent to chain `chain_name`
-        // #[ink(message)]
-        // fn get_sent_message_number(&self, chain_name: String) -> u128 {
-        //     let chain_message: Option<Vec<SentMessage>> = self.sent_message_table.get(chain_name);
-        //     if chain_message.is_none() {
-        //         return 0;
-        //     }
-        //     chain_message.unwrap().len().try_into().unwrap()
-        // }
-
-        // /// Returns the number of messages received from chain `chain_name`
-        // #[ink(message)]
-        // fn get_received_message_number(&self, chain_name: String) -> u128 {
-        //     0
-        //     // let chain_message: Option<Vec<ReceivedMessage>> = self.received_message_table.get(&chain_name);
-        //     // if chain_message.is_none() {
-        //     //     return 0;
-        //     // }
-        //     // chain_message.unwrap().len().try_into().unwrap()
-        // }
-
-        // /// Returns the message with id `id` sent to chain `chain_name`
-        // #[ink(message)]
-        // fn get_sent_message(&self, chain_name: String, id: u128) -> Result<SentMessage, Error> {
-        //     let chain_message: Vec<SentMessage> = self
-        //         .sent_message_table
-        //         .get(chain_name)
-        //         .ok_or(Error::ChainMessageNotFound)?;
-        //     let message: &SentMessage = chain_message
-        //         .get(usize::try_from(id - 1).unwrap())
-        //         .ok_or(Error::IdOutOfBound)?;
-        //     Ok(message.clone())
-        // }
-
-        // /// Returns the message with id `id` received from chain `chain_name`
-        // #[ink(message)]
-        // fn get_received_message(&self, chain_name: String, id: u128) -> Result<Vec<Group>, Error> {
-        //     let chain_message: Vec<Group> = self
-        //         .received_message_table
-        //         .get(&chain_name)
-        //         .ok_or(Error::ChainMessageNotFound)?;
-        //     let message: &Group = chain_message
-        //         .get(usize::try_from(id - 1).unwrap())
-        //         .ok_or(Error::IdOutOfBound)?;
-        //     Ok(message.clone())
-        // }
+        /// Returns the message with id `id` received from chain `chain_name`
+        #[ink(message)]
+        fn get_received_message(
+            &self,
+            chain_name: String,
+            id: u128,
+        ) -> Result<(Vec<Group>, bool), Error> {
+            self.received_message_table
+                .get(&(chain_name, id))
+                .ok_or(Error::ChainMessageNotFound)
+        }
     }
-
-    // impl MultiRouters for CrossChain {
-    //     /// Changes routers and requirement.
-    //     #[ink(message)]
-    //     fn change_routers_and_requirement(&mut self, routers: Routers, requirement: u16) -> Result<(), Error> {
-    //         self.only_owner()?;
-
-    //         // Clear routers
-    //         for i in &self.routers {
-    //             self.is_router.remove(i);
-    //         }
-
-    //         // self.routers.resize(routers.len(), AccountId::default());
-    //         for i in &routers {
-    //             self.is_router.insert(i, &true);
-    //         }
-
-    //         self.routers = routers;
-    //         self.required = requirement;
-
-    //         Ok(())
-    //     }
-
-    //     /// Get routers.
-    //     #[ink(message)]
-    //     fn get_routers(& self) -> Routers {
-    //         self.routers.clone()
-    //     }
-
-    //     /// Get requirement
-    //     #[ink(message)]
-    //     fn get_requirement(& self) -> u16 {
-    //         self.required
-    //     }
-
-    //     /// Get the message id which needs to be ported by `validator` on chain `chain_name`
-    //     #[ink(message)]
-    //     fn get_msg_porting_task(& self, chain_name: String, _validator: AccountId) -> u128 {
-    //         let num = self.get_received_message_number(chain_name) + 1;
-    //         num
-    //     }
-    // }
 
     // /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
     // /// module and test functions are marked with a `#[test]` attribute.
