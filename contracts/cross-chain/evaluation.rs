@@ -12,14 +12,14 @@ pub trait RoutersCore {
     /// @dev Refresh the begining and end of the current time stage if the current period ended.
     /// Cross contract call to `cross-chain protocol contract` to `select_routers` new routers
     #[ink(message)]
-    fn select_routers(&mut self) -> Result<(), Error>;
+    fn select_routers(&mut self) -> Result<Vec<AccountId>, Error>;
     
     /// @notice Called from `msg verify contract` to get the credibilities of routers to take weighted aggregation verification of messages
     ///
     /// @dev
     /// @param routers
     #[ink(message)]
-    fn get_routers(&self, routers: Option<Vec<AccountId>>) -> Vec<(AccountId, u32)>;
+    fn get_routers(&self) -> Vec<(AccountId, u32)>;
 
     /// @notice Called from off-chain router to register themselves as the cross chain router.
     /// Get router accountId through `Self::env::caller()`.

@@ -16,7 +16,7 @@ pub mod cross_chain {
     // use crate::storage_define::Evaluation;
     // use crate::evaluation::{ICredibilitySelectionRatio, IEvaluationCoefficient, IThreshold};
     use crate::storage_define::{
-        Context, Error, Evaluation, ExecutableMessage, Group, Message, Routers, SQoS, SentMessage,
+        Context, Error, Evaluation, Group, Message, Routers, SQoS, SentMessage,
         Threshold, CredibilitySelectionRatio, EvaluationCoefficient, AbandonedMessage
     };
     use super::evaluation::{
@@ -363,6 +363,11 @@ pub mod cross_chain {
         pub fn get_chain_name(&self) -> String {
             self.chain_name.clone()
         }
+
+        #[ink(message)]
+        pub fn get_evaluation(&self) -> Evaluation {
+            self.evaluation.clone()
+        }
     }
 
     impl Ownable for CrossChain {
@@ -660,13 +665,13 @@ pub mod cross_chain {
 
     impl RoutersCore for CrossChain {
         #[ink(message)]
-        fn select_routers(&mut self) -> Result<(), Error>{
+        fn select_routers(&mut self) -> Result<Vec<AccountId>, Error>{
             self.only_owner()?;
 
             let mut total_credit = 0_u32;
             let mut candidates = Vec::<Candidate>::new();
             let mut trustworthy_all: u32 = 0;
-            for index in self.evaluation.routers {
+            for index in self.evaluation.routers.iter() {
                 if index.1 >= self.evaluation.threshold.min_seleted_threshold {
                     let c = Candidate {
                         id: index.0,
@@ -688,7 +693,7 @@ pub mod cross_chain {
             }
             else {
                 // Compute total trustworthy value
-                for c in candidates {
+                for c in candidates.iter() {
                     if c.credit >= self.evaluation.threshold.trustworthy_threshold {
                         let probability = PRECISION * c.credit / total_credit;
                         trustworthy_all += probability;
@@ -696,7 +701,7 @@ pub mod cross_chain {
                 }
 
                 // Number of credibility selecting
-                let credibility_selected_ratio = trustworthy_all;
+                let mut credibility_selected_ratio = trustworthy_all;
                 if credibility_selected_ratio > self.evaluation.credibility_selection_ratio.upper_limit {
                     credibility_selected_ratio = self.evaluation.credibility_selection_ratio.upper_limit;
                 }
@@ -706,7 +711,7 @@ pub mod cross_chain {
                 let credibility_selected_num = (self.evaluation.selected_number as u32 )* (credibility_selected_ratio as u32) / PRECISION;
 
                 // Select routers according to credibility
-                let selected_routers = Vec::<AccountId>::new();
+                let mut selected_routers = Vec::<AccountId>::new();
                 let mut start_index = 0;
                 while (selected_routers.len() < (credibility_selected_num as usize)) {
                     let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
@@ -760,8 +765,8 @@ pub mod cross_chain {
                         let rand_num = u16::from_be_bytes(two_bytes) as u16;
                         let position = rand_num * (left_router_num as u16) / u16::MAX;
 
-                        let pos_index = 0;
-                        for i in candidates.mut_iter() {
+                        let mut pos_index = 0;
+                        for i in candidates.iter_mut() {
                             if !i.selected {
                                 if position == pos_index {
                                     selected_routers.push(i.id);
@@ -784,11 +789,11 @@ pub mod cross_chain {
                 self.evaluation.current_routers = selected_routers;
             }
 
-            Ok(())
+            Ok(self.evaluation.current_routers.clone())
         }
 
         #[ink(message)]
-        fn get_routers(&self, routers: Option<Vec<AccountId>>) -> Vec<(AccountId, u32)> {
+        fn get_routers(&self) -> Vec<(AccountId, u32)> {
             self.evaluation.routers.clone()
         }
 
@@ -805,8 +810,8 @@ pub mod cross_chain {
         fn unregister_router(&mut self, router: AccountId) -> Result<(), Error> {
             self.only_owner()?;
 
-            let index = 0;
-            let found = false;
+            let mut index = 0;
+            let mut found = false;
             for i in 0..self.evaluation.routers.len() {
                 if self.evaluation.routers[i].0 == router {
                     found = true;
