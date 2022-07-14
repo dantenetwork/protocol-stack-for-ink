@@ -1,4 +1,4 @@
-use crate::storage_define::{Error, Group, Message, SentMessage};
+use crate::storage_define::{Error, Group, SentMessage};
 use ink_env::AccountId;
 /// Trait for basic cross-chain contract
 use ink_lang as ink;
@@ -17,17 +17,17 @@ pub trait CrossChainBase {
     /// Cross-chain receives message from chain `from_chain`, the message will be handled by method `action` of contract `to` with data `data`
     #[ink(message)]
     fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error>;
-    // /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
-    // #[ink(message)]
-    // fn abandon_message(
-    //     &mut self,
-    //     from_chain: String,
-    //     id: u128,
-    //     error_code: u16,
-    // ) -> Result<(), Error>;
+    /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
+    #[ink(message)]
+    fn abandon_message(
+        &mut self,
+        from_chain: String,
+        id: u128,
+        error_code: u16,
+    ) -> Result<(), Error>;
     /// Returns messages that sent from chains `chain_names` and can be executed.
     #[ink(message)]
-    fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<Message>;
+    fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<(String, u128)>;
     /// Triggers execution of a message sent from chain `chain_name` with id `id`
     #[ink(message)]
     fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
