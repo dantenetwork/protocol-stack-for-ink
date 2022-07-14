@@ -15,12 +15,10 @@ pub mod cross_chain {
     use ink_storage::{traits::SpreadAllocate, Mapping};
     // use crate::storage_define::Evaluation;
     // use crate::evaluation::{ICredibilitySelectionRatio, IEvaluationCoefficient, IThreshold};
+    use super::evaluation::RoutersCore;
     use crate::storage_define::{
         AbandonedMessage, Context, CredibilitySelectionRatio, Error, Evaluation,
-        EvaluationCoefficient, Group, Message, Routers, SQoS, SentMessage, Session, Threshold,
-    };
-    use super::evaluation::{
-        RoutersCore,
+        EvaluationCoefficient, Group, Message, SQoS, SentMessage, Session, Threshold,
     };
     // use String as ChainId;
     use payload::message_define::{IContext, IReceivedMessage, ISQoS, ISentMessage};
@@ -156,34 +154,6 @@ pub mod cross_chain {
             }
 
             Err(Error::NotRouter)
-        }
-
-        /// Receives message
-        fn internal_receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
-            // let mut chain_message = self.received_message_table.get(&message.from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
-            // let current_id = chain_message.len() + 1;
-            // if current_id != message.id.try_into().unwrap() {
-            //     return Err(Error::IdNotMatch)
-            // }
-
-            // let m = ReceivedMessage::new(message.clone());
-            // chain_message.push(m);
-            // self.received_message_table.insert(message.from_chain, &chain_message);
-            Ok(())
-        }
-
-        /// Abandons message
-        fn internal_abandon_message(&mut self, from_chain: String, id: u128, error_code: u16) -> Result<(), Error> {
-            // let mut chain_message = self.received_message_table.get(&from_chain).unwrap_or(Vec::<ReceivedMessage>::new());
-            // let current_id = chain_message.len() + 1;
-            // if current_id != (id as usize) {
-            //     return Err(Error::IdNotMatch)
-            // }
-
-            // let message = ReceivedMessage::new_with_error(id, from_chain.clone(), error_code);
-            // chain_message.push(message);
-            // self.received_message_table.insert(from_chain, &chain_message);
-            Ok(())
         }
 
         /// Registers SQoS
@@ -672,7 +642,7 @@ pub mod cross_chain {
 
     impl RoutersCore for CrossChain {
         #[ink(message)]
-        fn select_routers(&mut self) -> Result<Vec<AccountId>, Error>{
+        fn select_routers(&mut self) -> Result<Vec<AccountId>, Error> {
             self.only_owner()?;
 
             let mut total_credit = 0_u32;
@@ -687,7 +657,7 @@ pub mod cross_chain {
                         selected: false,
                         credit: index.1,
                     };
-                    
+
                     total_credit = c.high;
                     candidates.push(c);
                 }
@@ -700,8 +670,7 @@ pub mod cross_chain {
                 let selected_routers: Vec<AccountId> =
                     candidates.into_iter().map(|c| c.id).collect();
                 self.evaluation.current_routers = selected_routers;
-            }
-            else {
+            } else {
                 ink_env::debug_println!("{}", "Enough");
                 // Compute total trustworthy value
                 for c in candidates.iter() {
@@ -714,30 +683,50 @@ pub mod cross_chain {
 
                 // Number of credibility selecting
                 let mut credibility_selected_ratio = trustworthy_all;
-                if credibility_selected_ratio > self.evaluation.credibility_selection_ratio.upper_limit {
-                    credibility_selected_ratio = self.evaluation.credibility_selection_ratio.upper_limit;
+                if credibility_selected_ratio
+                    > self.evaluation.credibility_selection_ratio.upper_limit
+                {
+                    credibility_selected_ratio =
+                        self.evaluation.credibility_selection_ratio.upper_limit;
                 }
-                if credibility_selected_ratio < self.evaluation.credibility_selection_ratio.lower_limit {
-                    credibility_selected_ratio = self.evaluation.credibility_selection_ratio.lower_limit;
+                if credibility_selected_ratio
+                    < self.evaluation.credibility_selection_ratio.lower_limit
+                {
+                    credibility_selected_ratio =
+                        self.evaluation.credibility_selection_ratio.lower_limit;
                 }
-                ink_env::debug_println!("credibility_selected_ratio:{}", credibility_selected_ratio);
-                let credibility_selected_num = (self.evaluation.selected_number as u32 )* (credibility_selected_ratio as u32) / PRECISION;
+                ink_env::debug_println!(
+                    "credibility_selected_ratio:{}",
+                    credibility_selected_ratio
+                );
+                let credibility_selected_num = (self.evaluation.selected_number as u32)
+                    * (credibility_selected_ratio as u32)
+                    / PRECISION;
                 ink_env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
 
                 // Select routers according to credibility
                 let mut selected_routers = Vec::<AccountId>::new();
                 let mut start_index = 0;
-                while (selected_routers.len() < (credibility_selected_num as usize)) {
-                    let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
+                while selected_routers.len() < (credibility_selected_num as usize) {
+                    let random_seed =
+                        ink_env::random::<ink_env::DefaultEnvironment>(&[start_index])
+                            .unwrap()
+                            .0;
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
-                        let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
+                        let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index + 2]
+                            .try_into()
+                            .unwrap();
                         let rand_num = u16::from_be_bytes(two_bytes) as u32;
-    
+
                         let rand_credit = rand_num * (total_credit as u32) / (u16::MAX as u32);
-                        ink_env::debug_println!("credit rand_num:{}, position:{}", rand_num, rand_credit);
-    
+                        ink_env::debug_println!(
+                            "credit rand_num:{}, position:{}",
+                            rand_num,
+                            rand_credit
+                        );
+
                         let mut choose_next = false;
                         for c in candidates.iter_mut() {
                             if c.contains(rand_credit) {
@@ -745,8 +734,7 @@ pub mod cross_chain {
                                     selected_routers.push(c.id);
                                     c.selected = true;
                                     break;
-                                }
-                                else {
+                                } else {
                                     choose_next = true;
                                 }
 
@@ -757,29 +745,38 @@ pub mod cross_chain {
                                 }
                             }
                         }
-    
+
                         if selected_routers.len() >= (credibility_selected_num as usize) {
                             break;
                         }
-    
+
                         seed_index += 2;
                     }
-    
+
                     start_index += 1;
                 }
 
                 // Select routers randomly
                 start_index += 1;
                 while selected_routers.len() < (self.evaluation.selected_number as usize) {
-                    let random_seed = ink_env::random::<ink_env::DefaultEnvironment>(&[start_index]).unwrap().0;
+                    let random_seed =
+                        ink_env::random::<ink_env::DefaultEnvironment>(&[start_index])
+                            .unwrap()
+                            .0;
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
                         let left_router_num = candidates.len() - selected_routers.len();
-                        let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
+                        let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index + 2]
+                            .try_into()
+                            .unwrap();
                         let rand_num = u16::from_be_bytes(two_bytes) as u32;
                         let position = rand_num * (left_router_num as u32) / (u16::MAX as u32);
-                        ink_env::debug_println!("random rand_num:{}, posotion:{}", rand_num, position);
+                        ink_env::debug_println!(
+                            "random rand_num:{}, posotion:{}",
+                            rand_num,
+                            position
+                        );
 
                         let mut pos_index = 0;
                         for i in candidates.iter_mut() {
@@ -823,7 +820,9 @@ pub mod cross_chain {
                 }
             }
 
-            self.evaluation.routers.push((router, self.evaluation.initial_credibility_value));
+            self.evaluation
+                .routers
+                .push((router, self.evaluation.initial_credibility_value));
 
             Ok(())
         }
@@ -845,14 +844,20 @@ pub mod cross_chain {
                 return Err(Error::RouterNotExist);
             }
 
-            if (index == self.evaluation.routers.len() - 1) {
-                self.evaluation.routers.pop().ok_or(Error::RemoveRouterError)?;
-            }
-            else {
-                let last_router = self.evaluation.routers.pop().ok_or(Error::RemoveRouterError)?;
+            if index == self.evaluation.routers.len() - 1 {
+                self.evaluation
+                    .routers
+                    .pop()
+                    .ok_or(Error::RemoveRouterError)?;
+            } else {
+                let last_router = self
+                    .evaluation
+                    .routers
+                    .pop()
+                    .ok_or(Error::RemoveRouterError)?;
                 self.evaluation.routers[index] = last_router;
             }
-            
+
             Ok(())
         }
 
@@ -900,7 +905,10 @@ pub mod cross_chain {
         }
 
         #[ink(message)]
-        fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio) -> Result<(), Error> {
+        fn set_credibility_selection_ratio(
+            &mut self,
+            ratio: CredibilitySelectionRatio,
+        ) -> Result<(), Error> {
             self.only_owner()?;
 
             if ratio.lower_limit > ratio.upper_limit {

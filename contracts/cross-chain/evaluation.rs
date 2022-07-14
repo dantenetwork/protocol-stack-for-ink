@@ -1,9 +1,8 @@
 use ink_env::AccountId;
 use ink_lang as ink;
 use ink_prelude::vec::Vec;
-use ink_storage::traits::{PackedLayout, SpreadLayout};
 
-use crate::storage_define::{CredibilitySelectionRatio, Threshold, Error};
+use crate::storage_define::{CredibilitySelectionRatio, Error, Threshold};
 
 #[ink::trait_definition]
 pub trait RoutersCore {
@@ -13,7 +12,7 @@ pub trait RoutersCore {
     /// Cross contract call to `cross-chain protocol contract` to `select_routers` new routers
     #[ink(message)]
     fn select_routers(&mut self) -> Result<Vec<AccountId>, Error>;
-    
+
     /// @notice Called from `msg verify contract` to get the credibilities of routers to take weighted aggregation verification of messages
     ///
     /// @dev
@@ -43,5 +42,8 @@ pub trait RoutersCore {
     fn set_threshold(&mut self, threshold: Threshold) -> Result<(), Error>;
 
     #[ink(message)]
-    fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio) -> Result<(), Error>;
+    fn set_credibility_selection_ratio(
+        &mut self,
+        ratio: CredibilitySelectionRatio,
+    ) -> Result<(), Error>;
 }
