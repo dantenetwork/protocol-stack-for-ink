@@ -6,7 +6,7 @@
 use ink_lang as ink;
 
 use payload::message_define::{IReceivedMessage};
-
+ 
 #[ink::contract]
 mod algorithm {
 

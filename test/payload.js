@@ -1,23 +1,29 @@
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { Abi, ContractPromise } from '@polkadot/api-contract';
+import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } from 'scale-ts';
 import fs from 'fs';
 import 'dotenv/config'
 
 const provider = new WsProvider("ws://127.0.0.1:9944");
 const api = await ApiPromise.create({provider});
 
+const InkAddressData = Struct({
+  ink_address: Option(Vector(u8)),
+  general_address: Option(str),
+});
+
 const keyring = new Keyring({ type: 'sr25519' });
 let data = fs.readFileSync('./.secret/keyPair.json');
 const sender = keyring.addFromJson(JSON.parse(data.toString()));
 sender.decodePkcs8(process.env.PASSWORD);
 
-const abiFile = fs.readFileSync('../contracts/Payload/target/ink/metadata.json');
-const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.PAYLOAD_CONTRACT);
+const abiFile = fs.readFileSync('../contracts/callee/target/ink/metadata.json');
+const contract = new ContractPromise(api, JSON.parse(abiFile), process.env.CALLEE_CONTRACT);
 
 // test encoder
 const payloadABI = new Abi(JSON.parse(abiFile));
-const payed = payloadABI.findMessage('getMessage').toU8a([{'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': '0x99887766'}]}]);
-const payedDecode = payloadABI.findMessage('getMessage').fromU8a(payed.subarray(5));
+// const payed = payloadABI.findMessage('getMessage').toU8a([{'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': '0x99887766'}]}]);
+// const payedDecode = payloadABI.findMessage('getMessage').fromU8a(payed.subarray(5));
 // console.log(payedDecode.args[0].toHuman());
 // console.log(payedDecode.args[0].toJSON().vecs[0]);
 
@@ -35,8 +41,8 @@ async function query() {
     //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
   
     // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-    const { gasConsumed, result, output } = await contract.query['getMessage'](sender.address, {value, gasLimit }, 
-                                                                              {'items': null, 'vecs': [{'n': 'Nika', 't': 'InkU16', 'v': [99, 88]}]});
+    const { gasConsumed, result, output } = await contract.query['getPayload'](sender.address, {value, gasLimit }, 
+                                                                                { items: [ { n: 'nika', tv: { InkAddress: { ink_address: [1,2,3,4], general_address: 'Hello Nika' } } } ] });
     
     // The actual result from RPC as `ContractExecResult`
     console.log(result.toHuman());
@@ -115,5 +121,5 @@ async function queryNewDetail() {
     }
 }
 
-  // query();
-  queryNewDetail();
+  query();
+  // queryNewDetail();
