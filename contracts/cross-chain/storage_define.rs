@@ -31,6 +31,7 @@ pub enum Error {
     AheadOfId,
     AlreadReceived,
     ReceiveCompleted,
+    RouterAlreadyRegisterd,
 }
 
 impl Error {

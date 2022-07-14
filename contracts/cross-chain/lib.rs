@@ -685,13 +685,17 @@ pub mod cross_chain {
                     candidates.push(c);
                 }
             }
+            ink_env::debug_println!("total_credit:{}", total_credit);
+            ink_env::debug_println!("candidates number:{}", candidates.len());
 
             if candidates.len() <= (self.evaluation.selected_number as usize) {
+                ink_env::debug_println!("{}", "Not Enough");
                 let selected_routers: Vec<AccountId> =
                     candidates.into_iter().map(|c| c.id).collect();
                 self.evaluation.current_routers = selected_routers;
             }
             else {
+                ink_env::debug_println!("{}", "Enough");
                 // Compute total trustworthy value
                 for c in candidates.iter() {
                     if c.credit >= self.evaluation.threshold.trustworthy_threshold {
@@ -699,6 +703,7 @@ pub mod cross_chain {
                         trustworthy_all += probability;
                     }
                 }
+                ink_env::debug_println!("trustworthy_all:{}", trustworthy_all);
 
                 // Number of credibility selecting
                 let mut credibility_selected_ratio = trustworthy_all;
@@ -708,7 +713,9 @@ pub mod cross_chain {
                 if credibility_selected_ratio < self.evaluation.credibility_selection_ratio.lower_limit {
                     credibility_selected_ratio = self.evaluation.credibility_selection_ratio.lower_limit;
                 }
+                ink_env::debug_println!("credibility_selected_ratio:{}", credibility_selected_ratio);
                 let credibility_selected_num = (self.evaluation.selected_number as u32 )* (credibility_selected_ratio as u32) / PRECISION;
+                ink_env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
 
                 // Select routers according to credibility
                 let mut selected_routers = Vec::<AccountId>::new();
@@ -721,11 +728,12 @@ pub mod cross_chain {
                         let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
                         let rand_num = u16::from_be_bytes(two_bytes) as u32;
     
-                        let rand_num = rand_num % total_credit;
+                        let rand_credit = rand_num * (total_credit as u32) / (u16::MAX as u32);
+                        ink_env::debug_println!("credit rand_num:{}, position:{}", rand_num, rand_credit);
     
                         let mut choose_next = false;
                         for c in candidates.iter_mut() {
-                            if c.contains(rand_num) {
+                            if c.contains(rand_credit) {
                                 if c.selected == false {
                                     selected_routers.push(c.id);
                                     c.selected = true;
@@ -762,8 +770,9 @@ pub mod cross_chain {
                     while seed_index < (random_seed.as_ref().len() - 1) {
                         let left_router_num = candidates.len() - selected_routers.len();
                         let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index+2].try_into().unwrap();
-                        let rand_num = u16::from_be_bytes(two_bytes) as u16;
-                        let position = rand_num * (left_router_num as u16) / u16::MAX;
+                        let rand_num = u16::from_be_bytes(two_bytes) as u32;
+                        let position = rand_num * (left_router_num as u32) / (u16::MAX as u32);
+                        ink_env::debug_println!("random rand_num:{}, posotion:{}", rand_num, position);
 
                         let mut pos_index = 0;
                         for i in candidates.iter_mut() {
@@ -800,6 +809,12 @@ pub mod cross_chain {
         #[ink(message)]
         fn register_router(&mut self, router: AccountId) -> Result<(), Error> {
             self.only_owner()?;
+
+            for r in self.evaluation.routers.iter() {
+                if r.0 == router {
+                    return Err(Error::RouterAlreadyRegisterd);
+                }
+            }
 
             self.evaluation.routers.push((router, self.evaluation.initial_credibility_value));
 
