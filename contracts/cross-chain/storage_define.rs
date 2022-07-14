@@ -21,7 +21,7 @@ pub enum Error {
     IdNotMatch,
     ChainMessageNotFound,
     IdOutOfBound,
-    AlreadyExecuted,
+    NotExecutable,
     InterfaceNotFound,
     DecodeDataFailed,
     CrossContractCallFailed,
@@ -43,7 +43,7 @@ impl Error {
             IError::IdNotMatch => Error::IdNotMatch,
             IError::ChainMessageNotFound => Error::ChainMessageNotFound,
             IError::IdOutOfBound => Error::IdOutOfBound,
-            IError::AlreadyExecuted => Error::AlreadyExecuted,
+            IError::AlreadyExecuted => Error::NotExecutable,
             IError::InterfaceNotFound => Error::InterfaceNotFound,
             IError::DecodeDataFailed => Error::DecodeDataFailed,
             IError::CrossContractCallFailed => Error::CrossContractCallFailed,
@@ -229,6 +229,12 @@ impl Message {
             session: Session::from(message.session),
             error_code: None,
         }
+    }
+
+    pub fn into_hash(&self) -> [u8; 32] {
+        let mut output = [0; 32];
+        ink_env::hash_encoded::<ink_env::hash::Sha2x256, _>(&self, &mut output);
+        output
     }
 }
 

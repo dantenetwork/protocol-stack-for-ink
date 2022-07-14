@@ -16,8 +16,8 @@ pub mod cross_chain {
     // use crate::storage_define::Evaluation;
     // use crate::evaluation::{ICredibilitySelectionRatio, IEvaluationCoefficient, IThreshold};
     use crate::storage_define::{
-        Context, Error, Evaluation, Group, Message, Routers, SQoS, SentMessage,
-        Threshold, CredibilitySelectionRatio, EvaluationCoefficient, AbandonedMessage
+        AbandonedMessage, Context, CredibilitySelectionRatio, Error, Evaluation,
+        EvaluationCoefficient, Group, Message, Routers, SQoS, SentMessage, Session, Threshold,
     };
     use super::evaluation::{
         RoutersCore,
@@ -81,8 +81,10 @@ pub mod cross_chain {
         latest_message_id: Mapping<String, u128>,
         /// router final received message id
         final_received_message_id: Mapping<(String, AccountId), u128>,
-        /// Table of executable messages
-        executable_message_table: Mapping<String, Vec<Message>>,
+        /// Table of executable messages and executed messages
+        executable_message_table: Mapping<(String, u128), [u8; 32]>,
+        /// executable messages
+        executable_key: Vec<(String, u128)>,
 
         abandoned_message: Mapping<String, Vec<AbandonedMessage>>,
         /// Context of a cross-contract call
@@ -227,6 +229,95 @@ pub mod cross_chain {
             core::mem::swap(self, &mut state);
             let _ = core::mem::ManuallyDrop::new(state);
         }
+        // /// Cross-chain receives message from chain `from_chain`, the message
+        // /// will be handled by method `action` of contract `to` with data `data`
+        // #[ink(message)]
+        fn internal_receive_message(&mut self, message: Message) -> Result<(), Error> {
+            let router = self.env().caller();
+            let message_hash = message.into_hash();
+            let id = message.id;
+            let key = (message.from_chain.clone(), id);
+            let latest_message_id = self.latest_message_id.get(&message.from_chain).unwrap_or(0);
+            if id == latest_message_id + 1 {
+                self.latest_message_id.insert(&message.from_chain, &id);
+            }
+            if id > latest_message_id + 1 {
+                return Err(Error::AheadOfId);
+            }
+
+            let router_key = (message.from_chain.clone(), router);
+            let final_received_message_id =
+                self.final_received_message_id.get(&router_key).unwrap_or(0);
+            if id == final_received_message_id {
+                return Err(Error::AlreadReceived);
+            }
+
+            if id < final_received_message_id
+                || (id < latest_message_id + 1 && final_received_message_id == 0)
+            {
+                if !self.received_message_table.contains(&key)
+                    || self.received_message_table.get(&key).unwrap().1
+                {
+                    return Err(Error::ReceiveCompleted);
+                }
+            }
+
+            if id > final_received_message_id {
+                self.final_received_message_id.insert(&router_key, &id);
+            }
+            let router_credibility = self.evaluation.get_router_credibility(&router);
+            match self.received_message_table.get(&key) {
+                Some((mut groups, completed)) => {
+                    let mut hash_found = false;
+                    for group in groups.iter_mut() {
+                        if group.message_hash == message_hash {
+                            group.routers.push(router);
+                            group.group_credibility_value += router_credibility as u64;
+                            hash_found = true;
+                        }
+                    }
+                    if !hash_found {
+                        let group = Group {
+                            message_hash,
+                            message: message.clone(),
+                            routers: ink_prelude::vec![router],
+                            group_credibility_value: router_credibility as u64,
+                            credibility_weight: 0,
+                        };
+                        groups.push(group);
+                    }
+                    self.received_message_table
+                        .insert(&key, &(groups, completed));
+                }
+                None => {
+                    let groups = ink_prelude::vec![Group {
+                        message_hash,
+                        message: message.clone(),
+                        routers: ink_prelude::vec![router],
+                        group_credibility_value: router_credibility as u64,
+                        credibility_weight: 0,
+                    }];
+                    self.received_message_table.insert(&key, &(groups, false));
+                }
+            }
+
+            let mut len: u8 = 0;
+            let mut total_credibility: u64 = 0;
+            for group in self.received_message_table.get(&key).unwrap().0 {
+                len += group.routers.len() as u8;
+                total_credibility += group.group_credibility_value;
+            }
+
+            if len >= self.evaluation.selected_number {
+                let (trusted, untrusted, exeception) = self.message_verify(&key, total_credibility);
+                self.update_validator_credibility(trusted, untrusted, exeception);
+                // TODO remove immediate?
+                // self.received_message_table.get(&key).as_mut().and_then(|received_message|{received_message.1 = true;})
+                self.received_message_table.remove(&key);
+            }
+            Ok(())
+            // self.internal_receive_message(message)
+        }
 
         fn message_verify(
             &mut self,
@@ -265,12 +356,9 @@ pub mod cross_chain {
                     self.abandoned_message
                         .insert(&aggregation[0].message.from_chain, &abandoned_messages);
                 } else {
-                    let mut executable = self
-                        .executable_message_table
-                        .get(&key.0)
-                        .unwrap_or(Vec::new());
-                    executable.push(aggregation[0].message.clone());
-                    self.executable_message_table.insert(&key.0, &executable);
+                    self.executable_message_table
+                        .insert(&key, &aggregation[0].message_hash);
+                    self.executable_key.push(key.clone());
                     trusted = aggregation.remove(0).routers;
                     for group in aggregation {
                         untrusted.extend(group.routers);
@@ -426,176 +514,89 @@ pub mod cross_chain {
             id
         }
 
-        // #[ink(message)]
-        // fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
-        //     self.only_owner()?;
-        //     let messsage = Message::new(message);
-
-        // }
-        // /// Cross-chain receives message from chain `from_chain`, the message
-        // /// will be handled by method `action` of contract `to` with data `data`
+        /// Cross-chain receives message from chain `from_chain`, the message
+        /// will be handled by method `action` of contract `to` with data `data`
         #[ink(message)]
         fn receive_message(&mut self, message: IReceivedMessage) -> Result<(), Error> {
             self.only_router()?;
-            let router = self.env().caller();
-            let message_hash = message.into_hash();
-            let id = message.id;
-            let key = (message.from_chain.clone(), id);
-            let latest_message_id = self.latest_message_id.get(&message.from_chain).unwrap_or(0);
-            if id == latest_message_id + 1 {
-                self.latest_message_id.insert(&message.from_chain, &id);
-            }
-            if id > latest_message_id + 1 {
-                return Err(Error::AheadOfId);
-            }
-
-            let router_key = (message.from_chain.clone(), router);
-            let final_received_message_id =
-                self.final_received_message_id.get(&router_key).unwrap_or(0);
-            if id != final_received_message_id {
-                return Err(Error::AlreadReceived);
-            }
-
-            if id < final_received_message_id
-                || (id < latest_message_id + 1 && final_received_message_id == 0)
-            {
-                if !self.received_message_table.contains(&key)
-                    || self.received_message_table.get(&key).unwrap().1
-                {
-                    return Err(Error::ReceiveCompleted);
-                }
-            }
-
-            if id > final_received_message_id {
-                self.final_received_message_id.insert(&router_key, &id);
-            }
-            let router_credibility = self.evaluation.get_router_credibility(&router);
-            match self.received_message_table.get(&key) {
-                Some((mut groups, completed)) => {
-                    let mut hash_found = false;
-                    for group in groups.iter_mut() {
-                        if group.message_hash == message_hash {
-                            group.routers.push(router);
-                            group.group_credibility_value += router_credibility as u64;
-                            hash_found = true;
-                        }
-                    }
-                    if !hash_found {
-                        let group = Group {
-                            message_hash,
-                            message: Message::new(message.clone()),
-                            routers: ink_prelude::vec![router],
-                            group_credibility_value: router_credibility as u64,
-                            credibility_weight: 0,
-                        };
-                        groups.push(group);
-                    }
-                    self.received_message_table
-                        .insert(&key, &(groups, completed));
-                }
-                None => {
-                    let groups = ink_prelude::vec![Group {
-                        message_hash,
-                        message: Message::new(message.clone()),
-                        routers: ink_prelude::vec![router],
-                        group_credibility_value: router_credibility as u64,
-                        credibility_weight: 0,
-                    }];
-                    self.received_message_table.insert(&key, &(groups, false));
-                }
-            }
-
-            let mut len: u8 = 0;
-            let mut total_credibility: u64 = 0;
-            for group in self.received_message_table.get(&key).unwrap().0 {
-                len += group.routers.len() as u8;
-                total_credibility += group.group_credibility_value;
-            }
-
-            if len >= self.evaluation.selected_number {
-                let (trusted, untrusted, exeception) = self.message_verify(&key, total_credibility);
-                self.update_validator_credibility(trusted, untrusted, exeception);
-                // TODO remove immediate?
-                // self.received_message_table.get(&key).as_mut().and_then(|received_message|{received_message.1 = true;})
-                self.received_message_table.remove(&key);
-            }
-            Ok(())
-            // self.internal_receive_message(message)
+            let msg = Message::new(message);
+            self.internal_receive_message(msg)
         }
 
-        // /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
-        // #[ink(message)]
-        // fn abandon_message(
-        //     &mut self,
-        //     from_chain: String,
-        //     id: u128,
-        //     error_code: u16,
-        // ) -> Result<(), Error> {
-        //     self.only_router()?;
-
-        //     self.internal_abandon_message(from_chain, id, error_code)
-        // }
+        /// Cross-chain abandons message from chain `from_chain`, the message will be skipped and not be executed
+        #[ink(message)]
+        fn abandon_message(
+            &mut self,
+            from_chain: String,
+            id: u128,
+            error_code: u16,
+        ) -> Result<(), Error> {
+            self.only_router()?;
+            let message = Message {
+                id,
+                from_chain,
+                sender: String::from(""),
+                signer: String::from(""),
+                sqos: Vec::new(),
+                contract: AccountId::default(),
+                action: [0; 4],
+                data: Vec::new(),
+                session: Session::new(0, None),
+                error_code: Some(error_code),
+            };
+            self.internal_receive_message(message)
+        }
 
         /// Returns messages that sent from chains `chain_names` and can be executed.
         #[ink(message)]
-        fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<Message> {
-            let mut ret = Vec::<Message>::new();
-
-            for chain_name in chain_names {
-                let messages: Vec<Message> = self
-                    .executable_message_table
-                    .get(&chain_name)
-                    .unwrap_or(Vec::new());
-                ret.extend(messages);
+        fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<(String, u128)> {
+            let mut vec: Vec<(String, u128)> = Vec::new();
+            for chain in chain_names {
+                for key in self.executable_key.clone() {
+                    if key.0 == chain {
+                        vec.push(key)
+                    }
+                }
             }
-            ret
+            vec
         }
 
         /// Triggers execution of a message sent from chain `chain_name` with id `id`
         #[ink(message)]
         fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error> {
-            let mut executable_messages: Vec<Message> = self
-                .executable_message_table
-                .get(&chain_name)
-                .ok_or(Error::ChainMessageNotFound)?;
-            let mut message: Option<Message> = None;
-            let mut index: usize = 0;
-            for (i, m) in executable_messages.iter().enumerate() {
-                // for m in executable_messages.iter() {
-                if m.id == id {
-                    message = Some(m.clone());
-                    index = i;
-                    break;
-                }
+            let key = (chain_name, id);
+            if !self.executable_key.contains(&key) {
+                return Err(Error::NotExecutable);
             }
-            if message.is_none() {
-                return Err(Error::IdOutOfBound);
-            }
-            executable_messages.remove(index);
-            let message = message.unwrap();
-            self.context = Some(Context::new(
-                message.id,
-                message.from_chain.clone(),
-                message.sender.clone(),
-                message.signer.clone(),
-                message.sqos.clone(),
-                message.contract.clone(),
-                message.action.clone(),
-                message.session.clone(),
-            ));
+            let message_hash = self.executable_message_table.get(&key).unwrap();
+            let groups = self.received_message_table.get(&key).unwrap().0;
+            for group in groups {
+                if group.message_hash == message_hash {
+                    let message = group.message;
+                    self.context = Some(Context::new(
+                        message.id,
+                        message.from_chain.clone(),
+                        message.sender.clone(),
+                        message.signer.clone(),
+                        message.sqos.clone(),
+                        message.contract.clone(),
+                        message.action.clone(),
+                        message.session.clone(),
+                    ));
 
-            // Construct paylaod
-            let mut data_slice = message.data.as_slice();
-            let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
-                .ok()
-                .ok_or(Error::DecodeDataFailed)?;
+                    // Construct paylaod
+                    let mut data_slice = message.data.as_slice();
+                    let payload: MessagePayload = scale::Decode::decode(&mut data_slice)
+                        .ok()
+                        .ok_or(Error::DecodeDataFailed)?;
 
-            self.flush();
+                    self.flush();
 
-            // Cross-contract call
-            let selector: [u8; 4] = message.action.clone().try_into().unwrap();
-            let cc_result: Result<String, ink_env::Error> =
-                ink_env::call::build_call::<ink_env::DefaultEnvironment>()
+                    // Cross-contract call
+                    let selector: [u8; 4] = message.action.clone().try_into().unwrap();
+                    let cc_result: Result<String, ink_env::Error> = ink_env::call::build_call::<
+                        ink_env::DefaultEnvironment,
+                    >()
                     .call_type(
                         ink_env::call::Call::new()
                             .callee(message.contract)
@@ -610,14 +611,20 @@ pub mod cross_chain {
                     .returns::<String>()
                     .fire();
 
-            self.load();
+                    self.load();
 
-            if cc_result.is_err() {
-                // let e = cc_result.unwrap_err();
-                return Err(Error::CrossContractCallFailed);
+                    // TODO
+                    // currently, remove key from executable_key regardless of whether cross-call fails
+                    let index = self.executable_key.iter().position(|x| *x == key).unwrap();
+                    self.executable_key.remove(index);
+                    if cc_result.is_err() {
+                        // let e = cc_result.unwrap_err();
+                        return Err(Error::CrossContractCallFailed);
+                    }
+                    return Ok(cc_result.unwrap());
+                }
             }
-
-            Ok(cc_result.unwrap())
+            Ok(String::new())
         }
 
         /// Returns the simplified message, this message is reset every time when a contract is called
