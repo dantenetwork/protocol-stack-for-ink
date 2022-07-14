@@ -853,6 +853,10 @@ pub mod cross_chain {
         fn set_initial_credibility(&mut self, value: u32) -> Result<(), Error> {
             self.only_owner()?;
 
+            if value > PRECISION {
+                return Err(Error::CreditBeyondUpLimit);
+            }
+
             self.evaluation.initial_credibility_value = value;
 
             Ok(())
@@ -871,6 +875,18 @@ pub mod cross_chain {
         fn set_threshold(&mut self, threshold: Threshold) -> Result<(), Error> {
             self.only_owner()?;
 
+            if threshold.min_seleted_threshold > threshold.trustworthy_threshold {
+                return Err(Error::CreditValueError);
+            }
+
+            if threshold.credibility_weight_threshold > PRECISION {
+                return Err(Error::CreditBeyondUpLimit);
+            }
+
+            if threshold.trustworthy_threshold > PRECISION {
+                return Err(Error::CreditBeyondUpLimit);
+            }
+
             self.evaluation.threshold = threshold;
 
             Ok(())
@@ -879,6 +895,14 @@ pub mod cross_chain {
         #[ink(message)]
         fn set_credibility_selection_ratio(&mut self, ratio: CredibilitySelectionRatio) -> Result<(), Error> {
             self.only_owner()?;
+
+            if ratio.lower_limit > ratio.upper_limit {
+                return Err(Error::CreditValueError);
+            }
+
+            if ratio.upper_limit > PRECISION {
+                return Err(Error::CreditBeyondUpLimit);
+            }
 
             self.evaluation.credibility_selection_ratio = ratio;
 

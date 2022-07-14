@@ -32,6 +32,8 @@ pub enum Error {
     AlreadReceived,
     ReceiveCompleted,
     RouterAlreadyRegisterd,
+    CreditBeyondUpLimit,
+    CreditValueError,
 }
 
 impl Error {
