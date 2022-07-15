@@ -51,15 +51,15 @@ impl Error {
 }
 
 /// Content structure
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
 )]
 pub struct Content {
-    contract: String,
-    action: String,
-    data: Bytes,
+    pub contract: String,
+    pub action: String,
+    pub data: Bytes,
 }
 
 impl Content {
@@ -114,10 +114,25 @@ impl SQoSType {
             ISQoSType::CrossVerify => SQoSType::CrossVerify,
         }
     }
+
+    pub fn to(s: SQoSType) -> ISQoSType {
+        match s {
+            SQoSType::Reveal => ISQoSType::Reveal,
+            SQoSType::Challenge => ISQoSType::Challenge,
+            SQoSType::Threshold => ISQoSType::Threshold,
+            SQoSType::Priority => ISQoSType::Priority,
+            SQoSType::ExceptionRollback => ISQoSType::ExceptionRollback,
+            SQoSType::SelectionDelay => ISQoSType::SelectionDelay,
+            SQoSType::Anonymous => ISQoSType::Anonymous,
+            SQoSType::Identity => ISQoSType::Identity,
+            SQoSType::Isolation => ISQoSType::Isolation,
+            SQoSType::CrossVerify => ISQoSType::CrossVerify,
+        }
+    }
 }
 
 /// SQOS structure
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
@@ -139,6 +154,12 @@ impl SQoS {
         }
     }
 
+    pub fn to(sqos: SQoS) -> ISQoS {
+        ISQoS {
+            t: SQoSType::to(sqos.t),
+            v: sqos.v,
+        }
+    }
     pub fn derive(&self) -> ISQoS {
         let sqos_type = match self.t {
             SQoSType::Reveal => ISQoSType::Reveal,
@@ -157,7 +178,7 @@ impl SQoS {
 }
 
 /// Session Structure
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
@@ -304,7 +325,7 @@ impl Group {
 // }
 
 /// Sent message structure
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)

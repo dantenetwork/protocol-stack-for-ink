@@ -278,12 +278,13 @@ pub mod cross_chain {
                 total_credibility += group.group_credibility_value;
             }
 
-            if len >= self.evaluation.selected_number {
+            if len as usize >= self.evaluation.current_routers.len() {
                 let (trusted, untrusted, exeception) = self.message_verify(&key, total_credibility);
                 self.update_validator_credibility(trusted, untrusted, exeception);
                 // TODO remove immediate?
-                // self.received_message_table.get(&key).as_mut().and_then(|received_message|{received_message.1 = true;})
-                self.received_message_table.remove(&key);
+                let mut receive_message = self.received_message_table.get(&key).unwrap();
+                receive_message.1 = true;
+                self.received_message_table.insert(key, &receive_message);
             }
             Ok(())
             // self.internal_receive_message(message)
@@ -399,29 +400,6 @@ pub mod cross_chain {
             }
         }
 
-        /// For debug
-        #[ink(message)]
-        pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
-            self.only_owner()?;
-            let total = self.latest_message_id.get(&chain_name).unwrap();
-            for i in 0..total {
-                if self
-                    .received_message_table
-                    .get(&(chain_name.clone(), i))
-                    .is_some()
-                {
-                    self.received_message_table.remove(&(chain_name.clone(), i));
-                }
-            }
-            Ok(())
-        }
-
-        /// For debug
-        #[ink(message)]
-        pub fn get_chain_name(&self) -> String {
-            self.chain_name.clone()
-        }
-
         #[ink(message)]
         pub fn get_evaluation(&self) -> Evaluation {
             self.evaluation.clone()
@@ -479,6 +457,8 @@ pub mod cross_chain {
                 signer,
                 message.clone(),
             );
+            self.latest_sent_message_id
+                .insert(&message.to_chain.clone(), &id);
             self.sent_message_table
                 .insert(&(message.to_chain, id), &sent_message);
             id
@@ -718,9 +698,9 @@ pub mod cross_chain {
                         let two_bytes: [u8; 2] = random_seed.as_ref()[seed_index..seed_index + 2]
                             .try_into()
                             .unwrap();
-                        let rand_num = u16::from_be_bytes(two_bytes) as u32;
+                        let rand_num = u16::from_be_bytes(two_bytes) as u64;
 
-                        let rand_credit = rand_num * (total_credit as u32) / (u16::MAX as u32);
+                        let rand_credit = rand_num * (total_credit as u64) / (u16::MAX as u64);
                         ink_env::debug_println!(
                             "credit rand_num:{}, position:{}",
                             rand_num,
@@ -729,7 +709,7 @@ pub mod cross_chain {
 
                         let mut choose_next = false;
                         for c in candidates.iter_mut() {
-                            if c.contains(rand_credit) {
+                            if c.contains(rand_credit as u32) {
                                 if c.selected == false {
                                     selected_routers.push(c.id);
                                     c.selected = true;
@@ -925,6 +905,61 @@ pub mod cross_chain {
         }
     }
 
+    // for debug
+    impl CrossChain {
+        #[ink(message)]
+        pub fn clear_messages(&mut self, chain_name: String) -> Result<(), Error> {
+            self.only_owner()?;
+            let total = self.latest_message_id.get(&chain_name).unwrap();
+            for i in 0..total {
+                if self
+                    .received_message_table
+                    .get(&(chain_name.clone(), i))
+                    .is_some()
+                {
+                    self.received_message_table.remove(&(chain_name.clone(), i));
+                }
+            }
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn get_chain_name(&self) -> String {
+            self.chain_name.clone()
+        }
+
+        #[ink(message)]
+        pub fn register_routers(
+            &mut self,
+            routers: Vec<AccountId>,
+            initial_credibility_value: u32,
+        ) -> Result<(), Error> {
+            self.only_owner()?;
+            let mut contains: bool = false;
+            for router in routers {
+                for r in self.evaluation.routers.iter() {
+                    if router == r.0 {
+                        contains = true;
+                        break;
+                    }
+                }
+                if !contains {
+                    self.evaluation
+                        .routers
+                        .push((router, initial_credibility_value));
+                }
+                contains = false;
+            }
+            Ok(())
+        }
+        #[ink(message)]
+        pub fn unregister_routers(&mut self) -> Result<(), Error> {
+            self.only_owner()?;
+            self.evaluation.routers.clear();
+            self.evaluation.current_routers.clear();
+            Ok(())
+        }
+    }
     // impl MultiRouters for CrossChain {
     //     /// Changes routers and requirement.
     //     #[ink(message)]
@@ -945,297 +980,391 @@ pub mod cross_chain {
     //         self.required = requirement;
 
     //         Ok(())
-    // /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    // /// module and test functions are marked with a `#[test]` attribute.
-    // /// The below code is technically just normal Rust code.
-    // #[cfg(test)]
-    // mod tests {
-    //     /// Imports all the definitions from the outer scope so we can use them here.
-    //     use super::*;
+    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
+    /// module and test functions are marked with a `#[test]` attribute.
+    /// The below code is technically just normal Rust code.
+    #[cfg(test)]
+    mod tests {
+        /// Imports all the definitions from the outer scope so we can use them here.
+        use super::*;
 
-    //     /// Imports `ink_lang` so we can use `#[ink::test]`.
-    //     use ink_lang as ink;
-    //     use ink_prelude::vec::Vec as Bytes;
-    //     use payload::message_define::{IContent, ISQoS, ISQoSType, ISession};
-    //     use std::{fmt::Write, num::ParseIntError};
+        use crate::storage_define::{Content, Message};
+        use ink_env::{
+            self,
+            test::{self, default_accounts, DefaultAccounts},
+            DefaultEnvironment,
+        };
+        /// Imports `ink_lang` so we can use `#[ink::test]`.
+        use ink_lang as ink;
+        use ink_prelude::vec::Vec as Bytes;
+        use payload::message_define::{IContent, ISQoS, ISQoSType, ISession};
+        use std::{fmt::Write, num::ParseIntError};
 
-    //     fn set_caller(sender: AccountId) {
-    //         ink_env::test::set_caller::<ink_env::DefaultEnvironment>(sender);
-    //     }
+        fn init() -> (CrossChain, DefaultAccounts<DefaultEnvironment>) {
+            let accounts = default_accounts::<DefaultEnvironment>();
+            let cross_chain = CrossChain::new_default("POLKADOT".to_string());
+            test::set_caller::<DefaultEnvironment>(accounts.alice);
+            (cross_chain, accounts)
+        }
 
-    //     fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
-    //         (0..s.len())
-    //             .step_by(2)
-    //             .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-    //             .collect()
-    //     }
+        fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+            (0..s.len())
+                .step_by(2)
+                .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+                .collect()
+        }
 
-    //     fn create_contract_with_received_message() -> CrossChain {
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Receive message.
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let sender = "0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b".to_string();
-    //         let signer = "0x3aE841B899Ae4652784EA734cc61F524c36325d1".to_string();
-    //         let contract = [0; 32];
-    //         let mut action = [0x3a, 0x4a, 0x5a, 0x6a];
-    //         let sqos = Vec::<ISQoS>::new();
-    //         let raw_data = "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600".to_string();
-    //         let data = decode_hex(&raw_data).unwrap();
-    //         let session = ISession::new(0, None);
-    //         let message = IReceivedMessage::new(
-    //             id, from_chain, sender, signer, sqos, contract, action, data, session,
-    //         );
-    //         cross_chain.receive_message(message);
-    //         cross_chain
-    //     }
+        fn to_ireceive_message(message: Message) -> IReceivedMessage {
+            let mut sqos: Vec<ISQoS> = Vec::new();
+            for s in message.sqos.into_iter() {
+                sqos.push(SQoS::to(s));
+            }
+            IReceivedMessage {
+                id: message.id,
+                from_chain: message.from_chain,
+                sender: message.sender,
+                signer: message.signer,
+                sqos,
+                contract: *message.contract.as_ref(),
+                action: message.action,
+                data: message.data,
+                session: ISession {
+                    id: message.session.id,
+                    callback: message.session.callback,
+                },
+            }
+        }
 
-    //     fn create_contract_with_sent_message() -> CrossChain {
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+        fn get_message() -> (Message, Message, Message) {
+            let message_1 = Message {
+                id: 1,
+                from_chain: String::from("ETHEREUM"),
+                sender: String::from("0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b"),
+                signer: String::from("0x3aE841B899Ae4652784EA734cc61F524c36325d1"),
+                sqos: Vec::new(),
+                contract: AccountId::from([0; 32]),
+                action: [0x3a, 0x4a, 0x5a, 0x6a],
+                data: decode_hex(
+                    "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600",
+                )
+                .unwrap(),
+                session: Session::new(0, None),
+                error_code: None,
+            };
+            let message_2 = Message {
+                id: 1,
+                from_chain: String::from("ETHEREUM"),
+                sender: String::from("0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b"),
+                signer: String::from("0x3aE841B899Ae4652784EA734cc61F524c36325d1"),
+                sqos: Vec::new(),
+                contract: AccountId::from([0; 32]),
+                action: [0x3a, 0x4a, 0x5a, 0x6a],
+                data: decode_hex(
+                    "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34",
+                )
+                .unwrap(),
+                session: Session::new(0, None),
+                error_code: None,
+            };
+            let message_3 = Message {
+                id: 1,
+                from_chain: String::new(),
+                sender: String::new(),
+                signer: String::new(),
+                sqos: Vec::new(),
+                contract: AccountId::default(),
+                action: [0x3a, 0x4a, 0x5a, 0x6a],
+                data: Vec::new(),
+                session: Session::new(0, None),
+                error_code: Some(1),
+            };
+            (message_1, message_2, message_3)
+        }
 
-    //         // Send message.
-    //         let to_chain = "ETHEREUM".to_string();
-    //         let contract = "ETHEREUM_CONTRACT".to_string();
-    //         let action = "ETHERERUM_ACTION".to_string();
-    //         let data = Bytes::new();
-    //         let sqos = Vec::<ISQoS>::new();
-    //         let session = ISession::new(0, None);
-    //         let content = IContent::new(contract, action, data);
-    //         let message = ISentMessage::new(to_chain.clone(), sqos, content, session);
-    //         cross_chain.send_message(message);
-    //         cross_chain
-    //     }
+        fn create_contract_with_sent_message() -> CrossChain {
+            // Create a new contract instance.
+            let mut cross_chain = CrossChain::new_default("POLKADOT".to_string());
 
-    //     /// We test if the new constructor does its job.
-    //     #[ink::test]
-    //     fn new_works() {
-    //         // Constructor works.
-    //         let cross_chain = CrossChain::new("POLKADOT".to_string());
-    //     }
+            // Send message.
+            let to_chain = "ETHEREUM".to_string();
+            let contract = "ETHEREUM_CONTRACT".to_string();
+            let action = "ETHERERUM_ACTION".to_string();
+            let data = Bytes::new();
+            let sqos = Vec::<ISQoS>::new();
+            let session = ISession::new(0, None);
+            let content = IContent::new(contract, action, data);
+            let message = ISentMessage::new(to_chain.clone(), sqos, content, session);
+            cross_chain.send_message(message);
+            cross_chain
+        }
 
-    //     /// Tests for trait Ownable
-    //     #[ink::test]
-    //     fn owner_works() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         set_caller(accounts.bob);
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Owner should be Bob.
-    //         assert_eq!(cross_chain.owner().unwrap(), accounts.bob);
-    //     }
+        /// Tests for trait Ownable
+        #[ink::test]
+        fn owner_works() {
+            let (cross_chain, accounts) = init();
+            // Owner should be Bob.
+            assert_eq!(cross_chain.owner().unwrap(), accounts.alice);
+        }
 
-    //     #[ink::test]
-    //     fn renounce_ownership_works() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Renounce ownership.
-    //         cross_chain.renounce_ownership();
-    //         // Owner is None.
-    //         assert_eq!(cross_chain.owner(), None);
-    //     }
+        #[ink::test]
+        fn renounce_ownership_works() {
+            let (mut cross_chain, _) = init();
+            // Renounce ownership.
+            cross_chain.renounce_ownership().unwrap();
+            // Owner is None.
+            assert_eq!(cross_chain.owner(), None);
+        }
 
-    //     #[ink::test]
-    //     fn transfer_ownership_works() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Transfer ownership.
-    //         cross_chain.transfer_ownership(accounts.bob);
-    //         // Owner is Bob.
-    //         assert_eq!(cross_chain.owner().unwrap(), accounts.bob);
-    //     }
+        #[ink::test]
+        fn transfer_ownership_works() {
+            let (mut cross_chain, accounts) = init();
+            // Transfer ownership.
+            cross_chain.transfer_ownership(accounts.bob).unwrap();
+            // Owner is Bob.
+            assert_eq!(cross_chain.owner().unwrap(), accounts.bob);
+        }
+        #[ink::test]
+        fn only_owner_works() {
+            let (cross_chain, _) = init();
+            assert_eq!(cross_chain.only_owner(), Ok(()));
+        }
 
-    //     #[ink::test]
-    //     fn only_owner_works() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Call of only_owner should return Ok.
-    //         set_caller(accounts.alice);
-    //         assert_eq!(cross_chain.only_owner(), Ok(()));
-    //     }
+        fn register_routers(cross_chain: &mut CrossChain, nums: u8) -> Vec<AccountId> {
+            let mut routers: Vec<AccountId> = Vec::new();
+            for i in 0..nums {
+                let bytes = u8::to_be_bytes(i);
+                let mut account_bytes: [u8; 32] = [0; 32];
+                account_bytes[31] = bytes[0];
+                let acc = AccountId::from(account_bytes);
+                routers.push(acc);
+                cross_chain.register_router(acc).unwrap();
+            }
+            cross_chain.select_routers().unwrap()
+        }
 
-    //     #[ink::test]
-    //     fn not_owner_only_owner_should_fail() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Call of only_owner should return Err.
-    //         set_caller(accounts.bob);
-    //         assert_eq!(cross_chain.only_owner(), Err(Error::NotOwner));
-    //     }
+        #[ink::test]
+        fn not_owner_only_owner_should_fail() {
+            let (cross_chain, accounts) = init();
+            test::set_caller::<DefaultEnvironment>(accounts.bob);
+            assert_eq!(cross_chain.only_owner(), Err(Error::NotOwner));
+        }
 
-    //     /// Tests for CrossChainBase
-    //     #[ink::test]
-    //     fn send_message_works() {
-    //         let to_chain = "ETHEREUM".to_string();
-    //         let cross_chain = create_contract_with_sent_message();
-    //         // Number of sent messages is 1.
-    //         let num = cross_chain.sent_message_table.get(&to_chain).unwrap().len();
-    //         assert_eq!(num, 1);
-    //     }
+        /// Tests for CrossChainBase
+        #[ink::test]
+        fn test_send_message() {
+            let (mut cross_chain, accounts) = init();
+            let to_chain = "ETHEREUM".to_string();
+            let send_message = SentMessage {
+                id: 1,
+                from_chain: String::from("POLKADOT"),
+                to_chain: to_chain.clone(),
+                sender: accounts.alice,
+                signer: accounts.alice,
+                sqos: Vec::new(),
+                content: Content {
+                    contract: String::from("ETHEREUM_CONTRACT"),
+                    action: String::from("ETHERERUM_ACTION"),
+                    data: Bytes::new(),
+                },
+                session: Session {
+                    id: 0,
+                    callback: None,
+                },
+            };
+            let content = send_message.content.clone();
+            let session = send_message.session.clone();
+            let imessage = ISentMessage {
+                to_chain: to_chain.clone(),
+                sqos: Vec::new(),
+                content: IContent {
+                    contract: content.contract,
+                    action: content.action,
+                    data: content.data,
+                },
+                session: ISession {
+                    id: session.id,
+                    callback: session.callback,
+                },
+            };
+            let id = cross_chain.send_message(imessage);
+            // Number of sent messages is 1.
+            let num = cross_chain.get_sent_message_number(to_chain.clone());
+            assert_eq!(num, id);
+            assert_eq!(
+                send_message,
+                cross_chain.get_sent_message(to_chain, id).unwrap()
+            );
+        }
 
-    //     #[ink::test]
-    //     fn receive_message_works() {
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let cross_chain = create_contract_with_received_message();
-    //         // Number of sent messages is 1.
-    //         let num = cross_chain
-    //             .received_message_table
-    //             .get(&from_chain)
-    //             .unwrap()
-    //             .len();
-    //         assert_eq!(num, 1);
-    //     }
+        fn receive_message(
+            cross_chain: &mut CrossChain,
+            routers: Vec<AccountId>,
+            message: Message,
+        ) {
+            let imessage = to_ireceive_message(message);
+            for router in routers {
+                test::set_caller::<DefaultEnvironment>(router);
+                cross_chain.receive_message(imessage.clone()).unwrap();
+            }
+        }
 
-    //     #[ink::test]
-    //     fn abandon_message_works() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Receive message.
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let error_code = 1;
-    //         cross_chain.abandon_message(from_chain.clone(), id, error_code);
-    //         // Number of sent messages is 1.
-    //         let num = cross_chain
-    //             .received_message_table
-    //             .get(&from_chain)
-    //             .unwrap()
-    //             .len();
-    //         assert_eq!(num, 1);
-    //     }
+        #[ink::test]
+        fn test_receive_message() {
+            let (mut cross_chain, _) = init();
+            let selected_routers = register_routers(&mut cross_chain, 1);
+            let (message, _, _) = get_message();
+            receive_message(&mut cross_chain, selected_routers, message.clone());
+            println!(
+                "{:?}",
+                cross_chain.get_received_message(message.from_chain, message.id)
+            );
+        }
 
-    //     #[ink::test]
-    //     fn get_executable_messages_works() {
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let mut cross_chain = create_contract_with_received_message();
-    //         // Number of sent messages is 1.
-    //         let num = cross_chain
-    //             .received_message_table
-    //             .get(&from_chain)
-    //             .unwrap()
-    //             .len();
-    //         assert_eq!(num, 1);
-    //         // Get executable messages
-    //         let mut chains = Vec::<String>::new();
-    //         chains.push("ETHEREUM".to_string());
-    //         let messages = cross_chain.get_executable_messages(chains);
-    //         // Number of messages is 1
-    //         assert_eq!(messages.len(), 1);
-    //     }
+        // #[ink::test]
+        // fn abandon_message_works() {
+        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+        //     // Create a new contract instance.
+        //     let mut cross_chain = CrossChain::new_default("POLKADOT".to_string());
+        //     // Receive message.
+        //     let from_chain = "ETHEREUM".to_string();
+        //     let id = 1;
+        //     let error_code = 1;
+        //     cross_chain.abandon_message(from_chain.clone(), id, error_code);
+        //     // Number of sent messages is 1.
+        //     let num = cross_chain
+        //         .received_message_table
+        //         .get(&from_chain)
+        //         .unwrap()
+        //         .len();
+        //     assert_eq!(num, 1);
+        // }
 
-    //     #[ink::test]
-    //     fn execute_message_works() {
-    //         // let from_chain = "ETHEREUM".to_string();
-    //         // let id = 1;
-    //         // let mut cross_chain = create_contract_with_received_message();
-    //         // // Execute message
-    //         // let ret = cross_chain.execute_message(from_chain.clone(), id);
-    //         // assert_eq!(ret, Ok(()));
-    //         println!("Cross-contract call can not be tested");
-    //     }
+        // #[ink::test]
+        // fn get_executable_messages_works() {
+        //     let from_chain = "ETHEREUM".to_string();
+        //     let mut cross_chain = create_contract_with_received_message();
+        //     // Number of sent messages is 1.
+        //     let num = cross_chain
+        //         .received_message_table
+        //         .get(&from_chain)
+        //         .unwrap()
+        //         .len();
+        //     assert_eq!(num, 1);
+        //     // Get executable messages
+        //     let mut chains = Vec::<String>::new();
+        //     chains.push("ETHEREUM".to_string());
+        //     let messages = cross_chain.get_executable_messages(chains);
+        //     // Number of messages is 1
+        //     assert_eq!(messages.len(), 1);
+        // }
 
-    //     #[ink::test]
-    //     fn get_context_works() {
-    //         // let from_chain = "ETHEREUM".to_string();
-    //         // let id = 1;
-    //         // let mut cross_chain = create_contract_with_received_message();
-    //         // // Execute message
-    //         // let ret = cross_chain.execute_message(from_chain.clone(), id);
-    //         // assert_eq!(ret, Ok(()));
-    //         // // Context not None.
-    //         // let context = cross_chain.get_context();
-    //         // assert_eq!(context.is_some(), true);
-    //         println!("Cross-contract call can not be tested");
-    //     }
+        // #[ink::test]
+        // fn execute_message_works() {
+        //     // let from_chain = "ETHEREUM".to_string();
+        //     // let id = 1;
+        //     // let mut cross_chain = create_contract_with_received_message();
+        //     // // Execute message
+        //     // let ret = cross_chain.execute_message(from_chain.clone(), id);
+        //     // assert_eq!(ret, Ok(()));
+        //     println!("Cross-contract call can not be tested");
+        // }
 
-    //     #[ink::test]
-    //     fn get_sent_message_number_works() {
-    //         let to_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let mut cross_chain = create_contract_with_sent_message();
-    //         // Number of sent messages is 1.
-    //         let num = cross_chain.get_sent_message_number(to_chain);
-    //         assert_eq!(num, 1);
-    //     }
+        // #[ink::test]
+        // fn get_context_works() {
+        //     // let from_chain = "ETHEREUM".to_string();
+        //     // let id = 1;
+        //     // let mut cross_chain = create_contract_with_received_message();
+        //     // // Execute message
+        //     // let ret = cross_chain.execute_message(from_chain.clone(), id);
+        //     // assert_eq!(ret, Ok(()));
+        //     // // Context not None.
+        //     // let context = cross_chain.get_context();
+        //     // assert_eq!(context.is_some(), true);
+        //     println!("Cross-contract call can not be tested");
+        // }
 
-    //     #[ink::test]
-    //     fn get_received_message_number_works() {
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let mut cross_chain = create_contract_with_received_message();
-    //         // Number of received messages is 1.
-    //         let num = cross_chain.get_received_message_number(from_chain);
-    //         assert_eq!(num, 1);
-    //     }
+        // #[ink::test]
+        // fn get_sent_message_number_works() {
+        //     let to_chain = "ETHEREUM".to_string();
+        //     let id = 1;
+        //     let mut cross_chain = create_contract_with_sent_message();
+        //     // Number of sent messages is 1.
+        //     let num = cross_chain.get_sent_message_number(to_chain);
+        //     assert_eq!(num, 1);
+        // }
 
-    //     #[ink::test]
-    //     fn get_sent_message_works() {
-    //         let to_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let mut cross_chain = create_contract_with_sent_message();
-    //         // Sent message is Ok.
-    //         let message = cross_chain.get_sent_message(to_chain, 1);
-    //         assert_eq!(message.is_ok(), true);
-    //     }
+        // #[ink::test]
+        // fn get_received_message_number_works() {
+        //     let from_chain = "ETHEREUM".to_string();
+        //     let id = 1;
+        //     let mut cross_chain = create_contract_with_received_message();
+        //     // Number of received messages is 1.
+        //     let num = cross_chain.get_received_message_number(from_chain);
+        //     assert_eq!(num, 1);
+        // }
 
-    //     #[ink::test]
-    //     fn get_received_message_works() {
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let mut cross_chain = create_contract_with_received_message();
-    //         // Received message is Ok.
-    //         let message = cross_chain.get_received_message(from_chain, 1);
-    //         assert_eq!(message.is_ok(), true);
-    //     }
+        // #[ink::test]
+        // fn get_sent_message_works() {
+        //     let to_chain = "ETHEREUM".to_string();
+        //     let id = 1;
+        //     let mut cross_chain = create_contract_with_sent_message();
+        //     // Sent message is Ok.
+        //     let message = cross_chain.get_sent_message(to_chain, 1);
+        //     assert_eq!(message.is_ok(), true);
+        // }
 
-    //     // Tests for trait MultiRouters
-    //     #[ink::test]
-    //     fn change_routers_and_requirement_works() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-    //         // Resister.
-    //         let mut routers = Routers::new();
-    //         routers.push(accounts.alice);
-    //         routers.push(accounts.bob);
-    //         let required = 2;
-    //         cross_chain.change_routers_and_requirement(routers.clone(), required);
-    //         // Requirement is 2.
-    //         let r = cross_chain.get_requirement();
-    //         assert_eq!(r, 2);
-    //         // Check routers.
-    //         let p = cross_chain.get_routers();
-    //         assert_eq!(p, routers);
-    //     }
+        // #[ink::test]
+        // fn get_received_message_works() {
+        //     let from_chain = "ETHEREUM".to_string();
+        //     let id = 1;
+        //     let mut cross_chain = create_contract_with_received_message();
+        //     // Received message is Ok.
+        //     let message = cross_chain.get_received_message(from_chain, 1);
+        //     assert_eq!(message.is_ok(), true);
+        // }
 
-    //     #[ink::test]
-    //     fn get_msg_porting_task() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         let from_chain = "ETHEREUM".to_string();
-    //         let id = 1;
-    //         let mut cross_chain = create_contract_with_received_message();
-    //         // Received message is Ok.
-    //         let message = cross_chain.get_received_message(from_chain.clone(), 1);
-    //         assert_eq!(message.is_ok(), true);
-    //         // Get porting task id
-    //         let id = cross_chain.get_msg_porting_task(from_chain, accounts.alice);
-    //         // id is 2
-    //         assert_eq!(id, 2);
-    //     }
+        // // Tests for trait MultiRouters
+        // #[ink::test]
+        // fn change_routers_and_requirement_works() {
+        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+        //     // Create a new contract instance.
+        //     let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+        //     // Resister.
+        //     let mut routers = Routers::new();
+        //     routers.push(accounts.alice);
+        //     routers.push(accounts.bob);
+        //     let required = 2;
+        //     cross_chain.change_routers_and_requirement(routers.clone(), required);
+        //     // Requirement is 2.
+        //     let r = cross_chain.get_requirement();
+        //     assert_eq!(r, 2);
+        //     // Check routers.
+        //     let p = cross_chain.get_routers();
+        //     assert_eq!(p, routers);
+        // }
 
-    //     #[ink::test]
-    //     fn get_selector() {
-    //         let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-    //         // Create a new contract instance.
-    //         let s = vec![0x3a, 0x6e, 0x96, 0x96];
-    //         let selector: [u8; 4] = s.clone().try_into().unwrap();
-    //         println!("{:?}", selector);
-    //     }
-    // }
+        // #[ink::test]
+        // fn get_msg_porting_task() {
+        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+        //     let from_chain = "ETHEREUM".to_string();
+        //     let id = 1;
+        //     let mut cross_chain = create_contract_with_received_message();
+        //     // Received message is Ok.
+        //     let message = cross_chain.get_received_message(from_chain.clone(), 1);
+        //     assert_eq!(message.is_ok(), true);
+        //     // Get porting task id
+        //     let id = cross_chain.get_msg_porting_task(from_chain, accounts.alice);
+        //     // id is 2
+        //     assert_eq!(id, 2);
+        // }
+
+        // #[ink::test]
+        // fn get_selector() {
+        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+        //     // Create a new contract instance.
+        //     let s = vec![0x3a, 0x6e, 0x96, 0x96];
+        //     let selector: [u8; 4] = s.clone().try_into().unwrap();
+        //     println!("{:?}", selector);
+        // }
+    }
 }
