@@ -404,6 +404,15 @@ pub mod cross_chain {
         pub fn get_evaluation(&self) -> Evaluation {
             self.evaluation.clone()
         }
+
+        #[ink(message)]
+        pub fn get_msg_porting_task(&self, chain_name: String, router: AccountId) -> u128 {
+            // final_received_message_id: Mapping<(String, AccountId), u128>,
+            self.final_received_message_id
+                .get(&(chain_name, router))
+                .unwrap_or(0)
+                + 1
+        }
     }
 
     impl Ownable for CrossChain {
@@ -642,16 +651,16 @@ pub mod cross_chain {
                     candidates.push(c);
                 }
             }
-            ink_env::debug_println!("total_credit:{}", total_credit);
-            ink_env::debug_println!("candidates number:{}", candidates.len());
+            // ink_env::debug_println!("total_credit:{}", total_credit);
+            // ink_env::debug_println!("candidates number:{}", candidates.len());
 
             if candidates.len() <= (self.evaluation.selected_number as usize) {
-                ink_env::debug_println!("{}", "Not Enough");
+                // ink_env::debug_println!("{}", "Not Enough");
                 let selected_routers: Vec<AccountId> =
                     candidates.into_iter().map(|c| c.id).collect();
                 self.evaluation.current_routers = selected_routers;
             } else {
-                ink_env::debug_println!("{}", "Enough");
+                // ink_env::debug_println!("{}", "Enough");
                 // Compute total trustworthy value
                 for c in candidates.iter() {
                     if c.credit >= self.evaluation.threshold.trustworthy_threshold {
@@ -659,7 +668,7 @@ pub mod cross_chain {
                         trustworthy_all += probability;
                     }
                 }
-                ink_env::debug_println!("trustworthy_all:{}", trustworthy_all);
+                // ink_env::debug_println!("trustworthy_all:{}", trustworthy_all);
 
                 // Number of credibility selecting
                 let mut credibility_selected_ratio = trustworthy_all;
@@ -675,14 +684,14 @@ pub mod cross_chain {
                     credibility_selected_ratio =
                         self.evaluation.credibility_selection_ratio.lower_limit;
                 }
-                ink_env::debug_println!(
-                    "credibility_selected_ratio:{}",
-                    credibility_selected_ratio
-                );
+                // ink_env::debug_println!(
+                //     "credibility_selected_ratio:{}",
+                //     credibility_selected_ratio
+                // );
                 let credibility_selected_num = (self.evaluation.selected_number as u32)
                     * (credibility_selected_ratio as u32)
                     / PRECISION;
-                ink_env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
+                // ink_env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
 
                 // Select routers according to credibility
                 let mut selected_routers = Vec::<AccountId>::new();
@@ -701,11 +710,11 @@ pub mod cross_chain {
                         let rand_num = u16::from_be_bytes(two_bytes) as u64;
 
                         let rand_credit = rand_num * (total_credit as u64) / (u16::MAX as u64);
-                        ink_env::debug_println!(
-                            "credit rand_num:{}, position:{}",
-                            rand_num,
-                            rand_credit
-                        );
+                        // ink_env::debug_println!(
+                        //     "credit rand_num:{}, position:{}",
+                        //     rand_num,
+                        //     rand_credit
+                        // );
 
                         let mut choose_next = false;
                         for c in candidates.iter_mut() {
@@ -752,11 +761,11 @@ pub mod cross_chain {
                             .unwrap();
                         let rand_num = u16::from_be_bytes(two_bytes) as u32;
                         let position = rand_num * (left_router_num as u32) / (u16::MAX as u32);
-                        ink_env::debug_println!(
-                            "random rand_num:{}, posotion:{}",
-                            rand_num,
-                            position
-                        );
+                        // ink_env::debug_println!(
+                        //     "random rand_num:{}, posotion:{}",
+                        //     rand_num,
+                        //     position
+                        // );
 
                         let mut pos_index = 0;
                         for i in candidates.iter_mut() {
@@ -997,12 +1006,50 @@ pub mod cross_chain {
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
         use ink_prelude::vec::Vec as Bytes;
-        use payload::message_define::{IContent, ISQoS, ISQoSType, ISession};
-        use std::{fmt::Write, num::ParseIntError};
+        use payload::message_define::{IContent, ISQoS, ISession};
+        use std::num::ParseIntError;
 
-        fn init() -> (CrossChain, DefaultAccounts<DefaultEnvironment>) {
+        fn init_default() -> (CrossChain, DefaultAccounts<DefaultEnvironment>) {
             let accounts = default_accounts::<DefaultEnvironment>();
             let cross_chain = CrossChain::new_default("POLKADOT".to_string());
+            test::set_caller::<DefaultEnvironment>(accounts.alice);
+            (cross_chain, accounts)
+        }
+
+        fn init(
+            credibility_weight_threshold: u32,
+            initial_credibility_value: u32,
+            trustworthy_threshold: u32,
+        ) -> (CrossChain, DefaultAccounts<DefaultEnvironment>) {
+            let threshold = Threshold {
+                min_seleted_threshold: 3500,
+                credibility_weight_threshold,
+                trustworthy_threshold,
+            };
+
+            let evaluation_coefficient = EvaluationCoefficient {
+                min_credibility: 0,
+                max_credibility: 10_000,
+                middle_credibility: (10_000 - 0) / 2,
+                range_crediblility: 10_000 - 0,
+                success_step: 100,
+                do_evil_step: 200,
+                exception_step: 100,
+            };
+
+            let credibility_selection_ratio = CredibilitySelectionRatio {
+                upper_limit: 8000,
+                lower_limit: 5000,
+            };
+            let accounts = default_accounts::<DefaultEnvironment>();
+            let cross_chain = CrossChain::new(
+                "POLKADOT".to_string(),
+                threshold,
+                credibility_selection_ratio,
+                evaluation_coefficient,
+                initial_credibility_value,
+                13,
+            );
             test::set_caller::<DefaultEnvironment>(accounts.alice);
             (cross_chain, accounts)
         }
@@ -1081,34 +1128,43 @@ pub mod cross_chain {
             (message_1, message_2, message_3)
         }
 
-        fn create_contract_with_sent_message() -> CrossChain {
-            // Create a new contract instance.
-            let mut cross_chain = CrossChain::new_default("POLKADOT".to_string());
+        fn register_routers(
+            cross_chain: &mut CrossChain,
+            total_num: u8,
+            selected_num: u8,
+        ) -> Vec<AccountId> {
+            let mut routers: Vec<AccountId> = Vec::new();
+            for i in 0..total_num {
+                let bytes = u8::to_be_bytes(i);
+                let mut account_bytes: [u8; 32] = [0; 32];
+                account_bytes[31] = bytes[0];
+                let acc = AccountId::from(account_bytes);
+                routers.push(acc);
+                cross_chain.register_router(acc).unwrap();
+            }
+            cross_chain.set_selected_number(selected_num).unwrap();
+            cross_chain.select_routers().unwrap()
+        }
 
-            // Send message.
-            let to_chain = "ETHEREUM".to_string();
-            let contract = "ETHEREUM_CONTRACT".to_string();
-            let action = "ETHERERUM_ACTION".to_string();
-            let data = Bytes::new();
-            let sqos = Vec::<ISQoS>::new();
-            let session = ISession::new(0, None);
-            let content = IContent::new(contract, action, data);
-            let message = ISentMessage::new(to_chain.clone(), sqos, content, session);
-            cross_chain.send_message(message);
-            cross_chain
+        fn receive_message(cross_chain: &mut CrossChain, routers: &[AccountId], message: Message) {
+            let imessage = to_ireceive_message(message);
+            for router in routers {
+                test::set_caller::<DefaultEnvironment>(*router);
+                cross_chain.receive_message(imessage.clone()).unwrap();
+            }
         }
 
         /// Tests for trait Ownable
         #[ink::test]
         fn owner_works() {
-            let (cross_chain, accounts) = init();
+            let (cross_chain, accounts) = init_default();
             // Owner should be Bob.
             assert_eq!(cross_chain.owner().unwrap(), accounts.alice);
         }
 
         #[ink::test]
         fn renounce_ownership_works() {
-            let (mut cross_chain, _) = init();
+            let (mut cross_chain, _) = init_default();
             // Renounce ownership.
             cross_chain.renounce_ownership().unwrap();
             // Owner is None.
@@ -1117,7 +1173,7 @@ pub mod cross_chain {
 
         #[ink::test]
         fn transfer_ownership_works() {
-            let (mut cross_chain, accounts) = init();
+            let (mut cross_chain, accounts) = init_default();
             // Transfer ownership.
             cross_chain.transfer_ownership(accounts.bob).unwrap();
             // Owner is Bob.
@@ -1125,34 +1181,14 @@ pub mod cross_chain {
         }
         #[ink::test]
         fn only_owner_works() {
-            let (cross_chain, _) = init();
+            let (cross_chain, _) = init_default();
             assert_eq!(cross_chain.only_owner(), Ok(()));
         }
 
-        fn register_routers(cross_chain: &mut CrossChain, nums: u8) -> Vec<AccountId> {
-            let mut routers: Vec<AccountId> = Vec::new();
-            for i in 0..nums {
-                let bytes = u8::to_be_bytes(i);
-                let mut account_bytes: [u8; 32] = [0; 32];
-                account_bytes[31] = bytes[0];
-                let acc = AccountId::from(account_bytes);
-                routers.push(acc);
-                cross_chain.register_router(acc).unwrap();
-            }
-            cross_chain.select_routers().unwrap()
-        }
-
-        #[ink::test]
-        fn not_owner_only_owner_should_fail() {
-            let (cross_chain, accounts) = init();
-            test::set_caller::<DefaultEnvironment>(accounts.bob);
-            assert_eq!(cross_chain.only_owner(), Err(Error::NotOwner));
-        }
-
-        /// Tests for CrossChainBase
+        /// Test send message
         #[ink::test]
         fn test_send_message() {
-            let (mut cross_chain, accounts) = init();
+            let (mut cross_chain, accounts) = init_default();
             let to_chain = "ETHEREUM".to_string();
             let send_message = SentMessage {
                 id: 1,
@@ -1195,29 +1231,229 @@ pub mod cross_chain {
                 cross_chain.get_sent_message(to_chain, id).unwrap()
             );
         }
-
-        fn receive_message(
-            cross_chain: &mut CrossChain,
-            routers: Vec<AccountId>,
-            message: Message,
-        ) {
-            let imessage = to_ireceive_message(message);
-            for router in routers {
-                test::set_caller::<DefaultEnvironment>(router);
-                cross_chain.receive_message(imessage.clone()).unwrap();
-            }
+        #[ink::test]
+        fn test_select_routers() {
+            let (mut cross_chain, _) = init_default();
+            let selected_routers = register_routers(&mut cross_chain, 50, 13);
+            assert_eq!(50, cross_chain.get_routers().len());
+            assert_eq!(13, selected_routers.len());
+            // println!("---- total routers ----");
+            // for (router, _) in cross_chain.get_routers() {
+            //     println!("{:?}", router);
+            // }
+            // println!("---- selected routers ----");
+            // for router in selected_routers {
+            //     println!("{:?}", router);
+            // }
         }
 
         #[ink::test]
         fn test_receive_message() {
-            let (mut cross_chain, _) = init();
-            let selected_routers = register_routers(&mut cross_chain, 1);
+            let (mut cross_chain, _) = init_default();
+            let selected_routers = register_routers(&mut cross_chain, 1, 1);
             let (message, _, _) = get_message();
-            receive_message(&mut cross_chain, selected_routers, message.clone());
-            println!(
-                "{:?}",
-                cross_chain.get_received_message(message.from_chain, message.id)
+            receive_message(&mut cross_chain, &selected_routers, message.clone());
+            assert_eq!(
+                message,
+                cross_chain
+                    .get_received_message(message.from_chain.clone(), message.id)
+                    .unwrap()
+                    .0[0]
+                    .message
             );
+            // println!(
+            //     "{:?}",
+            //     cross_chain
+            //         .get_received_message(message.from_chain, message.id)
+            //         .unwrap()
+            //         .0[0]
+            // );
+        }
+
+        /// test credibility < middle
+        #[ink::test]
+        fn test_routers_crediblity_greater_middle_crediblity() {
+            let initial_credibiltiy_value: u32 = 4800u32;
+            let credibility_weight_threshold: u32 = 1000u32;
+            let trustworthy_threshold: u32 = 3500;
+            let (mut cross_chain, _) = init(
+                credibility_weight_threshold,
+                initial_credibiltiy_value,
+                trustworthy_threshold,
+            );
+            let selected_routers = register_routers(&mut cross_chain, 50, 13);
+            // let routers = cross_chain.get_routers();
+            // for router in selected_routers.iter() {
+            //     for (r, v) in routers.iter() {
+            //         if r == router {
+            //             println!("({:?}, {})", *r, *v);
+            //             break;
+            //         }
+            //     }
+            // }
+            let (message, _, _) = get_message();
+            receive_message(&mut cross_chain, &selected_routers.clone(), message.clone());
+            let executable_key =
+                cross_chain.get_executable_messages(vec![message.from_chain.clone()]);
+            assert_eq!(executable_key[0], (message.from_chain.clone(), message.id));
+            let expect_value: u32 =
+                100 * initial_credibiltiy_value / 10000 + initial_credibiltiy_value;
+            let routers = cross_chain.get_routers();
+            for router in selected_routers.iter() {
+                for (r, v) in routers.iter() {
+                    if r == router {
+                        assert_eq!(expect_value, *v);
+                        // println!("({:?}, {})", *r, *v);
+                        break;
+                    }
+                }
+            }
+            // println!(
+            //     "received_message: \n{:?}",
+            //     cross_chain
+            //         .get_received_message(message.from_chain, message.id)
+            //         .unwrap()
+            // )
+        }
+
+        /// test with untrusted node
+        #[ink::test]
+        pub fn test_with_untrusted() {
+            let initial_credibiltiy_value: u32 = 6000u32;
+            let credibility_weight_threshold: u32 = 1000u32;
+            let trustworthy_threshold: u32 = 3500;
+            let (mut cross_chain, _) = init(
+                credibility_weight_threshold,
+                initial_credibiltiy_value,
+                trustworthy_threshold,
+            );
+            let selected_routers = register_routers(&mut cross_chain, 50, 13);
+            // let routers = cross_chain.get_routers();
+            // for router in selected_routers.iter() {
+            //     for (r, v) in routers.iter() {
+            //         if r == router {
+            //             println!("({:?}, {})", *r, *v);
+            //             break;
+            //         }
+            //     }
+            // }
+            let (message, malicious_message, _) = get_message();
+            receive_message(&mut cross_chain, &selected_routers[..9], message.clone());
+            receive_message(
+                &mut cross_chain,
+                &selected_routers[9..],
+                malicious_message.clone(),
+            );
+            let executable_key =
+                cross_chain.get_executable_messages(vec![message.from_chain.clone()]);
+            assert_eq!(executable_key[0], (message.from_chain.clone(), message.id));
+            let expect_trusted_value: u32 =
+                100 * (10000 - initial_credibiltiy_value) / 10000 + initial_credibiltiy_value;
+            // println!(
+            //     "received_message: \n{:?}",
+            //     cross_chain
+            //         .get_received_message(message.from_chain, message.id)
+            //         .unwrap()
+            // );
+            let routers = cross_chain.get_routers();
+            for router in selected_routers[..9].iter() {
+                for (r, v) in routers.iter() {
+                    if r == router {
+                        assert_eq!(expect_trusted_value, *v);
+                        // println!("({:?}, {})", *r, *v);
+                        break;
+                    }
+                }
+            }
+            let expect_untrusted_value: u32 =
+                initial_credibiltiy_value - 200 * initial_credibiltiy_value / 10000;
+            for router in selected_routers[9..].iter() {
+                for (r, v) in routers.iter() {
+                    if r == router {
+                        assert_eq!(expect_untrusted_value, *v);
+                        // println!("({:?}, {})", *r, *v);
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// test with inconsistency
+        #[ink::test]
+        fn test_with_inconsistency() {
+            let initial_credibiltiy_value: u32 = 6000u32;
+            let credibility_weight_threshold: u32 = 6000u32;
+            let trustworthy_threshold: u32 = 3500;
+            let (mut cross_chain, _) = init(
+                credibility_weight_threshold,
+                initial_credibiltiy_value,
+                trustworthy_threshold,
+            );
+            let selected_routers = register_routers(&mut cross_chain, 50, 13);
+            let routers = cross_chain.get_routers();
+            // for router in selected_routers.iter() {
+            //     for (r, v) in routers.iter() {
+            //         if r == router {
+            //             println!("({:?}, {})", *r, *v);
+            //             break;
+            //         }
+            //     }
+            // }
+            let (message_1, message_2, _) = get_message();
+            receive_message(&mut cross_chain, &selected_routers[..7], message_1.clone());
+            receive_message(&mut cross_chain, &selected_routers[7..], message_2.clone());
+            let executable_key =
+                cross_chain.get_executable_messages(vec![message_1.from_chain.clone()]);
+            assert_eq!(executable_key, Vec::new());
+            let executable_key =
+                cross_chain.get_executable_messages(vec![message_2.from_chain.clone()]);
+            assert_eq!(executable_key, Vec::new());
+            // println!(
+            //     "received_message: \n{:?}",
+            //     cross_chain
+            //         .get_received_message(message_1.from_chain, message_1.id)
+            //         .unwrap()
+            // );
+            let exception_total_credibility =
+                initial_credibiltiy_value * selected_routers.len() as u32;
+            let exception_total_credibility1 =
+                initial_credibiltiy_value * selected_routers[..7].len() as u32;
+            let exception_credibility_weight1 =
+                10000 * exception_total_credibility1 / exception_total_credibility;
+
+            let exception_total_credibility2 =
+                initial_credibiltiy_value * selected_routers[7..].len() as u32;
+            let exception_credibility_weight2 =
+                10000 * exception_total_credibility2 / exception_total_credibility;
+
+            let expect_exception_credibity1: u32 = initial_credibiltiy_value
+                - 100 * (initial_credibiltiy_value) / 10000
+                    * (10000 - exception_credibility_weight1)
+                    / 10000;
+
+            let routers = cross_chain.get_routers();
+            for router in selected_routers[..7].iter() {
+                for (r, v) in routers.iter() {
+                    if r == router {
+                        assert_eq!(expect_exception_credibity1, *v);
+                        // println!("({:?}, {})", *r, *v);
+                        break;
+                    }
+                }
+            }
+            let expect_exception_credibity2: u32 = initial_credibiltiy_value
+                - 100 * (initial_credibiltiy_value) / 10000
+                    * (10000 - exception_credibility_weight2)
+                    / 10000;
+            for router in selected_routers[7..].iter() {
+                for (r, v) in routers.iter() {
+                    if r == router {
+                        assert_eq!(expect_exception_credibity2, *v);
+                        // println!("({:?}, {})", *r, *v);
+                        break;
+                    }
+                }
+            }
         }
 
         // #[ink::test]
@@ -1323,48 +1559,19 @@ pub mod cross_chain {
         //     assert_eq!(message.is_ok(), true);
         // }
 
-        // // Tests for trait MultiRouters
-        // #[ink::test]
-        // fn change_routers_and_requirement_works() {
-        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-        //     // Create a new contract instance.
-        //     let mut cross_chain = CrossChain::new("POLKADOT".to_string());
-        //     // Resister.
-        //     let mut routers = Routers::new();
-        //     routers.push(accounts.alice);
-        //     routers.push(accounts.bob);
-        //     let required = 2;
-        //     cross_chain.change_routers_and_requirement(routers.clone(), required);
-        //     // Requirement is 2.
-        //     let r = cross_chain.get_requirement();
-        //     assert_eq!(r, 2);
-        //     // Check routers.
-        //     let p = cross_chain.get_routers();
-        //     assert_eq!(p, routers);
-        // }
-
-        // #[ink::test]
-        // fn get_msg_porting_task() {
-        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-        //     let from_chain = "ETHEREUM".to_string();
-        //     let id = 1;
-        //     let mut cross_chain = create_contract_with_received_message();
-        //     // Received message is Ok.
-        //     let message = cross_chain.get_received_message(from_chain.clone(), 1);
-        //     assert_eq!(message.is_ok(), true);
-        //     // Get porting task id
-        //     let id = cross_chain.get_msg_porting_task(from_chain, accounts.alice);
-        //     // id is 2
-        //     assert_eq!(id, 2);
-        // }
-
-        // #[ink::test]
-        // fn get_selector() {
-        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-        //     // Create a new contract instance.
-        //     let s = vec![0x3a, 0x6e, 0x96, 0x96];
-        //     let selector: [u8; 4] = s.clone().try_into().unwrap();
-        //     println!("{:?}", selector);
-        // }
+        #[ink::test]
+        fn get_msg_porting_task() {
+            let (mut cross_chain, _) = init_default();
+            let (message, _, _) = get_message();
+            let selected_routers = register_routers(&mut cross_chain, 1, 1);
+            let id =
+                cross_chain.get_msg_porting_task(message.from_chain.clone(), selected_routers[0]);
+            assert_eq!(id, 1);
+            receive_message(&mut cross_chain, &selected_routers, message.clone());
+            let id =
+                cross_chain.get_msg_porting_task(message.from_chain.clone(), selected_routers[0]);
+            // id is 2
+            assert_eq!(id, 2);
+        }
     }
 }

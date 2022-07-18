@@ -212,7 +212,7 @@ pub struct AbandonedMessage {
     pub error_code: u16,
 }
 
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
