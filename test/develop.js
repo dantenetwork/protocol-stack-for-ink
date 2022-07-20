@@ -3,43 +3,49 @@ import { Abi, ContractPromise } from '@polkadot/api-contract';
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import fs from 'fs';
 import 'dotenv/config'
-import { bool, _void, str, u8, u16, u32, u64, u128, Enum, Struct, Vector, Option, Bytes } from "scale-ts"
+import { bool, _void, str,i8, i16, i32, i64, i128, u8, u16, u32, u64, u128, Enum, Struct, Vector, Option, Bytes } from "scale-ts"
 
-const MsgType = Enum({
-  InkString: _void,
-  InkU8: _void,
-  InkU16: _void,
-  InkU32: _void,
-  InkU64: _void,
-  InkU128: _void,
-  InkI8: _void,
-  InkI16: _void,
-  InkI32: _void,
-  InkI64: _void,
-  InkI128: _void,
-  InkStringArray: _void,
-  InkU8Array: _void,
-  InkU16Array: _void,
-  InkU32Array: _void,
-  InkU64Array: _void,
-  InkU128Array: _void,
-  InkI8Array: _void,
-  InkI16Array: _void,
-  InkI32Array: _void,
-  InkI64Array: _void,
-  InkI128Array: _void,
-  UserData: _void,
+const InkAddressData = Struct({
+  ink_address: Option(Vector(u8, 32)),
+  general_address: Option(str),
+  address_type: u8,
 });
 
-let PayloadItem = Struct({
+const MsgDetail = Enum({
+  InkString: str,
+  InkU8: u8,
+  InkU16: u16,
+  InkU32: u32,
+  InkU64: u64,
+  InkU128: u128,
+  InkI8: i8,
+  InkI16: i16,
+  InkI32: i32,
+  InkI64: i64,
+  InkI128: i128,
+  InkStringArray: Vector(str),
+  InkU8Array: Vector(u8),
+  InkU16Array: Vector(u16),
+  InkU32Array: Vector(u32),
+  InkU64Array: Vector(u64),
+  InkU128Array: Vector(u128),
+  InkI8Array: Vector(i8),
+  InkI16Array: Vector(i16),
+  InkI32Array: Vector(i32),
+  InkI64Array: Vector(i64),
+  InkI128Array: Vector(i128),
+  InkAddress: InkAddressData,
+  // UserData: Bytes,
+});
+
+const MessageItem = Struct({
   n: str,
-  t: MsgType,
-  v: Vector(u8)
+  tv: MsgDetail
 });
 
-let PayloadMessage = Struct({
-  items: Option(Vector(PayloadItem))
-})
+let MessagePayload = Struct({
+  items: Option(Vector(MessageItem))
+});
 
 // network
 const provider = new WsProvider("ws://127.0.0.1:9944");
@@ -54,6 +60,10 @@ sender.decodePkcs8(process.env.PASSWORD);
 // cross-chain contract
 const crossChainABIRaw = fs.readFileSync('./abi/cross_chain.json');
 const crossChainContract = new ContractPromise(api, JSON.parse(crossChainABIRaw), process.env.CONTRACT_ADDRESS);
+
+// locker contract
+const lockerABIRaw = fs.readFileSync('./abi/locker.json');
+const lockerContract = new ContractPromise(api, JSON.parse(lockerABIRaw), process.env.LOCKER_ADDRESS);
 // const crossChainABI = new Abi(JSON.parse(crossChainABIRaw));
 // let m = crossChainABI.findMessage('crossChainBase::executeMessage').toU8a(["A", 1]);
 // console.log('m', toHexString(m));
@@ -90,7 +100,8 @@ async function query() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // const calleeEncode = calleeABI.findMessage('encode_user_defined_struct').toU8a([{"name": "Nika", "age": 18, "phones": ["123", "456"]}]);
-  const { gasConsumed, result, output } = await crossChainContract.query['crossChainBase::getContext'](sender.address, {value, gasLimit });
+  const { gasConsumed, result, output } = await lockerContract.query['receiveToken'](sender.address, {value, gasLimit },
+    await test_message());
   
   // The actual result from RPC as `ContractExecResult`
   console.log(result.toHuman());
@@ -120,17 +131,14 @@ async function test_message() {
   //                                         {"name": "Nika", "age": 18, "phones": ["123", "456"]});
 
   // let payload = await test_scale_codec1();
-  let payload = '0x0104106e756d7313340ce40700000600000011000000';
+  let payload = '0x010808746f1601d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00020c6e756d0501000000000000000000000000000000';
   
-  let revert = PayloadMessage.dec(payload);
-  console.log('revert', JSON.stringify(revert.items[0].n));
-  console.log('revert', JSON.stringify(revert.items[0].t));
-  console.log('revert', toHexString(revert.items[0].v));
-  let a = Vector(u32).dec(toHexString(revert.items[0].v));
-  console.log('a', a);
+  let revert = MessagePayload.dec(payload);
+  console.log('revert', revert, revert.items[0].tv, revert.items[1].tv);
+  return revert;
 }
 
-async function pushMessage() {
+async function pushMessage(i) {
   // We will use these values for the execution
   const value = 0; // only useful on isPayable messages
   const gasLimit = -1;
@@ -138,22 +146,18 @@ async function pushMessage() {
   let payload = '0x0104010000000000000000000000000000000bd81020504f4c4b41444f54244772656574696e6773584772656574696e672066726f6d20504f4c4b41444f5428323032322d30362d303100';
 
   let message = {
-    id: '1',
+    id: i,
     from_chain: 'ETHEREUM',
     sender: '0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b',
     signer: '0x3aE841B899Ae4652784EA734cc61F524c36325d1',
-    sqos: {
-      reveal: '1'
-    },
-    contract: '5DeiQFwpYh7cJ5Rx5pnHgHHWPBbgq4qkyf3Q8G9CE6ZvEFLu',
+    sqos: [],
+    contract: '0x4a0baeef90dd3c88da26e70f3121b71d037ba4b994cfa9d7d7fd900ca450738b',
     action: '0x3a6e9696',
     data: payload,
     session: {
-      msg_type: '0',
+      callback: '0x',
       id: '0'
-    },
-    executed: false,
-    error_code: 0
+    }
   }
   console.log(message);
 
@@ -162,6 +166,28 @@ async function pushMessage() {
   // additional params, if required can follow - here only one is needed)
   await crossChainContract.tx
     ['crossChainBase::receiveMessage']({ value, gasLimit }, message)
+    .signAndSend(sender, (result) => {
+      console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
+      if (result.status.isInBlock) {
+        console.log('in a block');
+        // console.log(result);
+      } else if (result.status.isFinalized) {
+        console.log('finalized');
+      }
+    });
+}
+
+async function transferToken() {
+  // We will use these values for the execution
+  const value = 0; // only useful on isPayable messages
+  const gasLimit = -1;
+
+  // Send the transaction, like elsewhere this is a normal extrinsic
+  // with the same rules as applied in the API (As with the read example,
+  // additional params, if required can follow - here only one is needed)
+  await lockerContract.tx
+    ['transferToken']({ value, gasLimit }, 'POLKADOT', 
+    {ink_address: '0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d', general_address: null, address_type: 2}, 1)
     .signAndSend(sender, (result) => {
       console.log('result', result.isInBlock, result.isFinalized, result.isError, result.isWarning);
       if (result.status.isInBlock) {
@@ -317,7 +343,8 @@ function addressTest() {
      26, 108, 188, 242, 121, 211, 133,
     132,  84, 142,  76
   ];
-  console.log(toHexString(decodeAddress(("5DjnsVKymEKMsE7yei4CRi72TQKiQaxG9nb3f12ttGNqh93R"))));
+  console.log(toHexString(decodeAddress(("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"))));
+  // 0x4a0baeef90dd3c88da26e70f3121b71d037ba4b994cfa9d7d7fd900ca450738b
 }
 
 function decodeEvent() {
@@ -337,7 +364,13 @@ query()
 
 // addressTest()
 
+// let index = 1;
+// setInterval(async() => {
+//   pushMessage(index);
+//   index++;
+// }, 5 * 1000);
 // pushMessage()
+// transferToken()
 
 // get_event()
 
