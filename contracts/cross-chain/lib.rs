@@ -627,6 +627,14 @@ pub mod cross_chain {
                 .get(&(chain_name, id))
                 .ok_or(Error::ChainMessageNotFound)
         }
+
+        /// Returns the message abandoned from chain `chain_name`
+        #[ink(message)]
+        fn get_abandoned_message(&self, chain_name: String) -> Vec<AbandonedMessage> {
+            self.abandoned_message
+                .get(&chain_name)
+                .unwrap_or(Vec::new())
+        }
     }
 
     impl RoutersCore for CrossChain {
@@ -1154,6 +1162,21 @@ pub mod cross_chain {
             }
         }
 
+        fn receive_abandoned_message(
+            cross_chain: &mut CrossChain,
+            routers: &[AccountId],
+            from_chain: String,
+            id: u128,
+            error_code: u16,
+        ) {
+            // let imessage = to_ireceive_message(message);
+            for router in routers {
+                test::set_caller::<DefaultEnvironment>(*router);
+                cross_chain
+                    .abandon_message(from_chain.clone(), id, error_code)
+                    .unwrap();
+            }
+        }
         /// Tests for trait Ownable
         #[ink::test]
         fn owner_works() {
@@ -1390,7 +1413,7 @@ pub mod cross_chain {
                 trustworthy_threshold,
             );
             let selected_routers = register_routers(&mut cross_chain, 50, 13);
-            let routers = cross_chain.get_routers();
+            // let routers = cross_chain.get_routers();
             // for router in selected_routers.iter() {
             //     for (r, v) in routers.iter() {
             //         if r == router {
@@ -1456,24 +1479,32 @@ pub mod cross_chain {
             }
         }
 
-        // #[ink::test]
-        // fn abandon_message_works() {
-        //     let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
-        //     // Create a new contract instance.
-        //     let mut cross_chain = CrossChain::new_default("POLKADOT".to_string());
-        //     // Receive message.
-        //     let from_chain = "ETHEREUM".to_string();
-        //     let id = 1;
-        //     let error_code = 1;
-        //     cross_chain.abandon_message(from_chain.clone(), id, error_code);
-        //     // Number of sent messages is 1.
-        //     let num = cross_chain
-        //         .received_message_table
-        //         .get(&from_chain)
-        //         .unwrap()
-        //         .len();
-        //     assert_eq!(num, 1);
-        // }
+        #[ink::test]
+        fn test_abandon_message() {
+            let (mut cross_chain, _) = init_default();
+            let (message, _, _) = get_message();
+            let selected_routers = register_routers(&mut cross_chain, 50, 13);
+            let error_code = 1u16;
+            receive_message(&mut cross_chain, &selected_routers[..3], message.clone());
+            receive_abandoned_message(
+                &mut cross_chain,
+                &selected_routers[3..],
+                message.from_chain.clone(),
+                message.id,
+                error_code,
+            );
+            // let received_message = cross_chain.get_received_message(message.from_chain.clone(), message.id);
+            // println!("{:?}", received_message);
+            let abandoned_message = cross_chain.get_abandoned_message(message.from_chain.clone());
+            // println!("{:?}", abandoned_message);
+            let expected_abandoned_message = AbandonedMessage {
+                id: message.id,
+                error_code,
+            };
+            assert_eq!(abandoned_message[0], expected_abandoned_message);
+            let executable_message = cross_chain.get_executable_messages(vec![message.from_chain]);
+            assert_eq!(executable_message, Vec::new());
+        }
 
         // #[ink::test]
         // fn get_executable_messages_works() {
