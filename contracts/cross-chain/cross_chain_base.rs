@@ -1,4 +1,4 @@
-use crate::storage_define::{Error, Group, SentMessage};
+use crate::storage_define::{AbandonedMessage, Error, Group, SentMessage};
 use ink_env::AccountId;
 /// Trait for basic cross-chain contract
 use ink_lang as ink;
@@ -50,4 +50,8 @@ pub trait CrossChainBase {
         chain_name: String,
         id: u128,
     ) -> Result<(Vec<Group>, bool), Error>;
+
+    /// Returns the message abandoned from chain `chain_name`
+    #[ink(message)]
+    fn get_abandoned_message(&self, chain_name: String) -> Vec<AbandonedMessage>;
 }

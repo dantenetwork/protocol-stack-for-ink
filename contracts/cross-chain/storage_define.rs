@@ -202,7 +202,7 @@ impl Session {
 }
 
 /// Received message structure
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
