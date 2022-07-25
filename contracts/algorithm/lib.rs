@@ -113,6 +113,12 @@ mod algorithm {
         submitted: ink_prelude::vec::Vec<VerifyInfo>,
     }
 
+    #[ink(event)]
+    pub struct EvaluateResult {
+        behavior_type: ink_prelude::string::String,
+        results: ink_prelude::vec::Vec<u32>,
+    }
+
     #[derive(SpreadLayout, PackedLayout, Debug, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(::scale_info::TypeInfo, StorageLayout))]
     pub struct VerifiedCache {
@@ -647,6 +653,73 @@ mod algorithm {
                 Some(router.1)
             } else {
                 None
+            }
+        }
+
+        #[ink(message)]
+        pub fn do_honest(&mut self, id: u16, times: u32) {
+            let mut honest_rst = EvaluateResult {
+                behavior_type: ink_prelude::string::String::from("honest"),
+                results: ink_prelude::vec![],
+            };
+
+            if let Some(mut router) = self.sim_routers.get(id) {
+                honest_rst.results.push(router.1);
+
+                // increase credibility
+                let mut count = 0;
+                while count < times {
+                    
+                    if router.1 < self.coe_middle_cred {
+                        router.1 = 10
+                            * (router.1 - self.coe_min_cred)
+                            / self.coe_range_cred
+                            + router.1;
+                    } else {
+                        router.1 = 10
+                            * (self.coe_max_cred - router.1)
+                            / self.coe_range_cred
+                            + router.1;
+                    }
+
+                    honest_rst.results.push(router.1);
+
+                    count += 1;
+                }
+
+                self.sim_routers.insert(&id, &router);
+
+                Self::env().emit_event(honest_rst);
+            }
+        }
+
+        #[ink(message)]
+        pub fn do_evil(&mut self, id: u16, times: u32) {
+            let mut evil_rst = EvaluateResult {
+                behavior_type: ink_prelude::string::String::from("evil"),
+                results: ink_prelude::vec![],
+            };
+
+            if let Some(mut router) = self.sim_routers.get(id) {
+                evil_rst.results.push(router.1);
+                
+                // decrease credibility
+                let mut count = 0;
+                while count < times {
+                    
+                    router.1 = router.1
+                                - 20
+                                * (router.1 - self.coe_min_cred)
+                                / self.coe_range_cred;
+
+                    evil_rst.results.push(router.1);
+
+                    count += 1;
+                }
+
+                self.sim_routers.insert(&id, &router);
+
+                Self::env().emit_event(evil_rst);
             }
         }
     }
