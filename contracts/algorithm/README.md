@@ -76,4 +76,17 @@ There are three contents of the submitted message copies. The first one is submi
 In router evaluation algorithm prototype, we provide a direct way to demostrate the how an honest or evil behavior effects the variation of routers' credibility.
 
 #### Usage
-* Call ``
+* Call `randomRegisterRouters ` to register a router with whatever crediblity you like, or use the registered routers above.
+![1658735675933](https://user-images.githubusercontent.com/83746881/180726816-7e66db44-57a1-44fb-9520-8bcac8ba6329.png)
+
+* Call `doHonestOnce ` to simulate a router completing the delivery of one message copy successfully, whose credibility increases then.
+![1658735920961](https://user-images.githubusercontent.com/83746881/180727555-b61facee-2326-40cd-8f09-55d35102e309.png)
+
+* Call `doEvilOnce` to simulate a router making malicious things and been caught, whose credibility decreases then.
+![1658736068106](https://user-images.githubusercontent.com/83746881/180728105-16dbca64-f388-4f82-88d8-9a87e4b1682f.png)
+
+* Call `getCredibility` to get the related router's credibility.
+![1658736154730](https://user-images.githubusercontent.com/83746881/180728339-ee55c687-d523-4323-8749-9e80262b37a0.png)
+
+
+
