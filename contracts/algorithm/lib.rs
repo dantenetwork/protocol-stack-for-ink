@@ -593,6 +593,32 @@ mod algorithm {
 
             self.cache_verified_keys.clear();
         }
+
+        /// simulation of message verification
+        /// 
+        pub fn do_honest(&mut self, id: u16, times: u32) {
+            if let Some(router) = self.sim_routers.get(id) {
+                // TODO: increase credibility
+
+                self.sim_routers.insert(&id, &router);
+            }
+        }
+
+        pub fn do_evil(&mut self, id: u16, times: u32) {
+            if let Some(router) = self.sim_routers.get(id) {
+                // TODO: decrease credibility
+
+                self.sim_routers.insert(&id, &router);
+            }
+        }
+
+        pub fn get_credibility(&self, id: u16) -> Option<u32> {
+            if let Some(router) = self.sim_routers.get(id) {
+                Some(router.1)
+            } else {
+                None
+            }
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
