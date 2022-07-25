@@ -88,5 +88,15 @@ In router evaluation algorithm prototype, we provide a direct way to demostrate 
 * Call `getCredibility` to get the related router's credibility.
 ![1658736154730](https://user-images.githubusercontent.com/83746881/180728339-ee55c687-d523-4323-8749-9e80262b37a0.png)
 
+#### Test scripts
+To learn the trend of the node evaluation algorithms clearly, we provide a [test scripts](../../test/nodeEvaluation.js) to show that.
+* We call `randomRegisterRouters` throungh `Polkadot.js.app` first to add a new router with credibility score 10.
+* In this JS scripts, we call `doHonest` and do honest behavior 20 times once and get an event containing results everytime. We get an increased curve as below:
+![Honest](https://user-images.githubusercontent.com/83746881/180753234-bc432d9e-0c4c-4599-90cb-90377be6a6e0.png)  
+**Note that the score will not increase as soon as got 90 because of the precision. We use 0~10,000 to describe the credibility in our official version.**
+
+* We call `doEvil` and do malicious behavior 20 times once and get an event containing results everytime. We get a decrease curve as below:
+![evil](https://user-images.githubusercontent.com/83746881/180753589-a0eb0548-7144-4ce1-868e-c75e16ce2850.png)  
+**Note that the score will not decrease as soon as got 4 because of the precision. We use 0~10,000 to describe the credibility in our official version.**
 
 
