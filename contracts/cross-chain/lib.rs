@@ -75,6 +75,8 @@ pub mod cross_chain {
         latest_sent_message_id: Mapping<String, u128>,
         /// Table of received messages
         received_message_table: Mapping<(String, u128), (Vec<Group>, bool)>,
+        /// Table of pending messages key
+        pending_message_key: Vec<(String, u128)>,
         /// latest received message id
         latest_message_id: Mapping<String, u128>,
         /// router final received message id
@@ -268,6 +270,7 @@ pub mod cross_chain {
                         credibility_weight: 0,
                     }];
                     self.received_message_table.insert(&key, &(groups, false));
+                    self.pending_message_key.push(key.clone());
                 }
             }
 
@@ -340,6 +343,12 @@ pub mod cross_chain {
                     exeception.push((group.routers, group.credibility_weight));
                 }
             }
+            let index = self
+                .pending_message_key
+                .iter()
+                .position(|x| *x == *key)
+                .unwrap();
+            self.pending_message_key.remove(index);
             (trusted, untrusted, exeception)
         }
 
@@ -407,11 +416,17 @@ pub mod cross_chain {
 
         #[ink(message)]
         pub fn get_msg_porting_task(&self, chain_name: String, router: AccountId) -> u128 {
-            // final_received_message_id: Mapping<(String, AccountId), u128>,
-            self.final_received_message_id
-                .get(&(chain_name, router))
-                .unwrap_or(0)
-                + 1
+            let final_received_message_id = self
+                .final_received_message_id
+                .get(&(chain_name.clone(), router))
+                .unwrap_or(0);
+            for key in self.pending_message_key.iter() {
+                if key.0 != chain_name || key.1 <= final_received_message_id {
+                    continue;
+                }
+                return key.1;
+            }
+            self.latest_message_id.get(&chain_name).unwrap_or(0) + 1
         }
     }
 
@@ -1594,13 +1609,22 @@ pub mod cross_chain {
         fn get_msg_porting_task() {
             let (mut cross_chain, _) = init_default();
             let (message, _, _) = get_message();
-            let selected_routers = register_routers(&mut cross_chain, 1, 1);
+            let selected_routers = register_routers(&mut cross_chain, 2, 2);
             let id =
                 cross_chain.get_msg_porting_task(message.from_chain.clone(), selected_routers[0]);
             assert_eq!(id, 1);
-            receive_message(&mut cross_chain, &selected_routers, message.clone());
+            receive_message(&mut cross_chain, &selected_routers[..1], message.clone());
+            let mut message_2 = message.clone();
+            message_2.id = message_2.id + 1;
+            receive_message(&mut cross_chain, &selected_routers[..1], message_2.clone());
             let id =
-                cross_chain.get_msg_porting_task(message.from_chain.clone(), selected_routers[0]);
+                cross_chain.get_msg_porting_task(message.from_chain.clone(), selected_routers[1]);
+            // id is 1
+            assert_eq!(id, 1);
+            // println!("{}", id);
+            receive_message(&mut cross_chain, &selected_routers[1..], message.clone());
+            let id =
+                cross_chain.get_msg_porting_task(message.from_chain.clone(), selected_routers[1]);
             // id is 2
             assert_eq!(id, 2);
         }
