@@ -5,6 +5,7 @@ To make users more intuitively to understand how the underly algorithms work, we
 ## Index
 * [Router selection mechanism](#router-selection)
 * [Message verification mechanism](#message-verification)
+* [Router evaluation mechanism](#router-evaluation)
 
 ## Demos
 
@@ -70,3 +71,9 @@ And the number determines how many routers one message needs to be delivered par
 ![1655721713779](https://user-images.githubusercontent.com/83746881/174584850-ed1cc4d8-42d6-4844-98f0-f4b75b3872b1.png)
 
 There are three contents of the submitted message copies. The first one is submitted by routers `0`, `1`, and `2`. The second one is submitted by router `3`. And the third one is submitted by router `4`. The aggregated credibility weights are `240`, `60`, and `50` respectively. As `240` is only 68%(need 70%) of the total `240 + 60 + 50 = 350`, the verification, in this case, does not pass, so none of these three copies is accepted.
+
+### Router evaluation
+In router evaluation algorithm prototype, we provide a direct way to demostrate the how an honest or evil behavior effects the variation of routers' credibility.
+
+#### Usage
+

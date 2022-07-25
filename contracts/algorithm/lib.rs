@@ -135,6 +135,10 @@ mod algorithm {
         account: AccountId,
         msg_copy_count: u16,
         vf_threshold: u128,
+        coe_middle_cred: u32,
+        coe_min_cred: u32,
+        coe_max_cred: u32,
+        coe_range_cred: u32,
 
         /// This type of storage needs to be optimized in product implementation
         /// Follow this [issue: Allow iteration over contract storage #11410](https://github.com/paritytech/substrate/issues/11410#issuecomment-1156775111)
@@ -160,6 +164,10 @@ mod algorithm {
                 contract.account = Self::env().caller();
                 contract.msg_copy_count = 5;
                 contract.vf_threshold = 7000;
+                contract.coe_middle_cred = 50;
+                contract.coe_min_cred = 0;
+                contract.coe_max_cred = 100;
+                contract.coe_range_cred = contract.coe_max_cred - contract.coe_min_cred;
                 contract.sim_router_keys = ink_prelude::vec![];
                 contract.msg_v_keys = ink_prelude::vec![];
                 contract.cache_verified_keys = ink_prelude::vec![];
@@ -594,24 +602,46 @@ mod algorithm {
             self.cache_verified_keys.clear();
         }
 
-        /// simulation of message verification
+        /// simulation of node evaluation
         /// 
-        pub fn do_honest(&mut self, id: u16, times: u32) {
-            if let Some(router) = self.sim_routers.get(id) {
+        /// This is a on-chain prototype for routers eveluation to show the principle of node evaluation algorithms
+        /// When a router does `do_honest_once`, its credibility will increase
+        /// On the contrary, when a router does `do_evil_once`, its credibility will decrease
+        #[ink(message)]
+        pub fn do_honest_once(&mut self, id: u16) {
+            if let Some(mut router) = self.sim_routers.get(id) {
                 // TODO: increase credibility
+                if router.1 < self.coe_middle_cred {
+                    router.1 = 10
+                        * (router.1 - self.coe_min_cred)
+                        / self.coe_range_cred
+                        + router.1;
+                } else {
+                    router.1 = 10
+                        * (self.coe_max_cred - router.1)
+                        / self.coe_range_cred
+                        + router.1;
+                }
 
                 self.sim_routers.insert(&id, &router);
             }
         }
 
-        pub fn do_evil(&mut self, id: u16, times: u32) {
-            if let Some(router) = self.sim_routers.get(id) {
+        #[ink(message)]
+        pub fn do_evil_once(&mut self, id: u16) {
+            if let Some(mut router) = self.sim_routers.get(id) {
                 // TODO: decrease credibility
 
+                router.1 = router.1
+                    - 20
+                        * (router.1 - self.coe_min_cred)
+                        / self.coe_range_cred;
+
                 self.sim_routers.insert(&id, &router);
             }
         }
 
+        #[ink(message)]
         pub fn get_credibility(&self, id: u16) -> Option<u32> {
             if let Some(router) = self.sim_routers.get(id) {
                 Some(router.1)
