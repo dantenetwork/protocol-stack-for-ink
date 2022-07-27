@@ -428,6 +428,21 @@ pub mod cross_chain {
             }
             self.latest_message_id.get(&chain_name).unwrap_or(0) + 1
         }
+
+        #[ink(message)]
+        pub fn is_selected(&self, router: AccountId) -> bool {
+            for r in self.evaluation.current_routers.iter() {
+                if *r == router {
+                    return true;
+                }
+            }
+            false
+        }
+
+        #[ink(message)]
+        pub fn get_current_routers(&self) -> Vec<AccountId> {
+            self.evaluation.current_routers.clone()
+        }
     }
 
     impl Ownable for CrossChain {
