@@ -44,6 +44,21 @@ mod signatureCrseco {
 
             AccountId::from(addr_hash) == acct
         }
+
+        #[ink(message)]
+        pub fn get_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+            let mut raw_buffer = ink_prelude::vec![];
+
+            let mut int32_vec = ink_prelude::vec![99 as i32, 88, 77];
+            for ele in int32_vec.iter_mut() {
+                raw_buffer.append(&mut ink_prelude::vec::Vec::from(ele.to_be_bytes()));
+            }
+
+            let some_str = ink_prelude::string::String::from("Hello Nika");
+            raw_buffer.append(&mut ink_prelude::vec::Vec::from(some_str.as_bytes()));
+
+            raw_buffer
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
@@ -86,21 +101,21 @@ mod signatureCrseco {
             assert_eq!(output, EXPECTED_COMPRESSED_PUBLIC_KEY);
         }
 
-        // #[ink::test]
-        // fn test_pubkey() {
-        //     const EXPECTED_COMPRESSED_PUBLIC_KEY: [u8; 33]= [
-        //         2,  70,  89,  9,  29,  24,  64, 247,
-        //         97, 172, 227, 31, 157, 179, 226, 227,
-        //         78, 252, 100, 14,  16, 156,  60,  47,
-        //         110,  87,  58, 16,  78, 230, 150,  20,
-        //         114
-        //     ];
-        //     let mut output = <ink_env::hash::Blake2x256 as ink_env::hash::HashOutput>::Type::default();
-        //     ink_env::hash_encoded::<ink_env::hash::Blake2x256, _>(&EXPECTED_COMPRESSED_PUBLIC_KEY, &mut output);
+        #[ink::test]
+        fn test_raw_data() {
+            let mut raw_buffer = ink_prelude::vec![];
 
-        //     let acct: ink_env::AccountId = AccountId::from(output);
+            let mut int32_vec = ink_prelude::vec![99 as i32, 88, 77];
+            for ele in int32_vec.iter_mut() {
+                raw_buffer.append(&mut ink_prelude::vec::Vec::from(ele.to_be_bytes()));
+                *ele += 1;
+            }
 
-        //     assert_eq!(acct, AccountId::from([0;32]));
-        // }
+            let some_str = ink_prelude::string::String::from("Hello Nika");
+            raw_buffer.append(&mut ink_prelude::vec::Vec::from(some_str.as_bytes()));
+
+            assert_eq!(int32_vec[0], 100);
+            assert_eq!(raw_buffer.len(), 12 + some_str.len());
+        }
     }
 }
