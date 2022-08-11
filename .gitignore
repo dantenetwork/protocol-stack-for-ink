@@ -12,3 +12,5 @@ Cargo.lock
 # /test/node_modules/
 # /test/package-lock.json
 # /test/abi/
+
+node_modules
