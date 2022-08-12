@@ -117,5 +117,23 @@ mod signatureCrseco {
             assert_eq!(int32_vec[0], 100);
             assert_eq!(raw_buffer.len(), 12 + some_str.len());
         }
+
+        #[ink::test]
+        fn test_raw_string() {
+            let mut raw_utf8 = [0u8;256];
+            let mut i: u8 = 0;
+            for mut ele in raw_utf8.iter_mut() {
+                *ele = i;
+                i += 1;
+            }
+
+            let mut raw_str = ink_prelude::string::String::new();
+
+            unsafe {
+                raw_str = ink_prelude::string::String::from_utf8_unchecked(raw_utf8.to_vec());
+            }
+            
+            assert_eq!(raw_str.as_bytes(), raw_utf8);
+        }
     }
 }
