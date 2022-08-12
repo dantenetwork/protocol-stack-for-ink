@@ -124,7 +124,9 @@ mod signatureCrseco {
             let mut i: u8 = 0;
             for mut ele in raw_utf8.iter_mut() {
                 *ele = i;
-                i += 1;
+                if (i < 255u8) {
+                    i += 1;
+                }
             }
 
             let mut raw_str = ink_prelude::string::String::new();
@@ -135,5 +137,6 @@ mod signatureCrseco {
             
             assert_eq!(raw_str.as_bytes(), raw_utf8);
         }
+
     }
 }
