@@ -2,10 +2,20 @@
 
 use ink_lang as ink;
 
+pub trait RawData {
+    fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8>;
+}
+
+impl RawData for ink_prelude::vec::Vec<u8> {
+    fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        self.clone()
+    }
+}
+
 #[ink::contract]
 mod signatureCrseco {
 
-    use payload::message_protocol::{ MessagePayload, MessageItem, MsgDetail};
+    use payload::message_protocol::{ MessagePayload, MessageItem, MsgDetail, InMsgType};
     use payload::message_define::{ISentMessage, IReceivedMessage};
 
     /// Defines the storage of your contract.
@@ -136,6 +146,30 @@ mod signatureCrseco {
             }
             
             assert_eq!(raw_str.as_bytes(), raw_utf8);
+        }
+
+        #[ink::test]
+        fn test_i_number() {
+            let i_num: i8 = -99;
+
+            let mut raw_data = ink_prelude::vec![];
+
+            raw_data.push(i_num as u8);
+
+            assert_eq!(raw_data[0] as i8, -99);
+        }
+
+        #[ink::test]
+        fn test_crypto_payload() {
+            let address_here = payload::message_protocol::InkAddressData {
+                ink_address: ink_prelude::vec![1, 2, 3],
+                address_type: 0
+            };
+
+            let raw1 = address_here.into_raw_data();
+            let raw2 = address_here.into_raw_data();
+
+            assert_eq!(raw1, raw2);
         }
 
     }
