@@ -57,13 +57,13 @@ impl Error {
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
 )]
 pub struct Content {
-    pub contract: String,
-    pub action: String,
+    pub contract: Bytes,
+    pub action: Bytes,
     pub data: Bytes,
 }
 
 impl Content {
-    pub fn new(contract: String, action: String, data: Bytes) -> Self {
+    pub fn new(contract: Bytes, action: Bytes, data: Bytes) -> Self {
         Self {
             contract: contract,
             action: action,
@@ -139,11 +139,11 @@ impl SQoSType {
 )]
 pub struct SQoS {
     pub t: SQoSType,
-    pub v: Option<String>,
+    pub v: Option<Bytes>,
 }
 
 impl SQoS {
-    pub fn new(t: SQoSType, v: Option<String>) -> Self {
+    pub fn new(t: SQoSType, v: Option<Bytes>) -> Self {
         Self { t, v }
     }
 
@@ -185,11 +185,11 @@ impl SQoS {
 )]
 pub struct Session {
     pub id: u128,
-    pub callback: Option<Bytes>,
+    pub callback: Bytes,
 }
 
 impl Session {
-    pub fn new(id: u128, callback: Option<Bytes>) -> Self {
+    pub fn new(id: u128, callback: Bytes) -> Self {
         Self { id, callback }
     }
 
@@ -220,8 +220,8 @@ pub struct AbandonedMessage {
 pub struct Message {
     pub id: u128,
     pub from_chain: String,
-    pub sender: String,
-    pub signer: String,
+    pub sender: Bytes,
+    pub signer: Bytes,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: [u8; 4],
@@ -334,8 +334,8 @@ pub struct SentMessage {
     pub id: u128,
     pub from_chain: String,
     pub to_chain: String,
-    pub sender: AccountId,
-    pub signer: AccountId,
+    pub sender: [u8; 32],
+    pub signer: [u8; 32],
     pub sqos: Vec<SQoS>,
     pub content: Content,
     pub session: Session,
@@ -354,12 +354,15 @@ impl SentMessage {
             sqos.push(SQoS::from(s));
         }
 
+        let bSender: [u8; 32] = *sender.as_ref();
+        let bSigner: [u8; 32] = *signer.as_ref();
+
         Self {
             id,
             from_chain,
             to_chain: message.to_chain,
-            sender,
-            signer,
+            sender: bSender,
+            signer: bSigner,
             sqos,
             content: Content::from(message.content),
             session: Session::from(message.session),
@@ -376,8 +379,8 @@ impl SentMessage {
             id: 0,
             from_chain: String::try_from("").unwrap(),
             to_chain,
-            sender: AccountId::default(),
-            signer: AccountId::default(),
+            sender: [0; 32],
+            signer: [0; 32],
             sqos,
             content,
             session,
@@ -394,8 +397,8 @@ impl SentMessage {
 pub struct Context {
     pub id: u128,
     pub from_chain: String,
-    pub sender: String,
-    pub signer: String,
+    pub sender: Bytes,
+    pub signer: Bytes,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: [u8; 4],
@@ -406,8 +409,8 @@ impl Context {
     pub fn new(
         id: u128,
         from_chain: String,
-        sender: String,
-        signer: String,
+        sender: Bytes,
+        signer: Bytes,
         sqos: Vec<SQoS>,
         contract: AccountId,
         action: [u8; 4],
