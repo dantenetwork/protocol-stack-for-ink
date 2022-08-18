@@ -396,7 +396,7 @@ mod algorithm {
                     return;
                 }
 
-                let msg_hash = recv_msg.into_hash();
+                let msg_hash = recv_msg.into_hash::<ink_env::hash::Keccak256>();
                 let mut hash_found = false;
 
                 for ele in msg_instance.msg_vec.iter_mut() {
@@ -436,7 +436,7 @@ mod algorithm {
                 }
 
             } else {
-                let msg_hash = recv_msg.into_hash();
+                let msg_hash = recv_msg.into_hash::<ink_env::hash::Keccak256>();
 
                 let mut msg_instance = RecvedMessage{
                     msg_id: recv_msg.id,
