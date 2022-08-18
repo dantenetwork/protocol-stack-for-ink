@@ -6,7 +6,7 @@ import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enu
 const ec = new elliptic.ec('secp256k1');
 
 function signWithKey(msg) {
-    const key = ec.keyFromPrivate(Buffer.from("b1ffd5534f25d02fbe959a2a91b6eb9f9a57aafc3cb53f1c1d38a1cd3ad026be", 'hex'));
+    const key = ec.keyFromPrivate(Buffer.from("d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c", 'hex'));
     const sig = key.sign(hashMsg(msg));
     const n = 32;
     const r = sig.r.toArrayLike(Buffer, 'be', n);
@@ -22,11 +22,11 @@ function hashMsg(msg) {
 async function decodeData() {
     // const sigData = Buffer.from("3c47d2092eb915828fd78e029c22b6de10d172b24185c9a87258d4b162ab898de6a26fa563b751052b3d0b1c0c04c5170138f386d31836b63106848e65cb0fdc", "hex");
 
-    const msg = "Hello Nika2";
+    const msg = "hello nika";
 
     const msgenc = str.enc(msg);
 
-    const sigData = signWithKey(msgenc);
+    const sigData = signWithKey(msg);
     console.log(sigData.toString('hex'));
 
     const sigArray = new Uint8Array(sigData);
