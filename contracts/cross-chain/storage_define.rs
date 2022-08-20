@@ -175,6 +175,28 @@ impl SQoS {
         };
         ISQoS::new(sqos_type, self.v.clone())
     }
+
+    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        let mut raw_buffer = ink_prelude::vec![];
+
+        let t_u8: u8 = match self.t {
+            SQoSType::Reveal => 0,
+            SQoSType::Challenge => 1,
+            SQoSType::Threshold => 2,
+            SQoSType::Priority => 3,
+            SQoSType::ExceptionRollback => 4,
+            SQoSType::SelectionDelay => 5,
+            SQoSType::Anonymous => 6,
+            SQoSType::Identity => 7,
+            SQoSType::Isolation => 8,
+            SQoSType::CrossVerify => 9,
+        };
+
+        raw_buffer.append(&mut ink_prelude::vec::Vec::from(t_u8.to_be_bytes()));
+        raw_buffer.append(&mut self.v.clone().unwrap_or(ink_prelude::vec![]));
+
+        raw_buffer
+    }
 }
 
 /// Session Structure
@@ -198,6 +220,15 @@ impl Session {
             id: session.id,
             callback: session.callback,
         }
+    }
+
+    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        let mut raw_buffer = ink_prelude::vec![];
+
+        raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_buffer.append(&mut self.callback.clone());
+
+        raw_buffer
     }
 }
 
@@ -385,6 +416,28 @@ impl SentMessage {
             content,
             session,
         }
+    }
+
+    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        let mut raw_string_vec = ink_prelude::vec![];
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.from_chain.as_bytes()));
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.to_chain.as_bytes()));
+
+        for s in self.sqos.iter() {
+            raw_string_vec.append(&mut s.into_raw_data());
+        }
+
+        raw_string_vec.append(&mut self.content.contract.clone());
+        raw_string_vec.append(&mut self.content.action.clone());
+        let payload: payload::message_protocol::MessagePayload = scale::Decode::decode(&mut self.content.data.as_slice()).unwrap();
+        raw_string_vec.append(&mut payload.into_raw_data());
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.sender.clone()));
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.signer.clone()));
+
+        raw_string_vec.append(&mut self.session.into_raw_data());
+
+        raw_string_vec
     }
 }
 
