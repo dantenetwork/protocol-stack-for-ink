@@ -44,7 +44,7 @@ mod signatureCrseco {
         #[ink(message)]
         pub fn signatureVerify(&self, msg: ink_prelude::string::String, signature: [u8; 65], acct: AccountId)-> bool {
             let mut msg_hash = <ink_env::hash::Sha2x256 as ink_env::hash::HashOutput>::Type::default();
-            ink_env::hash_encoded::<ink_env::hash::Sha2x256, _>(&msg, &mut msg_hash);
+            ink_env::hash_bytes::<ink_env::hash::Sha2x256>(&msg.as_bytes(), &mut msg_hash);
 
             let mut compressed_pubkey = [0; 33];
             ink_env::ecdsa_recover(&signature, &msg_hash, &mut compressed_pubkey);
