@@ -47,6 +47,19 @@ mod callee {
             
             super::MsgDetail::UserData(v)
         }
+
+        fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+            let mut raw_data = ink_prelude::vec![];
+            
+            raw_data.append(&mut ink_prelude::vec::Vec::from(self.name.as_bytes()));
+            raw_data.append(&mut ink_prelude::vec::Vec::from(self.age.to_be_bytes()));
+
+            for ele in self.phones.iter() {
+                raw_data.append(&mut ink_prelude::vec::Vec::from(ele.as_bytes()));
+            }
+
+            raw_data
+        }
     }
 
     /// event
@@ -61,7 +74,6 @@ mod callee {
     #[ink(storage)]
     pub struct Callee {
         /// Stores a single `bool` value on the storage.
-        value: bool,
         message: u32,
     }
 
@@ -70,31 +82,8 @@ mod callee {
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
             Self { 
-                value: init_value, 
                 message: 0,
             }
-        }
-
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
-        #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
-        }
-
-        /// Simply returns the current value of our `bool`.
-        #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
         }
 
         /// test cross contract call
@@ -255,22 +244,6 @@ mod callee {
 
         /// Imports `ink_lang` so we can use `#[ink::test]`.
         use ink_lang as ink;
-
-        /// We test if the default constructor does its job.
-        #[ink::test]
-        fn default_works() {
-            let callee = Callee::default();
-            assert_eq!(callee.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[ink::test]
-        fn it_works() {
-            let mut callee = Callee::new(false);
-            assert_eq!(callee.get(), false);
-            callee.flip();
-            assert_eq!(callee.get(), true);
-        }
 
         /// test `Payload`
         #[ink::test]
