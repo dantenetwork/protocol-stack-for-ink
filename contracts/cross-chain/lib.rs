@@ -525,19 +525,27 @@ mod cross_chain {
         fn create_contract_with_received_message() -> CrossChain {
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Resister.
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let mut porters = Porters::new();
+            porters.push(accounts.alice);
+            let required = 1;
+            cross_chain.change_porters_and_requirement(porters.clone(), required);
             // Receive message.
             let from_chain = "ETHEREUM".to_string();
             let id = 1;
             let sender = "0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b".to_string();
             let signer = "0x3aE841B899Ae4652784EA734cc61F524c36325d1".to_string();
             let contract = [0; 32];
-            let mut action = [0x3a, 0x4a, 0x5a, 0x6a];
+            let action = [0x3a, 0x4a, 0x5a, 0x6a];
             let sqos = Vec::<ISQoS>::new();
             let raw_data = "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600".to_string();
             let data = decode_hex(&raw_data).unwrap();
-            let session = ISession::new(0, 0);
+            let session = ISession::new(0, None);
             let message = IReceivedMessage::new(id, from_chain, sender, signer, sqos, contract, action, data, session);
-            cross_chain.receive_message(message);
+            let ret = cross_chain.receive_message(message);
+            println!("{:?}", ret);
+            assert_eq!(ret.is_ok(), true);
             cross_chain
         }
 
@@ -548,9 +556,9 @@ mod cross_chain {
             let to_chain = "ETHEREUM".to_string();
             let contract = "ETHEREUM_CONTRACT".to_string();
             let action = "ETHERERUM_ACTION".to_string();
-            let data = Bytes::new();
+            let data = Vec::<u8>::new();
             let sqos = Vec::<ISQoS>::new();
-            let session = ISession::new(0, 0);
+            let session = ISession::new(0, None);
             let content = IContent::new(contract, action, data);
             let message = ISentMessage::new(to_chain.clone(), sqos, content, session);
             cross_chain.send_message(message);
@@ -647,6 +655,12 @@ mod cross_chain {
                 ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             // Create a new contract instance.
             let mut cross_chain = CrossChain::new("POLKADOT".to_string());
+            // Resister.
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
+            let mut porters = Porters::new();
+            porters.push(accounts.alice);
+            let required = 1;
+            cross_chain.change_porters_and_requirement(porters.clone(), required);
             // Receive message.
             let from_chain = "ETHEREUM".to_string();
             let id = 1;
@@ -730,8 +744,7 @@ mod cross_chain {
         #[ink::test]
         fn get_received_message_works() {
             let from_chain = "ETHEREUM".to_string();
-            let id = 1;
-            let mut cross_chain = create_contract_with_received_message();
+            let cross_chain = create_contract_with_received_message();
             // Received message is Ok.
             let message = cross_chain.get_received_message(from_chain, 1);
             assert_eq!(message.is_ok(), true);
@@ -763,8 +776,7 @@ mod cross_chain {
             let accounts =
                 ink_env::test::default_accounts::<ink_env::DefaultEnvironment>();
             let from_chain = "ETHEREUM".to_string();
-            let id = 1;
-            let mut cross_chain = create_contract_with_received_message();
+            let cross_chain = create_contract_with_received_message();
             // Received message is Ok.
             let message = cross_chain.get_received_message(from_chain.clone(), 1);
             assert_eq!(message.is_ok(), true);
