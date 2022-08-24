@@ -2,6 +2,8 @@
 
 To make users more intuitively to understand how the underly algorithms work, we provide this on-chain prototype smart contract to show the effects of the underlying mechanisms implemented in ink!.
 
+Note that use `crypto-dev` branch of [message-ink](https://github.com/dantenetwork/message-ink/tree/crypto-dev) to compile or test.
+
 ## Index
 * [Router selection mechanism](#router-selection)
 * [Message verification mechanism](#message-verification)
