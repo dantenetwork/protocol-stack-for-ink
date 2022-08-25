@@ -48,7 +48,7 @@ mod callee {
             super::MsgDetail::UserData(v)
         }
 
-        fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        fn into_raw_data(self) -> ink_prelude::vec::Vec<u8> {
             let mut raw_data = ink_prelude::vec![];
             
             raw_data.append(&mut ink_prelude::vec::Vec::from(self.name.as_bytes()));
