@@ -139,11 +139,11 @@ impl SQoSType {
 )]
 pub struct SQoS {
     pub t: SQoSType,
-    pub v: Option<Bytes>,
+    pub v: Bytes,
 }
 
 impl SQoS {
-    pub fn new(t: SQoSType, v: Option<Bytes>) -> Self {
+    pub fn new(t: SQoSType, v: Bytes) -> Self {
         Self { t, v }
     }
 
@@ -207,18 +207,24 @@ impl SQoS {
 )]
 pub struct Session {
     pub id: u128,
+    pub session_type: u8,
     pub callback: Bytes,
+    pub commitment: Bytes,
+    pub answer: Bytes,
 }
 
 impl Session {
-    pub fn new(id: u128, callback: Bytes) -> Self {
-        Self { id, callback }
+    pub fn new(id: u128, session_type: u8, callback: Bytes, commitment: Bytes, answer: Bytes) -> Self {
+        Self { id, session_type, callback, commitment, answer }
     }
 
     pub fn from(session: ISession) -> Self {
         Self {
             id: session.id,
+            session_type: session.session_type,
             callback: session.callback,
+            commitment: session.commitment,
+            answer: session.answer,
         }
     }
 
@@ -226,7 +232,10 @@ impl Session {
         let mut raw_buffer = ink_prelude::vec![];
 
         raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.session_type.to_be_bytes()));
         raw_buffer.append(&mut self.callback.clone());
+        raw_buffer.append(&mut self.commitment.clone());
+        raw_buffer.append(&mut self.answer.clone());
 
         raw_buffer
     }
@@ -385,15 +394,15 @@ impl SentMessage {
             sqos.push(SQoS::from(s));
         }
 
-        let bSender: [u8; 32] = *sender.as_ref();
-        let bSigner: [u8; 32] = *signer.as_ref();
+        let sender_bytes: [u8; 32] = *sender.as_ref();
+        let signer_bytes: [u8; 32] = *signer.as_ref();
 
         Self {
             id,
             from_chain,
             to_chain: message.to_chain,
-            sender: bSender,
-            signer: bSigner,
+            sender: sender_bytes,
+            signer: signer_bytes,
             sqos,
             content: Content::from(message.content),
             session: Session::from(message.session),
@@ -491,7 +500,8 @@ impl Context {
 
         let contract: &[u8; 32] = AsRef::<[u8; 32]>::as_ref(&self.contract);
 
-        let session = ISession::new(self.session.id, self.session.callback.clone());
+        let session = ISession::new(self.session.id, self.session.session_type, self.session.callback.clone(), 
+            self.session.commitment.clone(), self.session.answer.clone());
         IContext::new(
             self.id,
             self.from_chain.clone(),

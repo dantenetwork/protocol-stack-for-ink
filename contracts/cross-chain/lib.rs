@@ -530,7 +530,7 @@ pub mod cross_chain {
                 contract: AccountId::default(),
                 action: [0; 4],
                 data: Vec::new(),
-                session: Session::new(0, Vec::new()),
+                session: Session::new(0, 0, Vec::new(), Vec::new(), Vec::new()),
                 error_code: Some(error_code),
             };
             self.internal_receive_message(message)
