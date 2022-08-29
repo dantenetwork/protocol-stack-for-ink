@@ -193,7 +193,7 @@ impl SQoS {
         };
 
         raw_buffer.append(&mut ink_prelude::vec::Vec::from(t_u8.to_be_bytes()));
-        raw_buffer.append(&mut self.v.clone().unwrap_or(ink_prelude::vec![]));
+        raw_buffer.append(&mut self.v.clone());
 
         raw_buffer
     }
