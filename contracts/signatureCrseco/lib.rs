@@ -207,7 +207,7 @@ mod signatureCrseco {
                 address_type: 0
             };
 
-            let raw1 = address_here.into_raw_data();
+            let raw1 = address_here.clone().into_raw_data();
             let raw2 = address_here.into_raw_data();
 
             assert_eq!(raw1, raw2);

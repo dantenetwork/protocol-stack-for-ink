@@ -9,3 +9,6 @@ cargo +nightly contract build
 cargo +nightly contract build --release
 
 cargo +nightly test
+
+# code improvement
+cargo +nightly clippy -- -A clippy::let_unit_value
