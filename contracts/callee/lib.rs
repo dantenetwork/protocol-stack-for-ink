@@ -215,8 +215,11 @@ mod callee {
         /// So if you want to flush the correct state of the contract,
         /// you have to this method on storage struct.
         fn flush(&self) {
-            let root_key = ::ink_primitives::Key::from(12);
-            ::ink_storage::traits::push_spread_root::<Self>(self, &root_key);
+            let root_key = <Self as ::ink::storage::traits::StorageKey>::KEY;
+            ::ink::env::set_contract_storage::<::ink::primitives::Key, Self>(
+                &root_key,
+                self,
+            );
         }
 
         /// Method loads the current state of `Self` from storage.
@@ -224,8 +227,8 @@ mod callee {
         /// So if you want to load the correct state of the contract,
         /// you have to this method on storage struct.
         fn load(&mut self) {
-            let root_key = ::ink_primitives::Key::from(12);
-            let mut state = ::ink_storage::traits::pull_spread_root::<Self>(&root_key);
+            let root_key = <Self as ::ink::storage::traits::StorageKey>::KEY;
+            let mut state = ::ink::env::get_contract_storage(&root_key).unwrap().unwrap();
             core::mem::swap(self, &mut state);
             let _ = core::mem::ManuallyDrop::new(state);
         }
