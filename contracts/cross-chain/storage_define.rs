@@ -1,8 +1,9 @@
-use ink_storage::traits::{PackedLayout, SpreadAllocate, SpreadLayout};
+// use ink::storage::traits::{PackedLayout, SpreadAllocate};
 
-use ink_env::AccountId;
+// use ink::env::AccountId;
+use ink::primitives::AccountId;
 
-use ink_prelude::{string::String, vec::Vec};
+use ink::prelude::{string::String, vec::Vec};
 
 use scale::{Decode, Encode};
 
@@ -51,10 +52,10 @@ impl Error {
 }
 
 /// Content structure
-#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
+#[derive( PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Content {
     pub contract: Bytes,
@@ -81,10 +82,10 @@ impl Content {
 }
 
 /// SQOS structure
-#[derive(SpreadLayout, PackedLayout, Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
+#[derive( Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
 #[cfg_attr(
     feature = "std",
-    derive(scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub enum SQoSType {
     Reveal,
@@ -132,10 +133,10 @@ impl SQoSType {
 }
 
 /// SQOS structure
-#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
+#[derive( PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct SQoS {
     pub t: SQoSType,
@@ -176,8 +177,8 @@ impl SQoS {
         ISQoS::new(sqos_type, self.v.clone())
     }
 
-    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
-        let mut raw_buffer = ink_prelude::vec![];
+    pub fn into_raw_data(&self) -> ink::prelude::vec::Vec<u8> {
+        let mut raw_buffer = ink::prelude::vec![];
 
         let t_u8: u8 = match self.t {
             SQoSType::Reveal => 0,
@@ -192,7 +193,7 @@ impl SQoS {
             SQoSType::CrossVerify => 9,
         };
 
-        raw_buffer.append(&mut ink_prelude::vec::Vec::from(t_u8.to_be_bytes()));
+        raw_buffer.append(&mut ink::prelude::vec::Vec::from(t_u8.to_be_bytes()));
         raw_buffer.append(&mut self.v.clone());
 
         raw_buffer
@@ -200,10 +201,10 @@ impl SQoS {
 }
 
 /// Session Structure
-#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
+#[derive( PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Session {
     pub id: u128,
@@ -228,11 +229,11 @@ impl Session {
         }
     }
 
-    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
-        let mut raw_buffer = ink_prelude::vec![];
+    pub fn into_raw_data(&self) -> ink::prelude::vec::Vec<u8> {
+        let mut raw_buffer = ink::prelude::vec![];
 
-        raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
-        raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.session_type.to_be_bytes()));
+        raw_buffer.append(&mut ink::prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_buffer.append(&mut ink::prelude::vec::Vec::from(self.session_type.to_be_bytes()));
         raw_buffer.append(&mut self.callback.clone());
         raw_buffer.append(&mut self.commitment.clone());
         raw_buffer.append(&mut self.answer.clone());
@@ -242,20 +243,20 @@ impl Session {
 }
 
 /// Received message structure
-#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
+#[derive( PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct AbandonedMessage {
     pub id: u128,
     pub error_code: u16,
 }
 
-#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
+#[derive( PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Message {
     pub id: u128,
@@ -293,15 +294,15 @@ impl Message {
 
     pub fn into_hash(&self) -> [u8; 32] {
         let mut output = [0; 32];
-        ink_env::hash_encoded::<ink_env::hash::Sha2x256, _>(&self, &mut output);
+        ink::env::hash_encoded::<ink::env::hash::Sha2x256, _>(&self, &mut output);
         output
     }
 }
 
-#[derive(SpreadLayout, PackedLayout, Clone, Decode, Encode)]
+#[derive(Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Group {
     pub message_hash: [u8; 32],
@@ -365,10 +366,10 @@ impl Group {
 // }
 
 /// Sent message structure
-#[derive(SpreadLayout, PackedLayout, PartialEq, Clone, Decode, Encode)]
+#[derive( PartialEq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct SentMessage {
     pub id: u128,
@@ -427,11 +428,11 @@ impl SentMessage {
         }
     }
 
-    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
-        let mut raw_string_vec = ink_prelude::vec![];
-        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
-        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.from_chain.as_bytes()));
-        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.to_chain.as_bytes()));
+    pub fn into_raw_data(&self) -> ink::prelude::vec::Vec<u8> {
+        let mut raw_string_vec = ink::prelude::vec![];
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.from_chain.as_bytes()));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.to_chain.as_bytes()));
 
         for s in self.sqos.iter() {
             raw_string_vec.append(&mut s.into_raw_data());
@@ -441,8 +442,8 @@ impl SentMessage {
         raw_string_vec.append(&mut self.content.action.clone());
         let payload: payload::message_protocol::MessagePayload = scale::Decode::decode(&mut self.content.data.as_slice()).unwrap();
         raw_string_vec.append(&mut payload.into_raw_data());
-        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.sender.clone()));
-        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.signer.clone()));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.sender.clone()));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.signer.clone()));
 
         raw_string_vec.append(&mut self.session.into_raw_data());
 
@@ -451,10 +452,10 @@ impl SentMessage {
 }
 
 /// Context structure
-#[derive(SpreadLayout, Clone, Decode, Encode)]
+#[derive( Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Context {
     pub id: u128,
@@ -516,10 +517,10 @@ impl Context {
 }
 
 // Router Evaluation
-#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[derive( Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct EvaluationCoefficient {
     pub min_credibility: u32,
@@ -531,20 +532,20 @@ pub struct EvaluationCoefficient {
     pub exception_step: u32,
 }
 
-#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[derive(   Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct CredibilitySelectionRatio {
     pub upper_limit: u32,
     pub lower_limit: u32,
 }
 
-#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[derive(   Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Threshold {
     pub credibility_weight_threshold: u32,
@@ -552,10 +553,10 @@ pub struct Threshold {
     pub trustworthy_threshold: u32,
 }
 
-#[derive(SpreadLayout, PackedLayout, SpreadAllocate, Clone, Decode, Encode)]
+#[derive(   Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
-    derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
 )]
 pub struct Evaluation {
     pub threshold: Threshold,

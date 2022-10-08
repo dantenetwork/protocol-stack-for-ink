@@ -1,6 +1,6 @@
-use ink_env::AccountId;
-use ink_lang as ink;
-use ink_prelude::vec::Vec;
+// use ink_env::AccountId;
+use ink::prelude::vec::Vec;
+use ink::primitives::AccountId;
 
 use crate::storage_define::{CredibilitySelectionRatio, Error, Threshold};
 

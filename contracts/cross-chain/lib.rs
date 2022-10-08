@@ -1,7 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use ink_lang as ink;
-
 pub mod cross_chain_base;
 pub mod evaluation;
 pub mod storage_define;
@@ -10,9 +8,9 @@ pub mod storage_define;
 pub mod cross_chain {
     pub const PRECISION: u32 = 10_000;
     use crate::cross_chain_base::CrossChainBase;
-    use ink_lang as ink;
-    use ink_prelude::{string::String, vec::Vec};
-    use ink_storage::{traits::SpreadAllocate, Mapping};
+    use ink::prelude::{string::String, vec::Vec};
+    use ink::storage::{Mapping};
+    // use ink::primitives::AccountId;
     // use crate::storage_define::Evaluation;
     // use crate::evaluation::{ICredibilitySelectionRatio, IEvaluationCoefficient, IThreshold};
     use super::evaluation::RoutersCore;
@@ -60,7 +58,7 @@ pub mod cross_chain {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    #[derive(SpreadAllocate)]
+    // #[derive(SpreadAllocate)]
     pub struct CrossChain {
         // Data for Ownable
         /// Account id of owner
@@ -99,9 +97,22 @@ pub mod cross_chain {
         /// Constructor that initializes `chain_name`.
         #[ink(constructor)]
         pub fn new_default(chain_name: String) -> Self {
-            ink_lang::utils::initialize_contract(|contract| {
-                Self::new_init(contract, chain_name, Evaluation::new_default_evaluation())
-            })
+            Self {
+                owner: Some(Self::env().caller()),
+                chain_name: chain_name,
+                sent_message_table: Default::default(),
+                latest_sent_message_id: Default::default(),
+                received_message_table: Default::default(),
+                pending_message_key: Vec::new(),
+                latest_message_id: Default::default(),
+                final_received_message_id: Default::default(),
+                executable_message_table: Default::default(),
+                executable_key: Vec::new(),
+                abandoned_message: Default::default(),
+                context: None,
+                evaluation: Evaluation::new_default_evaluation(),
+                sqos_table: Default::default(),
+            }
         }
 
         #[ink(constructor)]
@@ -113,27 +124,41 @@ pub mod cross_chain {
             initial_credibility_value: u32,
             selected_number: u8,
         ) -> Self {
-            ink_lang::utils::initialize_contract(|contract| {
-                let evaluation = Evaluation {
-                    threshold,
-                    credibility_selection_ratio,
-                    evaluation_coefficient,
-                    current_routers: Vec::new(),
-                    routers: Vec::new(),
-                    initial_credibility_value,
-                    selected_number,
-                };
-                Self::new_init(contract, chain_name, evaluation)
-            })
+            let evaluation = Evaluation {
+                threshold,
+                credibility_selection_ratio,
+                evaluation_coefficient,
+                current_routers: Vec::new(),
+                routers: Vec::new(),
+                initial_credibility_value,
+                selected_number,
+            };
+
+            Self {
+                owner: Some(Self::env().caller()),
+                chain_name: chain_name,
+                sent_message_table: Default::default(),
+                latest_sent_message_id: Default::default(),
+                received_message_table: Default::default(),
+                pending_message_key: Vec::new(),
+                latest_message_id: Default::default(),
+                final_received_message_id: Default::default(),
+                executable_message_table: Default::default(),
+                executable_key: Vec::new(),
+                abandoned_message: Default::default(),
+                context: None,
+                evaluation: evaluation,
+                sqos_table: Default::default(),
+            }
         }
 
         /// Initializes the contract with the specified chain name.
-        fn new_init(&mut self, chain_name: String, evaluation: Evaluation) {
-            let caller = Self::env().caller();
-            self.owner = Some(caller);
-            self.chain_name = chain_name;
-            self.evaluation = evaluation;
-        }
+        // fn new_init(&mut self, chain_name: String, evaluation: Evaluation) {
+        //     let caller = Self::env().caller();
+        //     self.owner = Some(caller);
+        //     self.chain_name = chain_name;
+        //     self.evaluation = evaluation;
+        // }
 
         /// If the caller is the owner of the contract
         fn only_owner(&self) -> Result<(), Error> {
@@ -187,8 +212,11 @@ pub mod cross_chain {
         /// So if you want to flush the correct state of the contract,
         /// you have to this method on storage struct.
         fn flush(&self) {
-            let root_key = ::ink_primitives::Key::from([0x00; 32]);
-            ::ink_storage::traits::push_spread_root::<Self>(self, &root_key);
+            let root_key = <Self as ::ink::storage::traits::StorageKey>::KEY;
+            ::ink::env::set_contract_storage::<::ink::primitives::Key, Self>(
+                &root_key,
+                self,
+            );
         }
 
         /// Method loads the current state of `Self` from storage.
@@ -196,8 +224,8 @@ pub mod cross_chain {
         /// So if you want to load the correct state of the contract,
         /// you have to this method on storage struct.
         fn load(&mut self) {
-            let root_key = ::ink_primitives::Key::from([0x00; 32]);
-            let mut state = ::ink_storage::traits::pull_spread_root::<Self>(&root_key);
+            let root_key = <Self as ::ink::storage::traits::StorageKey>::KEY;
+            let mut state = ::ink::env::get_contract_storage(&root_key).unwrap().unwrap();
             core::mem::swap(self, &mut state);
             let _ = core::mem::ManuallyDrop::new(state);
         }
@@ -252,7 +280,7 @@ pub mod cross_chain {
                         let group = Group {
                             message_hash,
                             message: message.clone(),
-                            routers: ink_prelude::vec![router],
+                            routers:  ink::prelude::vec![router],
                             group_credibility_value: router_credibility as u64,
                             credibility_weight: 0,
                         };
@@ -262,10 +290,10 @@ pub mod cross_chain {
                         .insert(&key, &(groups, completed));
                 }
                 None => {
-                    let groups = ink_prelude::vec![Group {
+                    let groups =  ink::prelude::vec![Group {
                         message_hash,
                         message: message.clone(),
-                        routers: ink_prelude::vec![router],
+                        routers:  ink::prelude::vec![router],
                         group_credibility_value: router_credibility as u64,
                         credibility_weight: 0,
                     }];
@@ -583,20 +611,20 @@ pub mod cross_chain {
 
                     // Cross-contract call
                     let selector: [u8; 4] = message.action.clone().try_into().unwrap();
-                    let cc_result: Result<String, ink_env::Error> = ink_env::call::build_call::<
-                        ink_env::DefaultEnvironment,
+                    let cc_result: Result<String, ink::env::Error> = ink::env::call::build_call::<
+                        ink::env::DefaultEnvironment,
                     >()
                     .call_type(
-                        ink_env::call::Call::new()
+                        ink::env::call::Call::new()
                             .callee(message.contract)
                             .gas_limit(0)
                             .transferred_value(0),
                     )
                     .exec_input(
-                        ink_env::call::ExecutionInput::new(ink_env::call::Selector::new(selector))
+                        ink::env::call::ExecutionInput::new(ink::env::call::Selector::new(selector))
                             .push_arg(payload),
                     )
-                    .call_flags(ink_env::CallFlags::default().set_allow_reentry(true))
+                    .call_flags(ink::env::CallFlags::default().set_allow_reentry(true))
                     .returns::<String>()
                     .fire();
 
@@ -689,16 +717,16 @@ pub mod cross_chain {
                     candidates.push(c);
                 }
             }
-            // ink_env::debug_println!("total_credit:{}", total_credit);
-            // ink_env::debug_println!("candidates number:{}", candidates.len());
+            // ink::env::debug_println!("total_credit:{}", total_credit);
+            // ink::env::debug_println!("candidates number:{}", candidates.len());
 
             if candidates.len() <= (self.evaluation.selected_number as usize) {
-                // ink_env::debug_println!("{}", "Not Enough");
+                // ink::env::debug_println!("{}", "Not Enough");
                 let selected_routers: Vec<AccountId> =
                     candidates.into_iter().map(|c| c.id).collect();
                 self.evaluation.current_routers = selected_routers;
             } else {
-                // ink_env::debug_println!("{}", "Enough");
+                // ink::env::debug_println!("{}", "Enough");
                 // Compute total trustworthy value
                 for c in candidates.iter() {
                     if c.credit >= self.evaluation.threshold.trustworthy_threshold {
@@ -706,7 +734,7 @@ pub mod cross_chain {
                         trustworthy_all += probability;
                     }
                 }
-                // ink_env::debug_println!("trustworthy_all:{}", trustworthy_all);
+                // ink::env::debug_println!("trustworthy_all:{}", trustworthy_all);
 
                 // Number of credibility selecting
                 let mut credibility_selected_ratio = trustworthy_all;
@@ -722,21 +750,21 @@ pub mod cross_chain {
                     credibility_selected_ratio =
                         self.evaluation.credibility_selection_ratio.lower_limit;
                 }
-                // ink_env::debug_println!(
+                // ink::env::debug_println!(
                 //     "credibility_selected_ratio:{}",
                 //     credibility_selected_ratio
                 // );
                 let credibility_selected_num = (self.evaluation.selected_number as u32)
                     * (credibility_selected_ratio as u32)
                     / PRECISION;
-                // ink_env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
+                // ink::env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
 
                 // Select routers according to credibility
                 let mut selected_routers = Vec::<AccountId>::new();
                 let mut start_index = 0;
                 while selected_routers.len() < (credibility_selected_num as usize) {
                     let random_seed =
-                        ink_env::random::<ink_env::DefaultEnvironment>(&[start_index])
+                        ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
                             .unwrap()
                             .0;
                     let mut seed_index = 0;
@@ -748,7 +776,7 @@ pub mod cross_chain {
                         let rand_num = u16::from_be_bytes(two_bytes) as u64;
 
                         let rand_credit = rand_num * (total_credit as u64) / (u16::MAX as u64);
-                        // ink_env::debug_println!(
+                        // ink::env::debug_println!(
                         //     "credit rand_num:{}, position:{}",
                         //     rand_num,
                         //     rand_credit
@@ -787,7 +815,7 @@ pub mod cross_chain {
                 start_index += 1;
                 while selected_routers.len() < (self.evaluation.selected_number as usize) {
                     let random_seed =
-                        ink_env::random::<ink_env::DefaultEnvironment>(&[start_index])
+                        ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
                             .unwrap()
                             .0;
                     let mut seed_index = 0;
@@ -799,7 +827,7 @@ pub mod cross_chain {
                             .unwrap();
                         let rand_num = u16::from_be_bytes(two_bytes) as u32;
                         let position = rand_num * (left_router_num as u32) / (u16::MAX as u32);
-                        // ink_env::debug_println!(
+                        // ink::env::debug_println!(
                         //     "random rand_num:{}, posotion:{}",
                         //     rand_num,
                         //     position
@@ -1036,14 +1064,13 @@ pub mod cross_chain {
         use super::*;
 
         use crate::storage_define::{Content, Message};
-        use ink_env::{
+        use ink::env::{
             self,
             test::{self, default_accounts, DefaultAccounts},
             DefaultEnvironment,
         };
         /// Imports `ink_lang` so we can use `#[ink::test]`.
-        use ink_lang as ink;
-        use ink_prelude::vec::Vec as Bytes;
+        use  ink::prelude::vec::Vec as Bytes;
         use payload::message_define::{IContent, ISQoS, ISession};
         use std::num::ParseIntError;
 
@@ -1115,7 +1142,10 @@ pub mod cross_chain {
                 data: message.data,
                 session: ISession {
                     id: message.session.id,
+                    session_type: 1,
                     callback: message.session.callback,
+                    commitment: ink::prelude::vec::Vec::new(),
+                    answer: ink::prelude::vec::Vec::new(),
                 },
             }
         }
@@ -1133,7 +1163,7 @@ pub mod cross_chain {
                     "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34353600",
                 )
                 .unwrap(),
-                session: Session::new(0, None),
+                session: Session::new(0, 1, ink::prelude::vec::Vec::new(), ink::prelude::vec::Vec::new(), ink::prelude::vec::Vec::new()),
                 error_code: None,
             };
             let message_2 = Message {
@@ -1148,7 +1178,7 @@ pub mod cross_chain {
                     "010c0100000000000000000000000000000003109a0200000200000000000000000000000000000000201c68746875616e67030000000000000000000000000000000b501867656f72676521000000080c3132330c34",
                 )
                 .unwrap(),
-                session: Session::new(0, None),
+                session: Session::new(0, 1, ink::prelude::vec::Vec::new(), ink::prelude::vec::Vec::new(), ink::prelude::vec::Vec::new()),
                 error_code: None,
             };
             let message_3 = Message {
@@ -1160,7 +1190,7 @@ pub mod cross_chain {
                 contract: AccountId::default(),
                 action: [0x3a, 0x4a, 0x5a, 0x6a],
                 data: Vec::new(),
-                session: Session::new(0, None),
+                session: Session::new(0, 1, ink::prelude::vec::Vec::new(), ink::prelude::vec::Vec::new(), ink::prelude::vec::Vec::new()),
                 error_code: Some(1),
             };
             (message_1, message_2, message_3)

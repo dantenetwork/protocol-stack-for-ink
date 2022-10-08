@@ -1,8 +1,8 @@
 use crate::storage_define::{AbandonedMessage, Error, Group, SentMessage};
-use ink_env::AccountId;
+// use ink::env::AccountId;
+use ink::primitives::AccountId;
 /// Trait for basic cross-chain contract
-use ink_lang as ink;
-use ink_prelude::{string::String, vec::Vec};
+use ink::prelude::{string::String, vec::Vec};
 
 use payload::message_define::{IContext, IReceivedMessage, ISentMessage};
 
