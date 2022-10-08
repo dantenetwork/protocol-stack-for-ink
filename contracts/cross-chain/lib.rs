@@ -524,13 +524,13 @@ pub mod cross_chain {
             let message = Message {
                 id,
                 from_chain,
-                sender: String::from(""),
-                signer: String::from(""),
+                sender: Vec::new(),
+                signer: Vec::new(),
                 sqos: Vec::new(),
                 contract: AccountId::default(),
                 action: [0; 4],
                 data: Vec::new(),
-                session: Session::new(0, None),
+                session: Session::new(0, 0, Vec::new(), Vec::new(), Vec::new()),
                 error_code: Some(error_code),
             };
             self.internal_receive_message(message)

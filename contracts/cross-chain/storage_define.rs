@@ -57,13 +57,13 @@ impl Error {
     derive(Debug, scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
 )]
 pub struct Content {
-    pub contract: String,
-    pub action: String,
+    pub contract: Bytes,
+    pub action: Bytes,
     pub data: Bytes,
 }
 
 impl Content {
-    pub fn new(contract: String, action: String, data: Bytes) -> Self {
+    pub fn new(contract: Bytes, action: Bytes, data: Bytes) -> Self {
         Self {
             contract: contract,
             action: action,
@@ -139,11 +139,11 @@ impl SQoSType {
 )]
 pub struct SQoS {
     pub t: SQoSType,
-    pub v: Option<String>,
+    pub v: Bytes,
 }
 
 impl SQoS {
-    pub fn new(t: SQoSType, v: Option<String>) -> Self {
+    pub fn new(t: SQoSType, v: Bytes) -> Self {
         Self { t, v }
     }
 
@@ -175,6 +175,28 @@ impl SQoS {
         };
         ISQoS::new(sqos_type, self.v.clone())
     }
+
+    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        let mut raw_buffer = ink_prelude::vec![];
+
+        let t_u8: u8 = match self.t {
+            SQoSType::Reveal => 0,
+            SQoSType::Challenge => 1,
+            SQoSType::Threshold => 2,
+            SQoSType::Priority => 3,
+            SQoSType::ExceptionRollback => 4,
+            SQoSType::SelectionDelay => 5,
+            SQoSType::Anonymous => 6,
+            SQoSType::Identity => 7,
+            SQoSType::Isolation => 8,
+            SQoSType::CrossVerify => 9,
+        };
+
+        raw_buffer.append(&mut ink_prelude::vec::Vec::from(t_u8.to_be_bytes()));
+        raw_buffer.append(&mut self.v.clone());
+
+        raw_buffer
+    }
 }
 
 /// Session Structure
@@ -185,19 +207,37 @@ impl SQoS {
 )]
 pub struct Session {
     pub id: u128,
-    pub callback: Option<Bytes>,
+    pub session_type: u8,
+    pub callback: Bytes,
+    pub commitment: Bytes,
+    pub answer: Bytes,
 }
 
 impl Session {
-    pub fn new(id: u128, callback: Option<Bytes>) -> Self {
-        Self { id, callback }
+    pub fn new(id: u128, session_type: u8, callback: Bytes, commitment: Bytes, answer: Bytes) -> Self {
+        Self { id, session_type, callback, commitment, answer }
     }
 
     pub fn from(session: ISession) -> Self {
         Self {
             id: session.id,
+            session_type: session.session_type,
             callback: session.callback,
+            commitment: session.commitment,
+            answer: session.answer,
         }
+    }
+
+    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        let mut raw_buffer = ink_prelude::vec![];
+
+        raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_buffer.append(&mut ink_prelude::vec::Vec::from(self.session_type.to_be_bytes()));
+        raw_buffer.append(&mut self.callback.clone());
+        raw_buffer.append(&mut self.commitment.clone());
+        raw_buffer.append(&mut self.answer.clone());
+
+        raw_buffer
     }
 }
 
@@ -220,8 +260,8 @@ pub struct AbandonedMessage {
 pub struct Message {
     pub id: u128,
     pub from_chain: String,
-    pub sender: String,
-    pub signer: String,
+    pub sender: Bytes,
+    pub signer: Bytes,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: [u8; 4],
@@ -334,8 +374,8 @@ pub struct SentMessage {
     pub id: u128,
     pub from_chain: String,
     pub to_chain: String,
-    pub sender: AccountId,
-    pub signer: AccountId,
+    pub sender: [u8; 32],
+    pub signer: [u8; 32],
     pub sqos: Vec<SQoS>,
     pub content: Content,
     pub session: Session,
@@ -354,12 +394,15 @@ impl SentMessage {
             sqos.push(SQoS::from(s));
         }
 
+        let sender_bytes: [u8; 32] = *sender.as_ref();
+        let signer_bytes: [u8; 32] = *signer.as_ref();
+
         Self {
             id,
             from_chain,
             to_chain: message.to_chain,
-            sender,
-            signer,
+            sender: sender_bytes,
+            signer: signer_bytes,
             sqos,
             content: Content::from(message.content),
             session: Session::from(message.session),
@@ -376,12 +419,34 @@ impl SentMessage {
             id: 0,
             from_chain: String::try_from("").unwrap(),
             to_chain,
-            sender: AccountId::default(),
-            signer: AccountId::default(),
+            sender: [0; 32],
+            signer: [0; 32],
             sqos,
             content,
             session,
         }
+    }
+
+    pub fn into_raw_data(&self) -> ink_prelude::vec::Vec<u8> {
+        let mut raw_string_vec = ink_prelude::vec![];
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.id.to_be_bytes()));
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.from_chain.as_bytes()));
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.to_chain.as_bytes()));
+
+        for s in self.sqos.iter() {
+            raw_string_vec.append(&mut s.into_raw_data());
+        }
+
+        raw_string_vec.append(&mut self.content.contract.clone());
+        raw_string_vec.append(&mut self.content.action.clone());
+        let payload: payload::message_protocol::MessagePayload = scale::Decode::decode(&mut self.content.data.as_slice()).unwrap();
+        raw_string_vec.append(&mut payload.into_raw_data());
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.sender.clone()));
+        raw_string_vec.append(&mut ink_prelude::vec::Vec::from(self.signer.clone()));
+
+        raw_string_vec.append(&mut self.session.into_raw_data());
+
+        raw_string_vec
     }
 }
 
@@ -394,8 +459,8 @@ impl SentMessage {
 pub struct Context {
     pub id: u128,
     pub from_chain: String,
-    pub sender: String,
-    pub signer: String,
+    pub sender: Bytes,
+    pub signer: Bytes,
     pub sqos: Vec<SQoS>,
     pub contract: AccountId,
     pub action: [u8; 4],
@@ -406,8 +471,8 @@ impl Context {
     pub fn new(
         id: u128,
         from_chain: String,
-        sender: String,
-        signer: String,
+        sender: Bytes,
+        signer: Bytes,
         sqos: Vec<SQoS>,
         contract: AccountId,
         action: [u8; 4],
@@ -435,7 +500,8 @@ impl Context {
 
         let contract: &[u8; 32] = AsRef::<[u8; 32]>::as_ref(&self.contract);
 
-        let session = ISession::new(self.session.id, self.session.callback.clone());
+        let session = ISession::new(self.session.id, self.session.session_type, self.session.callback.clone(), 
+            self.session.commitment.clone(), self.session.answer.clone());
         IContext::new(
             self.id,
             self.from_chain.clone(),
