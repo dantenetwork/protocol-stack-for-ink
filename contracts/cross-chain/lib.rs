@@ -1065,12 +1065,11 @@ pub mod cross_chain {
 
         use crate::storage_define::{Content, Message};
         use ink::env::{
-            self,
             test::{self, default_accounts, DefaultAccounts},
             DefaultEnvironment,
         };
         /// Imports `ink_lang` so we can use `#[ink::test]`.
-        use  ink::prelude::vec::Vec as Bytes;
+        use ink::prelude::vec::Vec as Bytes;
         use payload::message_define::{IContent, ISQoS, ISession};
         use std::num::ParseIntError;
 
@@ -1134,6 +1133,7 @@ pub mod cross_chain {
             IReceivedMessage {
                 id: message.id,
                 from_chain: message.from_chain,
+                to_chain: "POLKADOT".to_string(),
                 sender: message.sender,
                 signer: message.signer,
                 sqos,
@@ -1154,8 +1154,8 @@ pub mod cross_chain {
             let message_1 = Message {
                 id: 1,
                 from_chain: String::from("ETHEREUM"),
-                sender: String::from("0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b"),
-                signer: String::from("0x3aE841B899Ae4652784EA734cc61F524c36325d1"),
+                sender: Bytes::new(),
+                signer: Bytes::new(),
                 sqos: Vec::new(),
                 contract: AccountId::from([0; 32]),
                 action: [0x3a, 0x4a, 0x5a, 0x6a],
@@ -1169,8 +1169,8 @@ pub mod cross_chain {
             let message_2 = Message {
                 id: 1,
                 from_chain: String::from("ETHEREUM"),
-                sender: String::from("0xa6666D8299333391B2F5ae337b7c6A82fa51Bc9b"),
-                signer: String::from("0x3aE841B899Ae4652784EA734cc61F524c36325d1"),
+                sender: Bytes::new(),
+                signer: Bytes::new(),
                 sqos: Vec::new(),
                 contract: AccountId::from([0; 32]),
                 action: [0x3a, 0x4a, 0x5a, 0x6a],
@@ -1184,8 +1184,8 @@ pub mod cross_chain {
             let message_3 = Message {
                 id: 1,
                 from_chain: String::new(),
-                sender: String::new(),
-                signer: String::new(),
+                sender: Bytes::new(),
+                signer: Bytes::new(),
                 sqos: Vec::new(),
                 contract: AccountId::default(),
                 action: [0x3a, 0x4a, 0x5a, 0x6a],
@@ -1277,17 +1277,20 @@ pub mod cross_chain {
                 id: 1,
                 from_chain: String::from("POLKADOT"),
                 to_chain: to_chain.clone(),
-                sender: accounts.alice,
-                signer: accounts.alice,
+                sender: *accounts.alice.as_ref(),
+                signer: *accounts.alice.as_ref(),
                 sqos: Vec::new(),
                 content: Content {
-                    contract: String::from("ETHEREUM_CONTRACT"),
-                    action: String::from("ETHERERUM_ACTION"),
+                    contract: Bytes::new(),
+                    action: Bytes::new(),
                     data: Bytes::new(),
                 },
                 session: Session {
                     id: 0,
-                    callback: None,
+                    session_type: 0,
+                    callback: Bytes::new(),
+                    commitment: Bytes::new(),
+                    answer: Bytes::new(),
                 },
             };
             let content = send_message.content.clone();
@@ -1302,7 +1305,10 @@ pub mod cross_chain {
                 },
                 session: ISession {
                     id: session.id,
+                    session_type: 0,
                     callback: session.callback,
+                    commitment: Bytes::new(),
+                    answer: Bytes::new(),
                 },
             };
             let id = cross_chain.send_message(imessage);
