@@ -2,6 +2,8 @@
 
 This it the Dante protocol stack for Polkadot.
 
+*The dev repo has been temporarily moved to a private repo, and the last testing and optimizing work is undergoing. It will be merged here soon.*
+
 Let's start with `ink!`. 
 
 <img width="750" alt="web3 foundation_grants_badge_white" src="https://user-images.githubusercontent.com/83746881/187577457-ecf950c6-dfbf-4169-be2f-f03efbf2b674.png">
