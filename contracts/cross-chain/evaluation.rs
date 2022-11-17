@@ -1,4 +1,3 @@
-// use ink_env::AccountId;
 use ink::prelude::vec::Vec;
 use ink::primitives::AccountId;
 

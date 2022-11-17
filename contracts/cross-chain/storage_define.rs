@@ -1,6 +1,3 @@
-// use ink::storage::traits::{PackedLayout, SpreadAllocate};
-
-// use ink::env::AccountId;
 use ink::primitives::AccountId;
 
 use ink::prelude::{string::String, vec::Vec};
@@ -34,6 +31,19 @@ pub enum Error {
     RouterAlreadyRegisterd,
     CreditBeyondUpLimit,
     CreditValueError,
+    RevealCheckFailed,
+    // SQoS error
+    SQoSNotComplete,
+    AlreadyRegister,
+    NotRegister,
+    NotSelected,
+    NotCompleted,
+    NotRevealer,
+    NotExist,
+    Completed,
+    RevealFailed,
+    WrongSQoSType,
+    Exist,
 }
 
 impl Error {
@@ -52,7 +62,7 @@ impl Error {
 }
 
 /// Content structure
-#[derive( PartialEq, Clone, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -66,9 +76,9 @@ pub struct Content {
 impl Content {
     pub fn new(contract: Bytes, action: Bytes, data: Bytes) -> Self {
         Self {
-            contract: contract,
-            action: action,
-            data: data,
+            contract,
+            action,
+            data,
         }
     }
 
@@ -82,7 +92,7 @@ impl Content {
 }
 
 /// SQOS structure
-#[derive( Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
+#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, Clone)]
 #[cfg_attr(
     feature = "std",
     derive(scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -133,7 +143,7 @@ impl SQoSType {
 }
 
 /// SQOS structure
-#[derive( PartialEq, Clone, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -201,7 +211,7 @@ impl SQoS {
 }
 
 /// Session Structure
-#[derive( PartialEq, Clone, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -215,8 +225,20 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn new(id: u128, session_type: u8, callback: Bytes, commitment: Bytes, answer: Bytes) -> Self {
-        Self { id, session_type, callback, commitment, answer }
+    pub fn new(
+        id: u128,
+        session_type: u8,
+        callback: Bytes,
+        commitment: Bytes,
+        answer: Bytes,
+    ) -> Self {
+        Self {
+            id,
+            session_type,
+            callback,
+            commitment,
+            answer,
+        }
     }
 
     pub fn from(session: ISession) -> Self {
@@ -233,7 +255,9 @@ impl Session {
         let mut raw_buffer = ink::prelude::vec![];
 
         raw_buffer.append(&mut ink::prelude::vec::Vec::from(self.id.to_be_bytes()));
-        raw_buffer.append(&mut ink::prelude::vec::Vec::from(self.session_type.to_be_bytes()));
+        raw_buffer.append(&mut ink::prelude::vec::Vec::from(
+            self.session_type.to_be_bytes(),
+        ));
         raw_buffer.append(&mut self.callback.clone());
         raw_buffer.append(&mut self.commitment.clone());
         raw_buffer.append(&mut self.answer.clone());
@@ -243,7 +267,7 @@ impl Session {
 }
 
 /// Received message structure
-#[derive( PartialEq, Clone, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -253,7 +277,7 @@ pub struct AbandonedMessage {
     pub error_code: u16,
 }
 
-#[derive( PartialEq, Clone, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -269,6 +293,12 @@ pub struct Message {
     pub data: Bytes,
     pub session: Session,
     pub error_code: Option<u16>,
+}
+
+pub struct SQoSMessage {
+    pub id: u128,
+    pub from_chain: String,
+    pub signature: Bytes,
 }
 
 impl Message {
@@ -293,8 +323,20 @@ impl Message {
     }
 
     pub fn into_hash(&self) -> [u8; 32] {
-        let mut output = [0; 32];
-        ink::env::hash_encoded::<ink::env::hash::Sha2x256, _>(&self, &mut output);
+        let contract: [u8; 32] = *(self.contract.as_ref());
+        let data_bytes = ([
+            self.id.to_be_bytes().to_vec(),
+            self.from_chain.as_bytes().to_vec(),
+            self.sender.clone(),
+            self.signer.clone(),
+            contract.to_vec(),
+            self.action.to_vec(),
+            self.data.clone(),
+            self.session.into_raw_data(),
+        ])
+        .concat();
+        let mut output = [0u8; 32];
+        ink::env::hash_bytes::<ink::env::hash::Sha2x256>(&data_bytes, &mut output);
         output
     }
 }
@@ -366,7 +408,7 @@ impl Group {
 // }
 
 /// Sent message structure
-#[derive( PartialEq, Clone, Decode, Encode)]
+#[derive(PartialEq, Eq, Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -431,7 +473,9 @@ impl SentMessage {
     pub fn into_raw_data(&self) -> ink::prelude::vec::Vec<u8> {
         let mut raw_string_vec = ink::prelude::vec![];
         raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.id.to_be_bytes()));
-        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.from_chain.as_bytes()));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(
+            self.from_chain.as_bytes(),
+        ));
         raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.to_chain.as_bytes()));
 
         for s in self.sqos.iter() {
@@ -440,10 +484,11 @@ impl SentMessage {
 
         raw_string_vec.append(&mut self.content.contract.clone());
         raw_string_vec.append(&mut self.content.action.clone());
-        let payload: payload::message_protocol::MessagePayload = scale::Decode::decode(&mut self.content.data.as_slice()).unwrap();
+        let payload: payload::message_protocol::MessagePayload =
+            scale::Decode::decode(&mut self.content.data.as_slice()).unwrap();
         raw_string_vec.append(&mut payload.into_raw_data());
-        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.sender.clone()));
-        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.signer.clone()));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.sender));
+        raw_string_vec.append(&mut ink::prelude::vec::Vec::from(self.signer));
 
         raw_string_vec.append(&mut self.session.into_raw_data());
 
@@ -452,7 +497,7 @@ impl SentMessage {
 }
 
 /// Context structure
-#[derive( Clone, Decode, Encode)]
+#[derive(Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -469,27 +514,27 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(
-        id: u128,
-        from_chain: String,
-        sender: Bytes,
-        signer: Bytes,
-        sqos: Vec<SQoS>,
-        contract: AccountId,
-        action: [u8; 4],
-        session: Session,
-    ) -> Self {
-        Self {
-            id,
-            from_chain,
-            sender,
-            signer,
-            sqos,
-            contract,
-            action,
-            session,
-        }
-    }
+    // pub fn new(
+    //     id: u128,
+    //     from_chain: String,
+    //     sender: Bytes,
+    //     signer: Bytes,
+    //     sqos: Vec<SQoS>,
+    //     contract: AccountId,
+    //     action: [u8; 4],
+    //     session: Session,
+    // ) -> Self {
+    //     Self {
+    //         id,
+    //         from_chain,
+    //         sender,
+    //         signer,
+    //         sqos,
+    //         contract,
+    //         action,
+    //         session,
+    //     }
+    // }
 
     pub fn derive(&self) -> IContext {
         let mut sqos = Vec::<ISQoS>::new();
@@ -501,15 +546,20 @@ impl Context {
 
         let contract: &[u8; 32] = AsRef::<[u8; 32]>::as_ref(&self.contract);
 
-        let session = ISession::new(self.session.id, self.session.session_type, self.session.callback.clone(), 
-            self.session.commitment.clone(), self.session.answer.clone());
+        let session = ISession::new(
+            self.session.id,
+            self.session.session_type,
+            self.session.callback.clone(),
+            self.session.commitment.clone(),
+            self.session.answer.clone(),
+        );
         IContext::new(
             self.id,
             self.from_chain.clone(),
             self.sender.clone(),
             self.signer.clone(),
             sqos,
-            contract.clone(),
+            *contract,
             self.action,
             session,
         )
@@ -517,7 +567,7 @@ impl Context {
 }
 
 // Router Evaluation
-#[derive( Clone, Decode, Encode)]
+#[derive(Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -532,7 +582,7 @@ pub struct EvaluationCoefficient {
     pub exception_step: u32,
 }
 
-#[derive(   Clone, Decode, Encode)]
+#[derive(Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -542,7 +592,7 @@ pub struct CredibilitySelectionRatio {
     pub lower_limit: u32,
 }
 
-#[derive(   Clone, Decode, Encode)]
+#[derive(Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -553,7 +603,7 @@ pub struct Threshold {
     pub trustworthy_threshold: u32,
 }
 
-#[derive(   Clone, Decode, Encode)]
+#[derive(Clone, Decode, Encode)]
 #[cfg_attr(
     feature = "std",
     derive(Debug, scale_info::TypeInfo, ::ink::storage::traits::StorageLayout)
@@ -600,8 +650,8 @@ impl Evaluation {
             evaluation_coefficient: EvaluationCoefficient {
                 min_credibility: 0,
                 max_credibility: 10_000,
-                middle_credibility: (10_000 - 0) / 2,
-                range_crediblility: 10_000 - 0,
+                middle_credibility: 10_000 / 2,
+                range_crediblility: 10_000,
                 success_step: 100,
                 do_evil_step: 200,
                 exception_step: 100,

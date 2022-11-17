@@ -1,8 +1,8 @@
 use crate::storage_define::{AbandonedMessage, Error, Group, SentMessage};
 // use ink::env::AccountId;
-use ink::primitives::AccountId;
 /// Trait for basic cross-chain contract
 use ink::prelude::{string::String, vec::Vec};
+use ink::primitives::AccountId;
 
 use payload::message_define::{IContext, IReceivedMessage, ISentMessage};
 
@@ -30,7 +30,7 @@ pub trait CrossChainBase {
     fn get_executable_messages(&self, chain_names: Vec<String>) -> Vec<(String, u128)>;
     /// Triggers execution of a message sent from chain `chain_name` with id `id`
     #[ink(message)]
-    fn execute_message(&mut self, chain_name: String, id: u128) -> Result<String, Error>;
+    fn execute_message(&mut self, chain_name: String, id: u128) -> Result<(), Error>;
     /// Returns the simplified message, this message is reset every time when a contract is called
     #[ink(message)]
     fn get_context(&self) -> Option<IContext>;
@@ -49,7 +49,7 @@ pub trait CrossChainBase {
         &self,
         chain_name: String,
         id: u128,
-    ) -> Result<(Vec<Group>, bool), Error>;
+    ) -> Result<(Vec<Group>, (bool, u64)), Error>;
 
     /// Returns the message abandoned from chain `chain_name`
     #[ink(message)]
