@@ -37,7 +37,7 @@ Cross Chain contract: `5FVx18cBuQUVS9squHxUUdr2TtBNYBCCXawGM9EWzmXdmwF9`
 The initial credibility of all routers is 4000, as shown in Fig.1-1.
 
 ![img](../assets/1-1.png)
-<center>Fig.1-1 initial router information</center>
+<p align="center">Fig.1-1 initial router information</p>
 
 The challenge window period of challenge SQoS we set to 5 minutes, The value type is `u64`, it needs to be converted to milliseconds and then to bytes, finally value as shown in Fig.1-2. 
 
