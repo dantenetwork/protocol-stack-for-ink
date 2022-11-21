@@ -109,13 +109,13 @@ All routers push hidden message to cross chain
 
 ![img](../assets/2-3-1.png)
 ![img](../assets/2-3-2.png)
-<p align="center">Fig.2-3</p>
+<p align="center">Fig.2-3 all routers submitted hidden message</p>
 
-When all routers have completed submitting hidden messages, they can continue to submit revealed hidden messages to prevent other routers from copying messages directly.
+When all routers have completed submitting hidden message, they can continue to submit revealed hidden messages to prevent other routers from copying messages directly.
 
 ![img](../assets/2-4-1.png)
 ![img](../assets/2-4-2.png)
-<p align="center">Fig.2-4</p>
+<p align="center">Fig.2-4 all routers revealed message</p>
 
 ### Verification threshold
 Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% routers), the value type is `u8`,  and converted to to bytes value is `0x50` , as Fig.3-1 shown. 
@@ -137,7 +137,7 @@ At present, the number of routers is 3 in POLKADOT testnet, and the Threshold SQ
 
 ![img](../assets/3-3-1.png)
 ![img](../assets/3-3-2.png)
-<p align="center">Fig.3-3</p>
+<p align="center">Fig.3-3 2 routers recevied message</p>
 
 ### Error rollback
 In order to test `error rollback`, we added the `send_fake_greeting` interface in the greeting contract of NEAR testnet.
@@ -148,7 +148,7 @@ export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
 ```
 
 ![img](../assets/4-1.png)
-<p align="center">Fig.4-1</p>
+<p align="center">Fig.4-1 send fake greeting message</p>
 
 POLKADOT testnet received this fake message, and an error will be made when the cross-chain contract executes this message, and sends an error rollback to NEAR testnet, as shown in Fig.4-2 and Fig.4-3.
 
@@ -162,4 +162,4 @@ For NEAR testnet it will receive this error rollback, as shown Fig.4-4.
 
 ![img](../assets/4-4-1.png)
 ![img](../assets/4-4-2.png)
-<p align="center">Fig.4-4 near receive error</p>
+<p align="center">Fig.4-4 NEAR testnet receive error</p>
