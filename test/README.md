@@ -2,7 +2,7 @@
 
 ## Test environment
 
-POLKADOT testnet endpoint: `ws://3.69.25.95:9944`
+POLKADOT testnet endpoint: `ws://3.74.157.177:9944`
 
 Send message from NEAR testnet to local POLKADOT testnet
 
@@ -16,9 +16,9 @@ Cross Chain contract: `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e
 
 #### POLKADOT testnet
 
-Greeting contract: `5DESJa6WYstNiVE97Jju6vsBXiVVvPRuaUZzbUDJYBzm7fz6`
+Greeting contract: `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
 
-Cross Chain contract: `5FVx18cBuQUVS9squHxUUdr2TtBNYBCCXawGM9EWzmXdmwF9`
+Cross Chain contract: `5G2E8gS2E7EkqCwVzB7bb7vTc8Nk5465uoc67ejSJxu1rbwC`
  
 #### Routers account
 
