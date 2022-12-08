@@ -25,7 +25,7 @@ $ cargo test
 
 #### For ink-sdk
 
-Clone the `ink-sdk` repository and switch to `feature-sqos` branch. Compile the `Greeting` contract.
+Clone the `feature-sqos` branch of `ink-sdk` repository. Compile the `Greeting` contract.
 
 ```sh
 $ git clone -b feature-sqos https://github.com/dantenetwork/ink-sdk.git
