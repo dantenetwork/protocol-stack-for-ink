@@ -5,9 +5,9 @@
 ### Install ink!
 
 ```sh
-$ cargo install cargo-contract --version 2.0.0-beta
+$ cargo install cargo-contract --version 2.0.0-alpha.3 --locked --force
 $ cargo contract --version
-cargo-contract-contract 2.0.0-beta-unknown-x86_64-unknown-linux-gnu
+cargo-contract 2.0.0-alpha.3-unknown-x86_64-unknown-linux-gnu
 ```
 
 ### Compile contracts
@@ -52,7 +52,7 @@ Cross Chain contract: `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e
 
 Greeting contract: `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
 
-Cross Chain contract: `5G2E8gS2E7EkqCwVzB7bb7vTc8Nk5465uoc67ejSJxu1rbwC`
+Cross Chain contract: `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
  
 #### Routers account
 
