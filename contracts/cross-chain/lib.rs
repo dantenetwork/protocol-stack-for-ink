@@ -196,7 +196,7 @@ pub mod cross_chain {
         /// Returns SQoS
         #[ink(message)]
         pub fn get_sqos(&self, contract: AccountId) -> Option<SQoS> {
-            self.sqos_table.get(&contract)
+            self.sqos_table.get(contract)
         }
 
         /// Method flushes the current state of `Self` into storage.
@@ -306,7 +306,12 @@ pub mod cross_chain {
                     }];
                     self.received_message_table
                         .insert(&key, &(groups, (false, Self::env().block_timestamp())));
-                    self.pending_message_key.push(key.clone());
+                    for x in self.pending_message_key.iter() {
+                        if *x == key {
+                            return Ok(());
+                        }
+                    }
+                    self.pending_message_key.push(key);
                 }
             }
 
@@ -363,7 +368,7 @@ pub mod cross_chain {
             key: &(String, u128),
             total_credibility: u64, // groups: &mut Vec<Group>,
         ) -> AggregationResult {
-            let mut receive_message = self.received_message_table.get(&key).unwrap();
+            let mut receive_message = self.received_message_table.get(key).unwrap();
             let mut groups: Vec<Group> = receive_message
                 .0
                 .clone()
@@ -385,7 +390,7 @@ pub mod cross_chain {
                 >= self.evaluation.threshold.credibility_weight_threshold
             {
                 self.executable_message_table
-                    .insert(&key, &groups[0].message_hash);
+                    .insert(key, &groups[0].message_hash);
                 self.executable_key.push(key.clone());
                 trusted = groups.remove(0).routers;
                 for group in groups {
@@ -393,12 +398,6 @@ pub mod cross_chain {
                 }
                 receive_message.1 = (true, Self::env().block_timestamp());
                 self.received_message_table.insert(key, &receive_message);
-                let index = self
-                    .pending_message_key
-                    .iter()
-                    .position(|x| *x == *key)
-                    .unwrap();
-                self.pending_message_key.remove(index);
                 // }
             } else {
                 for group in groups {
@@ -406,6 +405,12 @@ pub mod cross_chain {
                 }
                 self.received_message_table.remove(key);
             }
+            let index = self
+                .pending_message_key
+                .iter()
+                .position(|x| *x == *key)
+                .unwrap();
+            self.pending_message_key.remove(index);
             (trusted, untrusted, exeception)
         }
 
@@ -497,6 +502,11 @@ pub mod cross_chain {
         }
 
         #[ink(message)]
+        pub fn get_pending_message(&self) -> Vec<(String, u128)> {
+            self.pending_message_key.clone()
+        }
+
+        #[ink(message)]
         pub fn get_current_routers(&self) -> Vec<AccountId> {
             self.evaluation.current_routers.clone()
         }
@@ -515,17 +525,6 @@ pub mod cross_chain {
                 }
             }
             (false, 0)
-        }
-
-        fn generate_random(&self, index: &u8) -> [u8; 32] {
-            let mut random_bytes = Self::env().block_timestamp().to_be_bytes().to_vec();
-            random_bytes.push(index.clone());
-            let mut output = [0; 32];
-            ink::env::hash_bytes::<ink::env::hash::Sha2x256>(
-                &random_bytes,
-                &mut output,
-            );
-            output
         }
     }
 
@@ -645,7 +644,7 @@ pub mod cross_chain {
             let key = (msg.from_chain.clone(), msg.id);
             let mut is_revealer = false;
             // let contract = AccountId::from(msg.contract);
-            if let Some(sqos) = self.sqos_table.get(&msg.contract) {
+            if let Some(sqos) = self.sqos_table.get(msg.contract) {
                 match sqos.t {
                     SQoSType::Reveal => {
                         if let Some((submitted_message, completed)) = self.sqos_message.get(&key) {
@@ -760,7 +759,7 @@ pub mod cross_chain {
                 if group.message_hash == message_hash {
                     let message = group.message;
 
-                    if let Some(sqos) = self.sqos_table.get(&message.contract) {
+                    if let Some(sqos) = self.sqos_table.get(message.contract) {
                         if sqos.t == SQoSType::Challenge {
                             let current_time = Self::env().block_timestamp();
                             let confirm_windows = u64::from_be_bytes(sqos.v.try_into().unwrap());
@@ -803,7 +802,7 @@ pub mod cross_chain {
                                                 credibility_value,
                                             )
                                         }
-                                        
+
                                         self.pending_message_key.push(key.clone());
                                         self.received_message_table.remove(key.clone());
                                         self.sqos_message.remove(key);
@@ -864,13 +863,13 @@ pub mod cross_chain {
         /// Returns the number of messages sent to chain `chain_name`
         #[ink(message)]
         fn get_sent_message_number(&self, chain_name: String) -> u128 {
-            self.latest_sent_message_id.get(&chain_name).unwrap_or(0)
+            self.latest_sent_message_id.get(chain_name).unwrap_or(0)
         }
 
         /// Returns the number of messages received from chain `chain_name`
         #[ink(message)]
         fn get_received_message_number(&self, chain_name: String) -> u128 {
-            self.latest_message_id.get(&chain_name).unwrap_or(0)
+            self.latest_message_id.get(chain_name).unwrap_or(0)
         }
 
         /// Returns the message with id `id` sent to chain `chain_name`
@@ -896,7 +895,7 @@ pub mod cross_chain {
         /// Returns the message abandoned from chain `chain_name`
         #[ink(message)]
         fn get_abandoned_message(&self, chain_name: String) -> Vec<AbandonedMessage> {
-            self.abandoned_message.get(&chain_name).unwrap_or_default()
+            self.abandoned_message.get(chain_name).unwrap_or_default()
         }
     }
 
@@ -955,12 +954,13 @@ pub mod cross_chain {
                     credibility_selected_ratio =
                         self.evaluation.credibility_selection_ratio.lower_limit;
                 }
+
                 // ink::env::debug_println!(
                 //     "credibility_selected_ratio:{}",
                 //     credibility_selected_ratio
                 // );
                 let credibility_selected_num = (self.evaluation.selected_number as u32)
-                    * (credibility_selected_ratio as u32)
+                    * credibility_selected_ratio
                     / PRECISION;
                 // ink::env::debug_println!("credibility_selected_num:{}", credibility_selected_num);
 
@@ -968,11 +968,10 @@ pub mod cross_chain {
                 let mut selected_routers = Vec::<AccountId>::new();
                 let mut start_index = 0;
                 while selected_routers.len() < (credibility_selected_num as usize) {
-                    // let random_seed =
-                    //     ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
-                    //         .unwrap()
-                    //         .0;
-                    let random_seed = self.generate_random(&start_index);
+                    let random_seed =
+                        ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
+                            .unwrap()
+                            .0;
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
@@ -1020,11 +1019,10 @@ pub mod cross_chain {
                 // Select routers randomly
                 start_index += 1;
                 while selected_routers.len() < (self.evaluation.selected_number as usize) {
-                    // let random_seed =
-                    //     ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
-                    //         .unwrap()
-                    //         .0;
-                    let random_seed = self.generate_random(&start_index);
+                    let random_seed =
+                        ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
+                            .unwrap()
+                            .0;
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
@@ -1343,8 +1341,8 @@ pub mod cross_chain {
                 return Err(Error::NotSelected);
             }
             let key = (from_chain, id);
-            if self.sqos_table.contains(&contract) {
-                if self.sqos_table.get(&contract).unwrap().t == SQoSType::Reveal {
+            if self.sqos_table.contains(contract) {
+                if self.sqos_table.get(contract).unwrap().t == SQoSType::Reveal {
                     match self.sqos_message.get(&key) {
                         Some(mut sqos) => {
                             if sqos.1 {
@@ -1395,7 +1393,7 @@ pub mod cross_chain {
             for group in groups {
                 if group.message_hash == message_hash {
                     let message = group.message;
-                    if let Some(sqos) = self.sqos_table.get(&message.contract) {
+                    if let Some(sqos) = self.sqos_table.get(message.contract) {
                         if sqos.t != SQoSType::Challenge {
                             return Err(Error::WrongSQoSType);
                         }
@@ -2057,6 +2055,8 @@ pub mod cross_chain {
         #[ink::test]
         fn test_reveal_sqos() {
             let (mut cross_chain, _) = init_default();
+            let time: u64 = 1 * 60 * 1000;
+            println!("{:?}", time.to_be_bytes());
             let selected_routers = register_routers(&mut cross_chain, 1, 1);
             let (message, _, _) = get_message();
             let sqos = SQoS {
