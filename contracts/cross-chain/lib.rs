@@ -516,6 +516,17 @@ pub mod cross_chain {
             }
             (false, 0)
         }
+
+        fn generate_random(&self, index: &u8) -> [u8; 32] {
+            let mut random_bytes = Self::env().block_timestamp().to_be_bytes().to_vec();
+            random_bytes.push(index.clone());
+            let mut output = [0; 32];
+            ink::env::hash_bytes::<ink::env::hash::Sha2x256>(
+                &random_bytes,
+                &mut output,
+            );
+            output
+        }
     }
 
     // process call
@@ -957,10 +968,11 @@ pub mod cross_chain {
                 let mut selected_routers = Vec::<AccountId>::new();
                 let mut start_index = 0;
                 while selected_routers.len() < (credibility_selected_num as usize) {
-                    let random_seed =
-                        ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
-                            .unwrap()
-                            .0;
+                    // let random_seed =
+                    //     ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
+                    //         .unwrap()
+                    //         .0;
+                    let random_seed = self.generate_random(&start_index);
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
@@ -1008,10 +1020,11 @@ pub mod cross_chain {
                 // Select routers randomly
                 start_index += 1;
                 while selected_routers.len() < (self.evaluation.selected_number as usize) {
-                    let random_seed =
-                        ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
-                            .unwrap()
-                            .0;
+                    // let random_seed =
+                    //     ink::env::random::<ink::env::DefaultEnvironment>(&[start_index])
+                    //         .unwrap()
+                    //         .0;
+                    let random_seed = self.generate_random(&start_index);
                     let mut seed_index = 0;
 
                     while seed_index < (random_seed.as_ref().len() - 1) {
