@@ -1,5 +1,11 @@
 # Ink! Test Guide
 
+## Setup
+* 说明ink！的版本；
+* 协议栈安装：
+ * ink_sdk的clone命令（带分支）、编译命令、单元测试命令
+ * protocol_for_ink的clone命令（带分支）、编译命令、单元测试命令
+
 ## Test environment
 
 POLKADOT testnet endpoint: `ws://3.74.157.177:9944`
