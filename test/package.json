@@ -10,8 +10,8 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@polkadot/api": "^8.2.1",
-    "@polkadot/api-contract": "^8.2.1",
+    "@polkadot/api": "^9.5.1",
+    "@polkadot/api-contract": "^9.5.1",
     "dotenv": "^16.0.0",
     "scale-ts": "^0.2.11"
   }
