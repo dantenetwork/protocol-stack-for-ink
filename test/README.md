@@ -1,10 +1,38 @@
 # Ink! Test Guide
 
 ## Setup
-* 说明ink！的版本；
-* 协议栈安装：
- * ink_sdk的clone命令（带分支）、编译命令、单元测试命令
- * protocol_for_ink的clone命令（带分支）、编译命令、单元测试命令
+
+### Install ink!
+
+```sh
+$ cargo install cargo-contract --version 2.0.0-beta
+$ cargo contract --version
+cargo-contract-contract 2.0.0-beta-unknown-x86_64-unknown-linux-gnu
+```
+
+### Compile contracts
+
+#### For protocol-stack-for-ink
+
+Clone the `feature-sqos` branch of `protocol-stack-for-ink`.
+
+```sh
+$ git clone -b feature-sqos https://github.com/dantenetwork/protocol-stack-for-ink.git
+$ cd protocol-stack-for-ink/contracts/cross-chain
+$ cargo contract build
+$ cargo test
+```
+
+#### For ink-sdk
+
+Clone the `ink-sdk` repository and switch to `feature-sqos` branch. Compile the `Greeting` contract.
+
+```sh
+$ git clone -b feature-sqos https://github.com/dantenetwork/ink-sdk.git
+$ cd ink-sdk/examples/greeting
+$ cargo contract build
+$ cargo test
+```
 
 ## Test environment
 
