@@ -2,7 +2,7 @@
 
 This it the Dante protocol stack for Polkadot.
 
-*The dev repo has been temporarily moved to a private repo, and the last testing and optimizing work is undergoing. It will be merged here soon.*
+*The newest branch is `feature-sqos`.*
 
 Let's start with `ink!`. 
 
