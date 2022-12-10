@@ -2,7 +2,7 @@
 
 This it the Dante protocol stack for Polkadot.
 
-*The newest branch is `feature-sqos`.*
+*The newest version has been merged into branch `feature-sqos`.*
 
 Let's start with `ink!`. 
 
