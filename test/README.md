@@ -1,5 +1,6 @@
 # Ink! Test Guide
 
+If you deploy the cross chain contract by yourself, for SQoS tests you need to run at least 3 router nodes， [run router](https://github.com/dantenetwork/ink-test-router)，You can test SQoS with the environment we have deployed.
 ## Setup
 
 ### Install ink!
@@ -42,18 +43,31 @@ Send message from NEAR testnet to local POLKADOT testnet
 
 ### Cross chain contract
 
-#### NEAR testnet
+#### NEAR testnet contract address
 
 Greeting contract: `d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9`
 
 Cross Chain contract: `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e45711e6`
 
-#### POLKADOT testnet
+#### POLKADOT testnet contract address
 
 Greeting contract: `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
 
 Cross Chain contract: `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
  
+Add greeting and cross chain contract, use compiled metadata.json.
+
+![img](../assets/5.jpg)
+![img](../assets/6.jpg)
+<p align="center">Add contract</p>
+
+The greeting contract needs to set the cross chain contract address.
+
+![img](../assets/7.jpg)
+<p align="center">The greeting contract set the cross chain contract</p>
+
+MAIN(EXTENSION): 5GufhjY66EiUUCKPWQP7qYVRqt291Eu48agQfHCnMprc7pMj, the owner of greeting and cross chain contract, Alice, Bob, etc is not used to prevent others from maliciously modifying the contract.
+
 #### Routers account
 
 1 malicious router: `5D5NSmbCPZ39jzkGqez7rg548LLr6Q7h4Fp4wUcQutnUs22u`
@@ -68,8 +82,9 @@ Cross Chain contract: `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
 
 ## Challenge SQoS
 
-The initial credibility of all routers is 4000, as shown in Fig.1-1.
+The default initial credibility of the routers at the time of registration is 4000, only cross chain contract owner can call the interface of registerRouter, as shown in Fig.1-1. 
 
+![img](../assets/8.jpg)
 ![img](../assets/1-1.png)
 <p align="center">Fig.1-1 initial router information</p>
 
@@ -80,11 +95,14 @@ The challenge window period of challenge SQoS we set to 5 minutes, The value typ
 
 ### For normal greeting message
 
+Install near cli `npm install -g near-cli`.
+
 Send normal greeting message from NEAR testnet
 
 ```sh
-export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
+
+​2、​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
 ```
 
 ![img](../assets/1-3.png)
@@ -132,8 +150,9 @@ Change contract SQoS type as `Reveal`, no need value, as Fig.2-1 shown. `change_
 Send greeting message from NEAR testnet
 
 ```sh
-export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
+​​
+2、near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
 ```
 
 ![img](../assets/2-2.png)
@@ -160,8 +179,9 @@ Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% r
 Send a greeting message from NEAR testnet.
 
 ```sh
-export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOUR_NEAR_TEST_ACCOUNT
+1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
+​
+2、​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOUR_NEAR_TEST_ACCOUNT
 ```
 
 ![img](../assets/3-2.png)
@@ -177,8 +197,9 @@ At present, the number of routers is 3 in POLKADOT testnet, and the Threshold SQ
 In order to test `error rollback`, we added the `send_fake_greeting` interface in the greeting contract of NEAR testnet.
 
 ```sh
-export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​​near call $greeting send_fake_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
+​
+2、​near call $greeting send_fake_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
 ```
 
 ![img](../assets/4-1.png)
