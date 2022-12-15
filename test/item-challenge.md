@@ -1,6 +1,8 @@
 # Challenge SQoS
 
 **Carefully read the [Preparing Work](./README.md) first before doing the next.**  
+<br>
+The SQoS item `challenge` is easy to understand, and it's a very common mechanism in blockchain field.  
 
 We can call `getEvaluation` of `CROSS CHAIN` contract to get the credibility of the routers, as shown in Fig.1-1.  
 Note that `Polkadot.js.app` is not very friendly for `getter` methods, so we cannot include the *interface name* in the *screenshots*.  
@@ -16,13 +18,13 @@ The challenge window period of challenge SQoS we set to 5 minutes, The value typ
 
 Install near cli `npm install -g near-cli`.
 
-Send normal greeting message from NEAR testnet
+* Send normal greeting message from NEAR testnet
 
-* Export the address of contract `GREETING`:  
+* Export the address of contract `GREETING`, which could be found at [Preparing work](./README.md#polkadot-testnet-contract-address):  
     ```sh
     export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
     ```
-* Use your own near testnet account to a greeting message to Polkadot:  
+* Use your own near testnet account to send a greeting message to Polkadot:  
     ```sh
     ​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
     ```
@@ -35,8 +37,8 @@ Send normal greeting message from NEAR testnet
     <p align="center">Fig. 1-3 send normal greeting message</p>  
 Note the last line int the above picture(Fig. 1-3), the `1`, that's the message number and we can use it to check on the Polkadot side if the message is received.  
 
-* All honest routers push the message to the chain, and cross chain contract aggregates messages.  
-***Note that this is processed by the test routers automatically, so there's no need for any operation.***
+* No need for any operations. All honest routers will automatically push the message to the chain, and cross chain contract aggregates messages.  
+***The below picture is just the record we have made, and it's printed out by test routers. For testing, there's no need to care about it because Fig.1-5 will prove the result.***
 
 ![img](../assets/1-4.png)
 <p align="center">Fig. 1-4 router push message to cross chain</p>

@@ -100,12 +100,12 @@ Currently, the **economic mechanism** is not ready, so there's no limitation for
 **Note that this is a temporaty mechanism and is just for the testing**.  
 In the official version, **staking is needed** when registering, so as to improve the cost of some malicious behaviours.
 
-The way to register your own test routers is as follows:  
+* The way to register your own test routers is as follows:  
 ![img](../assets/8.jpg)  
 
-For test, we provide a `select` function to re-select working routers immediately.  
-![img]()  
+* For test, we provide a `selectRouters` function in `CROSS CHAIN` contract to re-select working routers immediately. This is just for test.   
+![img](../assets/0-1.png)  
 
-The `selected routers` function shows which routers are selected currently.  
+* The `isSelected` function in `CROSS CHAIN` contract shows whether a router is selected currently.  
 Note that `Polkadot.js.app` is not very friendly for `getter` methods, so we cannot include the *interface name* in the *screenshots*. 
-![img]()  
+![img](../assets/0-2.png)  
