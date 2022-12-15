@@ -47,25 +47,33 @@ Note the last line int the above picture(Fig. 1-3), the `1`, that's the message 
 
 For a normal greeting message, no routers will challenge this message during the 5-minutes challenge window. When all routers received and completed the message aggregation, the message will be executed normally.  
 * Wait enough time and check the received message through the `GREETING` contract deployed on Polkadot.  
-![img](../assets/1-6-2.png)
-<p align="center">Fig. 1-6 the greeting message been executed after 5 minutes</p>
+    ![img](../assets/1-6-2.png)
+    <p align="center">Fig. 1-6 the greeting message been executed after 5 minutes</p>  
+
+    * The `key` is composed with the information of source chain name(`NEARTEST`) and message id. The message is can be found as we mentioned above in Fig. 1-3.  
+    * Another way to get the message id is call `getReceivedMessageNumber` from `CROSS CHAIN` contract, which will return the latest received message number, but it might be not the message id of the sent message as the message is not sure to be arrived when you call or there're other people sent message too.   
+
 
 ## For malicious message
 In order to facilitate the testing of challenge SQoS, we provide an interface `submitte_fake_message` to produce a malicious message. 
 * We can test it directly through `CROSS CHAIN` contract on Polkadot side, as shown in Fig 1-7-1.
 ![img](../assets/1-7-1.png)
-<p align="center">Fig.1-7-1 submitted a malicious message</p>
-* 
-![img](../assets/1-7-2.png)
+<p align="center">Fig.1-7-1 submitted a malicious message</p>  
 
+* Check the received message on the `CROSS CHAIN` contract on Polkadot.  
+![img](../assets/1-7-2.png)
 
 For all honest routers, after they detected that the source chain message is inconsistent with the destination chain message, they submit a challenge message in the destination cross chain. As shown in Fig.1-8, honest routers submitted a challenge to this malicious message.
 
-![img](../assets/1-8-1.png)
+* *Challenges* are made automatically by off-chain test routers. Wait enough time to check the received *challenge* information test routers submitted(`getSqosMessage()`).  
 ![img](../assets/1-8-2.png)
 <p align="center">Fig.1-8 3 routers challenge the malicious message</p>
 
-After the 5-minutes challenge window period is over, the router executes this message. If the challenge is successful, the cross-chain message will be abandoned and the credibility value of the malicious routers will be reduced. If the challenge is failed, the cross-chain message will be executed normally. As shown in Fig.1-9, the message challenge is successful, and the credibility value of the malicious router is reduced.
+After the time(5-minutes in current deployed `GREETING` contract on Polkadot) of the challenge window period passes, any router who invocates `executeMessage` first will execute this message, and the router executes the message will get reward when incentive mechanism is ready.  
+* If the challenges succeed, the cross-chain message will be abandoned and the credibility value of the malicious routers will be reduced. 
+* If the challenge failed, the cross-chain message will be executed normally. 
+* Call `getEvaluation` of `CROSS CHAIN` contract to get the credibility of the routers. 
+* As shown in Fig.1-9, the challenges succeed, and the credibility value of the malicious router is reduced. In Fig.1-1 the related credibility is `4,000`.  
 
 ![img](../assets/1-9.png)
 <p align="center">Fig.1-9 3 reduce the credibility of malicious router</p>
