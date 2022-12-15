@@ -79,3 +79,10 @@ After the time(5-minutes in current deployed `GREETING` contract on Polkadot) of
 
 ![img](../assets/1-9.png)
 <p align="center">Fig.1-9 3 reduce the credibility of malicious router</p>
+
+## Links
+* [Setup and Unit-Test](./README.md#setup)
+* [Environment Preparing](./README.md#test-environment)
+* [SQoS Item: *hidden & reveal*](./item-hidden-reveal.md)
+* [SOoS Item: *error rollback*](./item-error-rollback.md)
+* [SQoS Item: *verification threshold*](./item-threshold.md)

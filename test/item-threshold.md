@@ -31,3 +31,10 @@ Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% r
 * Check the received message by calling `getReceivedMessage` of `CROSS CHAIN` contract:  
 ![img](../assets/3-3-2.png)
 <p align="center">Fig.3-3 2 routers recevied message</p>
+
+## Links
+* [Setup and Unit-Test](./README.md#setup)
+* [Environment Preparing](./README.md#test-environment)
+* [SQoS Item: *challenge*](./item-challenge.md)
+* [SQoS Item: *hidden & reveal*](./item-hidden-reveal.md)
+* [SOoS Item: *error rollback*](./item-error-rollback.md)

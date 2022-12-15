@@ -42,3 +42,10 @@ Change contract SQoS type as `Reveal`, no need value, as Fig.2-1 shown. `change_
 * Check the final received message by calling `getReceivedMessage` on `CROSS CHAIN` contract on Polkadot:  
 ![img](../assets/2-4-2.png)
 <p align="center">Fig.2-4 all routers revealed message</p>
+
+## Links
+* [Setup and Unit-Test](./README.md#setup)
+* [Environment Preparing](./README.md#test-environment)
+* [SQoS Item: *challenge*](./item-challenge.md)
+* [SOoS Item: *error rollback*](./item-error-rollback.md)
+* [SQoS Item: *verification threshold*](./item-threshold.md)
