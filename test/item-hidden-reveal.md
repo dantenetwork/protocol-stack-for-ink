@@ -11,7 +11,7 @@ Change contract SQoS type as `Reveal`, no need value, as Fig.2-1 shown. `change_
 ![img](../assets/2-1.png)
 <p align="center">Fig. 2-1 set Reveal SQoS</p>
 
-* Send normal greeting message from NEAR testnet
+* Send normal greeting message from NEAR testnet. [Prepare a Near Testnet account](https://docs.near.org/concepts/basics/accounts/creating-accounts) before next.
 
 * Export the address of contract `GREETING`, which could be found at [Preparing work](./README.md#polkadot-testnet-contract-address):  
     ```sh

@@ -18,7 +18,7 @@ The challenge window period of challenge SQoS we set to 5 minutes, The value typ
 
 Install near cli `npm install -g near-cli`.
 
-* Send normal greeting message from NEAR testnet
+* Send normal greeting message from NEAR testnet. [Prepare a Near Testnet account](https://docs.near.org/concepts/basics/accounts/creating-accounts) before next.
 
 * Export the address of contract `GREETING`, which could be found at [Preparing work](./README.md#polkadot-testnet-contract-address):  
     ```sh
@@ -35,7 +35,7 @@ Install near cli `npm install -g near-cli`.
     * The expected result might be similar as below:  
     ![img](../assets/1-3.png)
     <p align="center">Fig. 1-3 send normal greeting message</p>  
-Note the last line int the above picture(Fig. 1-3), the `1`, that's the message number and we can use it to check on the Polkadot side if the message is received.  
+Note the last line in the above picture(Fig. 1-3), the `1`, that's the message number and we can use it to check on the Polkadot side if the message is received.  
 
 * No need for any operations. All honest routers will automatically push the message to the chain, and cross chain contract aggregates messages.  
 ***The below picture is just the record we have made, and it's printed out by test routers. For testing, there's no need to care about it because Fig.1-5 will prove the result.***

@@ -7,7 +7,7 @@ It seems very hard to solve this problem, but Dante did it. We borrowed the mech
 
 `error rollback` is so necessary that we make it as fixed SQoS item. In order to test `error rollback`, we added the `send_fake_greeting` interface in the greeting contract of NEAR testnet.  
 
-* Send normal greeting message from NEAR testnet
+* Send normal greeting message from NEAR testnet. [Prepare a Near Testnet account](https://docs.near.org/concepts/basics/accounts/creating-accounts) before next.
 * Export the address of contract `GREETING`, which could be found at [Preparing work](./README.md#polkadot-testnet-contract-address):  
     ```sh
     export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9

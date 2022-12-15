@@ -9,7 +9,7 @@ Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% r
 ![img](../assets/3-1.png)
 <p align="center">Fig.3-1 change to Threshold SQoS</p>
 
-* Send normal greeting message from NEAR testnet
+* Send normal greeting message from NEAR testnet. [Prepare a Near Testnet account](https://docs.near.org/concepts/basics/accounts/creating-accounts) before next.
 
 * Export the address of contract `GREETING`, which could be found at [Preparing work](./README.md#polkadot-testnet-contract-address):  
     ```sh
