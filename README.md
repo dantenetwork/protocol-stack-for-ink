@@ -22,14 +22,13 @@ Note that the resources related to this branch are as follows:
 * Completed the first [milestone](https://github.com/w3f/Grants-Program/blob/master/applications/Dante_Network.md#milestone-1--service-expression-layer--message-verification--router-credibility-evaluation-algorithms-basic-off-chain-routers-basic-sdk) for the w3f grant
 * Development of the stable version of [message protocol](https://github.com/dantenetwork/message-ink/tree/v0.2.0) and [ink sdk](https://github.com/dantenetwork/ink-sdk/tree/feature-sqos). Finish the test on Testnet Rococo contracts and local substrate node.
 * Development and test of Basic communication components including:
-    * Building example dApps composed of smart contracts deployed on different chains, and related [demos](https://github.com/dantenetwork/cross-chain-demo) here.
+    * Building example dApps composed of smart contracts deployed on different chains, and related [demos](https://github.com/dantenetwork/cross-chain-demo/tree/flow-rinkeby) here.
 * The development of algoritms in ink! smart contract:
     * Message verification;
     * Routers evalustion;
     * Routers selection.
-* Simulation and testing of some of the algorithms, and the details are [here]().
+* Simulation and testing of some of the algorithms, and the details are [here](https://github.com/w3f/Grants-Program/blob/master/applications/Dante_Network.md#milestone-1--service-expression-layer--message-verification--router-credibility-evaluation-algorithms-basic-off-chain-routers-basic-sdk).
     * Routers selection in ink! smart contract.
-    * Staking and slashing in ink! smart contract.
     * Message verification in other technology stack.
     * Routers evaluation in other technology stack.
 * The SQoS in ink! smart contract, and the details of the SQoS in this stage are [here](https://github.com/w3f/Grants-Program/blob/master/applications/Dante_Network.md#milestone-2--parallel-router-scheduling-algorithms-sqos-off-chain-routers-sdk-testnet). Core SQoS items include: 

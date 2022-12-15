@@ -1,10 +1,17 @@
 # Ink! Test Guide
 
-If you deploy the cross chain contract by yourself, for SQoS tests you need to run at least 3 router nodes， [run router](https://github.com/dantenetwork/ink-test-router)，You can test SQoS with the environment we have deployed.
+This test guide is related to the features in [Milestone 2 of the grant from W3F](https://github.com/w3f/Grants-Program/blob/master/applications/Dante_Network.md#milestone-2--parallel-router-scheduling-algorithms-sqos-off-chain-routers-sdk-testnet), including the following parts:
+* [Setup and Unit-Test](#setup)
+* [Environment Preparing](#test-environment)
+* [SQoS Item: *challenge*](./item-challenge.md)
+* [SQoS Item: *hidden & reveal*](./item-hidden-reveal.md)
+* [SOoS Item: *error rollback*](./item-error-rollback.md)
+* [SQoS Item: *verification threshold*](./item-threshold.md)
+
 ## Setup
 
 ### Install ink!
-
+We're building this version with the dev environment of `ink! 4.0.0-alpha.3`. Use the following command to install the environment.  
 ```sh
 $ cargo install cargo-contract --version 2.0.0-alpha.3 --locked --force
 $ cargo contract --version
@@ -37,38 +44,43 @@ $ cargo test
 
 ## Test environment
 
-POLKADOT testnet endpoint: `ws://3.74.157.177:9944`
+We have launched a Testnet to specifically target the features in this Milestone.   
 
-Send message from NEAR testnet to local POLKADOT testnet
+As we have not found an existing test or dev chain that supports the matched version of `ink!`, we started a test Parachain of Polkadot. The related endpoint is at: `ws://3.74.157.177:9944`
 
-### Cross chain contract
+We make the test by sending message from NEAR testnet to local POLKADOT testnet. All the features need to tested are on the Polkadot side, so there's no need for us to send message or invocations from Polkadot to Near, which makes the verification more convenient.
 
-#### NEAR testnet contract address
-
-Greeting contract: `d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9`
-
-Cross Chain contract: `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e45711e6`
+### The deployment of all the related smart contracts
 
 #### POLKADOT testnet contract address
 
-Greeting contract: `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
+* Test application contract(Greeting smart contract): `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
 
-Cross Chain contract: `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
+* Dante Protocol contract: `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
  
-Add greeting and cross chain contract, use compiled metadata.json.
+* Steps:
+    * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. You can use `Contract UI` instead, but as for `enum types` we met some problems. If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  
+    * Add greeting and cross chain contract, use compiled metadata.json. Click `Add an existing contract` as the following picture:
 
-![img](../assets/5.jpg)
-![img](../assets/6.jpg)
-<p align="center">Add contract</p>
+    ![img](../assets/5.jpg)
+    ![img](../assets/6.jpg)
+    <p align="center">Add contract</p>
 
-The greeting contract needs to set the cross chain contract address.
+    * The following picture show the **test application** smart contract `GREETING`. Everything has already been prepared by us. 
 
-![img](../assets/7.jpg)
-<p align="center">The greeting contract set the cross chain contract</p>
+    ![img](../assets/7.jpg)
+    <p align="center">The greeting contract used to do the tests</p>
 
-MAIN(EXTENSION): 5GufhjY66EiUUCKPWQP7qYVRqt291Eu48agQfHCnMprc7pMj, the owner of greeting and cross chain contract, Alice, Bob, etc is not used to prevent others from maliciously modifying the contract.
+Note that MAIN(EXTENSION): `5GufhjY66EiUUCKPWQP7qYVRqt291Eu48agQfHCnMprc7pMj` is the owner of greeting and cross chain contract, which is in order to prevent others from maliciously modifying the contract.
 
-#### Routers account
+#### NEAR testnet contract address
+
+* Test application contract(Greeting smart contract): `d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9`
+
+* Dante Protocol contract: `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e45711e6`
+
+#### Off-chain test Routers
+The information of the off-chain test routers for this testing is as follows: 
 
 1 malicious router: `5D5NSmbCPZ39jzkGqez7rg548LLr6Q7h4Fp4wUcQutnUs22u`
 
@@ -80,141 +92,6 @@ MAIN(EXTENSION): 5GufhjY66EiUUCKPWQP7qYVRqt291Eu48agQfHCnMprc7pMj, the owner of 
 
 * `5EkdEVGERnp5MabyAz92WuKYGjGa6vboarS4qQSMrCBuykB5`
 
-## Challenge SQoS
-
-The default initial credibility of the routers at the time of registration is 4000, only cross chain contract owner can call the interface of registerRouter, as shown in Fig.1-1. 
-
-![img](../assets/8.jpg)
-![img](../assets/1-1.png)
-<p align="center">Fig.1-1 initial router information</p>
-
-The challenge window period of challenge SQoS we set to 5 minutes, The value type is `u64`, it needs to be converted to milliseconds and then to bytes, finally value as shown in Fig.1-2. 
-
-![img](../assets/1-2.png)
-<p align="center">Fig.1-2 set challenge SQoS</p>
-
-### For normal greeting message
-
-Install near cli `npm install -g near-cli`.
-
-Send normal greeting message from NEAR testnet
-
-```sh
-1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-
-​2、​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
-```
-
-![img](../assets/1-3.png)
-<p align="center">Fig. 1-3 send normal greeting message</p>
-
-All honest routers push the message to the chain, and cross chain contract aggregates messages
-
-![img](../assets/1-4.png)
-<p align="center">Fig. 1-4 router push message to cross chain</p>
-
-![img](../assets/1-5.png)
-<p align="center">Fig. 1-5 aggregated messages</p>
-
-For a normal greeting message, no routers will challenge this message during the 5-minutes challenge window. When all routers received and completed the message aggregation, the message will be executed normally.
-
-![img](../assets/1-6-1.png)
-![img](../assets/1-6-2.png)
-<p align="center">Fig. 1-6 the greeting message been executed after 5 minutes</p>
-
-## For malicious message
-In order to facilitate the testing of challenge SQoS, we provide an interface `submitte_fake_message` to produce a malicious message, as shown in Fig 1-7.
-
-![img](../assets/1-7-1.png)
-![img](../assets/1-7-2.png)
-<p align="center">Fig.1-7 submitted a malicious message</p>
-
-For all honest routers, after they detected that the source chain message is inconsistent with the destination chain message, they submit a challenge message in the destination cross chain. As shown in Fig.1-8, honest routers submitted a challenge to this malicious message.
-
-![img](../assets/1-8-1.png)
-![img](../assets/1-8-2.png)
-<p align="center">Fig.1-8 3 routers challenge the malicious message</p>
-
-After the 5-minutes challenge window period is over, the router executes this message. If the challenge is successful, the cross-chain message will be abandoned and the credibility value of the malicious routers will be reduced. If the challenge is failed, the cross-chain message will be executed normally. As shown in Fig.1-9, the message challenge is successful, and the credibility value of the malicious router is reduced.
-
-![img](../assets/1-9.png)
-<p align="center">Fig.1-9 3 reduce the credibility of malicious router</p>
-
-### Reveal SQoS
-
-Change contract SQoS type as `Reveal`, no need value, as Fig.2-1 shown. `change_sqos` is only for testing.
-
-![img](../assets/2-1.png)
-<p align="center">Fig. 2-1 set Reveal SQoS</p>
-
-Send greeting message from NEAR testnet
-
-```sh
-1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​​
-2、near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
-```
-
-![img](../assets/2-2.png)
-<p align="center">Fig. 2-2 send greeting</p>
-
-All routers push hidden message to cross chain
-
-![img](../assets/2-3-1.png)
-![img](../assets/2-3-2.png)
-<p align="center">Fig.2-3 all routers submitted hidden message</p>
-
-When all routers have completed submitting hidden message, they can continue to submit revealed hidden messages to prevent other routers from copying messages directly.
-
-![img](../assets/2-4-1.png)
-![img](../assets/2-4-2.png)
-<p align="center">Fig.2-4 all routers revealed message</p>
-
-### Verification threshold
-Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% routers), the value type is `u8`,  and converted to to bytes value is `0x50` , as Fig.3-1 shown. 
-
-![img](../assets/3-1.png)
-<p align="center">Fig.3-1 change to Threshold SQoS</p>
-
-Send a greeting message from NEAR testnet.
-
-```sh
-1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​
-2、​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOUR_NEAR_TEST_ACCOUNT
-```
-
-![img](../assets/3-2.png)
-<p align="center">Fig.3-2 send a greeting message from NEAR</p>
-
-At present, the number of routers is 3 in POLKADOT testnet, and the Threshold SQoS only needs 80% of routers to process messages, which is 2 routers to receive messages, as shown in Fig.3-3.
-
-![img](../assets/3-3-1.png)
-![img](../assets/3-3-2.png)
-<p align="center">Fig.3-3 2 routers recevied message</p>
-
-### Error rollback
-In order to test `error rollback`, we added the `send_fake_greeting` interface in the greeting contract of NEAR testnet.
-
-```sh
-1、export greeting=d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9
-​
-2、​near call $greeting send_fake_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
-```
-
-![img](../assets/4-1.png)
-<p align="center">Fig.4-1 send fake greeting message</p>
-
-POLKADOT testnet received this fake message, and an error will be made when the cross-chain contract executes this message, and sends an error rollback to NEAR testnet, as shown in Fig.4-2 and Fig.4-3.
-
-![img](../assets/4-1.png)
-<p align="center">Fig.4-2 received fake greeting message</p>
-
-![img](../assets/4-3.png)
-<p align="center">Fig.4-3 send error rollback</p>
-
-For NEAR testnet it will receive this error rollback, as shown Fig.4-4.
-
-![img](../assets/4-4-1.png)
-![img](../assets/4-4-2.png)
-<p align="center">Fig.4-4 NEAR testnet receive error</p>
+#### Launch your own router
+We provide a [tutorial of launching a test router](https://github.com/dantenetwork/ink-test-router), everyone can launch a test router to join. Currently, the economic mechanism is not ready, so there's no limitation for anyone to join.  
+This is a temporaty mechanism and is just for the testing. In the official version, staking is necessary when registering, so as to avoid some malicious behaviours.
