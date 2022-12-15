@@ -1,4 +1,7 @@
 ### Verification threshold
+
+**Carefully read the [Preparing Work](./README.md) first before doing the next.**  
+
 Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% routers), the value type is `u8`,  and converted to to bytes value is `0x50` , as Fig.3-1 shown. 
 
 ![img](../assets/3-1.png)

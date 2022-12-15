@@ -54,13 +54,13 @@ We make the test by sending message from NEAR testnet to local POLKADOT testnet.
 
 #### POLKADOT testnet contract address
 
-* Test application contract(Greeting smart contract): `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
+* Test application contract(GREETING contract): `5GXrAP8vYG4LPyRWF34Wfo7VnJscmgXHt1RJapuyAYwKAp2A`
 
-* Dante Protocol contract: `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
+* Dante Protocol contract(CROSS CHAIN contract): `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
  
 * Steps:
-    * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. You can use `Contract UI` instead, but as for `enum types` we met some problems. If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  
-    * Add greeting and cross chain contract, use compiled metadata.json. Click `Add an existing contract` as the following picture:
+    * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. Unfortunately, we have not found how to set user defined remote addresses with [Contract UI](https://contracts-ui.substrate.io/). If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  
+    * Add `GREETING` and `CROSS CHAIN` contract, use compiled metadata.json. Click `Add an existing contract` as the following picture:
 
     ![img](../assets/5.jpg)
     ![img](../assets/6.jpg)
@@ -75,11 +75,13 @@ Note that MAIN(EXTENSION): `5GufhjY66EiUUCKPWQP7qYVRqt291Eu48agQfHCnMprc7pMj` is
 
 #### NEAR testnet contract address
 
-* Test application contract(Greeting smart contract): `d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9`
+* Test application contract(GREETING contract): `d8ae7a513eeaa36a4c6a42127587dbf0f2adbbda06523c0fba4a16bd275089f9`
 
-* Dante Protocol contract: `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e45711e6`
+* Dante Protocol contract(CROSS CHAIN contract): `170165c66e33a744726f7f8cd36885cc43aa1e55f88273df5c6aed72e45711e6`
 
 #### Off-chain test Routers
+We have registered enough test routers
+
 The information of the off-chain test routers for this testing is as follows: 
 
 1 malicious router: `5D5NSmbCPZ39jzkGqez7rg548LLr6Q7h4Fp4wUcQutnUs22u`
@@ -93,5 +95,17 @@ The information of the off-chain test routers for this testing is as follows:
 * `5EkdEVGERnp5MabyAz92WuKYGjGa6vboarS4qQSMrCBuykB5`
 
 #### Launch your own router
-We provide a [tutorial of launching a test router](https://github.com/dantenetwork/ink-test-router), everyone can launch a test router to join. Currently, the economic mechanism is not ready, so there's no limitation for anyone to join.  
-This is a temporaty mechanism and is just for the testing. In the official version, staking is necessary when registering, so as to avoid some malicious behaviours.
+We provide a [tutorial of launching a test router](https://github.com/dantenetwork/ink-test-router), everyone can launch a test router to join.  
+Currently, the **economic mechanism** is not ready, so there's no limitation for anyone to join.   
+**Note that this is a temporaty mechanism and is just for the testing**.  
+In the official version, **staking is needed** when registering, so as to improve the cost of some malicious behaviours.
+
+The way to register your own test routers is as follows:  
+![img](../assets/8.jpg)  
+
+For test, we provide a `select` function to re-select working routers immediately.  
+![img]()  
+
+The `selected routers` function shows which routers are selected currently.  
+Note that `Polkadot.js.app` is not very friendly for `getter` methods, so we cannot include the *interface name* in the *screenshots*. 
+![img]()  

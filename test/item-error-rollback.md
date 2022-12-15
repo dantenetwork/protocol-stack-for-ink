@@ -1,4 +1,7 @@
 ### Error rollback
+
+**Carefully read the [Preparing Work](./README.md) first before doing the next.**  
+
 In order to test `error rollback`, we added the `send_fake_greeting` interface in the greeting contract of NEAR testnet.
 
 ```sh

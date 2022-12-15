@@ -1,5 +1,7 @@
 ### Reveal SQoS
 
+**Carefully read the [Preparing Work](./README.md) first before doing the next.**  
+
 Change contract SQoS type as `Reveal`, no need value, as Fig.2-1 shown. `change_sqos` is only for testing.
 
 ![img](../assets/2-1.png)
