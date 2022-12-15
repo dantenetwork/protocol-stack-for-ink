@@ -38,10 +38,11 @@ Let's start with `ink!`.
 * Advanced security mechanisms.
 
 ## Testing
-
+Details can be found [here](./test/README.md).
 
 ## Usage
 ### For developers
-For development, there's no need for users to concern about the details of underlying mechanisms. Just follow the [tutorial of ink! SDK](https://github.com/dantenetwork/ink-sdk/tree/feature-sqos) to build your own cross-chain smart contracts.
+For developers, there's no need for them to concern about the details of underlying mechanisms. Just follow the [tutorial of ink! SDK](https://github.com/dantenetwork/ink-sdk/tree/feature-sqos) to build your own cross-chain smart contracts.
 
 ### For test-router operators
+For node operators, try the [tutorial of launching test router](https://github.com/dantenetwork/ink-test-router) for details.
