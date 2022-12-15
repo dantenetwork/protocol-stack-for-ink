@@ -59,7 +59,7 @@ We make the test by sending message from NEAR testnet to local POLKADOT testnet.
 * Dante Protocol contract(CROSS CHAIN contract): `5C7gWTE4iqyJjsJpxZ8C8EF3Q4m4suyx9Us188deKtsbC917`
  
 * Steps:
-    * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. Unfortunately, we have not found how to set user defined remote addresses with [Contract UI](https://contracts-ui.substrate.io/). If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  
+    * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  
     * Add `GREETING` and `CROSS CHAIN` contract, use compiled metadata.json. Click `Add an existing contract` as the following picture:
 
     ![img](../assets/5.jpg)
