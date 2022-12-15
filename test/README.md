@@ -109,3 +109,10 @@ In the official version, **staking is needed** when registering, so as to improv
 * The `isSelected` function in `CROSS CHAIN` contract shows whether a router is selected currently.  
 Note that `Polkadot.js.app` is not very friendly for `getter` methods, so we cannot include the *interface name* in the *screenshots*. 
 ![img](../assets/0-2.png)  
+
+### SQoS Items Testing
+The details of SQoS Items are as follows:  
+* [SQoS Item: *challenge*](./item-challenge.md)
+* [SQoS Item: *hidden & reveal*](./item-hidden-reveal.md)
+* [SOoS Item: *error rollback*](./item-error-rollback.md)
+* [SQoS Item: *verification threshold*](./item-threshold.md)
