@@ -25,7 +25,9 @@ Set contract SQoS type as `Threshold`,  the value is 80(it means only need 80% r
 <p align="center">Fig.3-2 send a greeting message from NEAR</p>
 
 * When we are testing, the number of routers is 3, and the Threshold SQoS only needs 80% of routers to process messages, that is any 2 routers is enough(the contract adopt the first 2 submissions), as shown in Fig.3-3.
-
+    * Check who submitt first by calling `getCurrentRouters/getSelected` of `CROSS CHAIN` contract:  
 ![img](../assets/3-3-1.png)
+
+* Check the received message by calling `getReceivedMessage` of `CROSS CHAIN` contract:  
 ![img](../assets/3-3-2.png)
 <p align="center">Fig.3-3 2 routers recevied message</p>
