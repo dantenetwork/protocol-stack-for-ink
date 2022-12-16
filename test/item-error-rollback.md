@@ -15,7 +15,7 @@ It seems very hard to solve this problem, but Dante did it. We borrowed the mech
 
 * Use your own near testnet account to send a fake greeting message to Polkadot:  
     ```sh
-    ​near call $greeting send_fake_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+    near call $greeting send_fake_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
     ```
 * The expected result might be similar as below:   
 ![img](../assets/4-1.png)  
