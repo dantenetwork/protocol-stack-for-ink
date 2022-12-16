@@ -20,6 +20,28 @@ cargo-contract 2.0.0-alpha.3-unknown-x86_64-unknown-linux-gnu
 
 ### Compile contracts
 
+Note: If compilation fails, try executing the following first
+
+- 1.Install pkg-config
+```
+sudo apt install pkg-config
+```
+
+- 2.Install dylint
+```
+cargo install cargo-dylint, dylint-link
+```
+
+- 3.Install binaryen
+    - Download
+    [binaryen](https://github.com/WebAssembly/binaryen/releases/tag/version_111)
+    - Uncompress
+    ```
+    tar -xf binaryen-version_111-x86_64-linux.tar.gz
+    ```
+    - Add ./bin to ENV path
+
+
 #### For protocol-stack-for-ink
 
 Clone the `feature-sqos` branch of `protocol-stack-for-ink`.
