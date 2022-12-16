@@ -14,7 +14,7 @@ This test guide is related to the features in [Milestone 2 of the grant from W3F
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 - Node  
-NVM: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
+NVM: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash  
 Node: `nvm install v18`
 
 ## Setup
