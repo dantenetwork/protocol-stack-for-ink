@@ -25,6 +25,7 @@ sudo apt install git
 ### Install ink!
 We're building this version with the dev environment of `ink! 4.0.0-alpha.3`. Use the following command to install the environment.  
 ```sh
+$ rustup component add rust-src --toolchain stable-x86_64-unknown-linux-gnu
 $ cargo install cargo-contract --version 2.0.0-alpha.3 --locked --force
 $ cargo contract --version
 cargo-contract 2.0.0-alpha.3-unknown-x86_64-unknown-linux-gnu
