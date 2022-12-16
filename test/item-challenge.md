@@ -9,7 +9,7 @@ Note that `Polkadot.js.app` is not very friendly for `getter` methods, so we can
 ![img](../assets/1-1.png)
 <p align="center">Fig.1-1 router information</p>
 
-Call `setSqos` of `GREETING` contract to set `Challenge` SQoS, The challenge window period of challenge SQoS we set to 5 minutes, The value type is `u64`, it needs to be converted to milliseconds and then to bytes, finally value as shown in Fig.1-2. 
+Call `setSqos` of `GREETING` contract to set `Challenge` SQoS, The challenge window period of challenge SQoS we set to 5 minutes(0x0493e0), The value type is `u64`, it needs to be converted to milliseconds and then to bytes, finally value as shown in Fig.1-2. 
 
 ![img](../assets/1-2.png)
 <p align="center">Fig.1-2 set challenge SQoS</p>
