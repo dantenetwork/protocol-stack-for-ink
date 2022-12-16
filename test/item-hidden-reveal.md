@@ -6,7 +6,7 @@ From a game theory perspective, under the strategy of majority rule, what is the
 This is the typical situation where SQoS item “Hidden & Reveal” comes into play. Before delivering the plaintext message from source chain to target chain, a cryptographic commitment would be submitted first. Commitments from every router are different from each other even if the related messages are the same. The commitment is unreadable to others. The commitment can be checked when the plaintext message is submitted. It’s very hard to construct a commitment with two different messages.  
 With the help of “Hidden & Reveal”, routers that do not actively do evil will carry the true message because they cannot know what is the majority. In general, this item is used to forbid the nodes who are not bad being forced to do malicious things.   
 
-Change contract SQoS type as `Reveal`, no need value, as Fig.2-1 shown. `change_sqos` is only for testing.
+Call `setSqos` of `GREETING` contract to set `Reveal` SQoS, no need value, as Fig.2-1 shown.
 
 ![img](../assets/2-1.png)
 <p align="center">Fig. 2-1 set Reveal SQoS</p>
