@@ -26,7 +26,7 @@ Install near cli `npm install -g near-cli`.
     ```
 * Use your own near testnet account to send a greeting message to Polkadot:  
     ```sh
-    ​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+    near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
     ```
     * The structure of the above command is determined by `Near`, the keys in the map are argument names of a function, so `to_chain`, `title`, `content`, `data` all cannot be changed. 
     * And as `POLKADOTTEST` is the target chain name, it cannot be changed too. 
