@@ -37,6 +37,7 @@ Note: If compilation fails, try executing the following first
 - Install pkg-config
 ```
 sudo apt install pkg-config
+sudo apt install libssl-dev
 ```
 
 - Install dylint
