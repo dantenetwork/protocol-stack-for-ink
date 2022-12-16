@@ -17,6 +17,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 NVM: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash  
 Node: `nvm install v18`
 
+- Git  
+sudo apt install git
+
 ## Setup
 
 ### Install ink!
