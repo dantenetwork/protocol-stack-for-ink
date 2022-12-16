@@ -34,17 +34,17 @@ cargo-contract 2.0.0-alpha.3-unknown-x86_64-unknown-linux-gnu
 
 Note: If compilation fails, try executing the following first
 
-- 1.Install pkg-config
+- Install pkg-config
 ```
 sudo apt install pkg-config
 ```
 
-- 2.Install dylint
+- Install dylint
 ```
 cargo install cargo-dylint, dylint-link
 ```
 
-- 3.Install binaryen
+- Install binaryen
     - Download
     [binaryen](https://github.com/WebAssembly/binaryen/releases/tag/version_111)
     - Uncompress
