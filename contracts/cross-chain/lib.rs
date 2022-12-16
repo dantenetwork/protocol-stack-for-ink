@@ -18,7 +18,9 @@ pub mod cross_chain {
     use ink::prelude::{string::String, vec, vec::Vec};
     use ink::storage::Mapping;
     // use String as ChainId;
-    use payload::message_define::{IContent, IContext, IReceivedMessage, ISentMessage, ISession};
+    use payload::message_define::{
+        IContent, IContext, IReceivedMessage, ISQoS, ISentMessage, ISession,
+    };
     use payload::message_protocol::MessagePayload;
 
     struct Candidate {
@@ -49,7 +51,7 @@ pub mod cross_chain {
         fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), Error>;
     }
 
-    type SQoSMessage = Mapping<(String, u128), (Vec<(AccountId, Bytes)>, bool)>;
+    type SQoSMessage = Mapping<(String, u128), (Vec<(AccountId, Bytes)>, bool, SQoS)>;
     type AggregationResult = (Vec<AccountId>, Vec<AccountId>, Vec<(Vec<AccountId>, u32)>);
     type ReceivedMessageTable = Mapping<(String, u128), (Vec<Group>, (bool, u64))>;
     type ExecutableMessageTable = Mapping<(String, u128), [u8; 32]>;
@@ -94,6 +96,9 @@ pub mod cross_chain {
         sqos_message: SQoSMessage,
 
         callback: Mapping<(String, u128), bool>,
+
+        // current for test
+        malicious_routers: Vec<AccountId>,
     }
 
     impl CrossChain {
@@ -117,6 +122,7 @@ pub mod cross_chain {
                 sqos_table: Default::default(),
                 sqos_message: Default::default(),
                 callback: Default::default(),
+                malicious_routers: Vec::new(),
             }
         }
 
@@ -156,6 +162,7 @@ pub mod cross_chain {
                 sqos_table: Default::default(),
                 sqos_message: Default::default(),
                 callback: Default::default(),
+                malicious_routers: Vec::new(),
             }
         }
 
@@ -184,19 +191,30 @@ pub mod cross_chain {
 
         /// Registers SQoS
         #[ink(message)]
-        pub fn set_sqos(&mut self, contract: AccountId, sqos: SQoS) -> Result<(), Error> {
-            self.only_owner().unwrap();
+        pub fn set_sqos(&mut self, contract: AccountId, sqos: ISQoS) {
+            // self.only_owner().unwrap();
             // if self.sqos_table.contains(&contract) {
             //     return Err(Error::AlreadyRegister);
             // }
-            self.sqos_table.insert(contract, &sqos);
+            self.sqos_table.insert(contract, &SQoS::from(sqos));
+        }
+
+        #[ink(message)]
+        pub fn remove_sqos(&mut self, contract: AccountId) -> Result<(), Error> {
+            if let Some(_) = self.sqos_table.get(&contract) {
+                self.sqos_table.remove(contract);
+            }
             Ok(())
         }
 
         /// Returns SQoS
         #[ink(message)]
-        pub fn get_sqos(&self, contract: AccountId) -> Option<SQoS> {
-            self.sqos_table.get(contract)
+        pub fn get_sqos(&self, contract: AccountId) -> Option<ISQoS> {
+            let sqos = self.sqos_table.get(contract);
+            if sqos.is_some() {
+                return Some(SQoS::to(sqos.unwrap()));
+            }
+            None
         }
 
         /// Method flushes the current state of `Self` into storage.
@@ -507,7 +525,7 @@ pub mod cross_chain {
         }
 
         #[ink(message)]
-        pub fn get_current_routers(&self) -> Vec<AccountId> {
+        pub fn get_selected(&self) -> Vec<AccountId> {
             self.evaluation.current_routers.clone()
         }
 
@@ -644,10 +662,23 @@ pub mod cross_chain {
             let key = (msg.from_chain.clone(), msg.id);
             let mut is_revealer = false;
             // let contract = AccountId::from(msg.contract);
-            if let Some(sqos) = self.sqos_table.get(msg.contract) {
+            if let Some(cur_sqos) = self.sqos_table.get(msg.contract) {
+                let mut sqos = cur_sqos;
+                if let Some((_, _, sq)) = self.sqos_message.get(&key) {
+                    sqos = sq;
+                }
+
+                if !self.sqos_message.contains(&key) {
+                    // (Vec<(AccountId, Bytes)>, bool, SQoS)>
+                    self.sqos_message.insert(
+                        key.clone(),
+                        &(Vec::<(AccountId, Bytes)>::new(), false, sqos.clone()),
+                    );
+                }
                 match sqos.t {
                     SQoSType::Reveal => {
-                        if let Some((submitted_message, completed)) = self.sqos_message.get(&key) {
+                        if let Some((submitted_message, completed, _)) = self.sqos_message.get(&key)
+                        {
                             if completed {
                                 for (router, hash) in submitted_message {
                                     if router == caller {
@@ -759,10 +790,14 @@ pub mod cross_chain {
                 if group.message_hash == message_hash {
                     let message = group.message;
 
-                    if let Some(sqos) = self.sqos_table.get(message.contract) {
+                    // let mut sqos = self.sqos_table.get(message.contract);
+                    if let Some((_, _, sqos)) = self.sqos_message.get(&key) {
+                        // if let Some(sqos) = self.sqos_table.get(message.contract) {
                         if sqos.t == SQoSType::Challenge {
                             let current_time = Self::env().block_timestamp();
-                            let confirm_windows = u64::from_be_bytes(sqos.v.try_into().unwrap());
+                            let mut value = vec![0; 8 - sqos.v.len()];
+                            value.extend(sqos.v.iter().copied());
+                            let confirm_windows = u64::from_be_bytes(value.try_into().unwrap());
                             if current_time - self.received_message_table.get(&key).unwrap().1 .1
                                 >= confirm_windows
                             {
@@ -815,6 +850,7 @@ pub mod cross_chain {
                             }
                         }
                     }
+                    // }
 
                     self.context = Some(Context {
                         id: message.id,
@@ -902,7 +938,7 @@ pub mod cross_chain {
     impl RoutersCore for CrossChain {
         #[ink(message)]
         fn select_routers(&mut self) -> Result<Vec<AccountId>, Error> {
-            self.only_owner()?;
+            // self.only_owner()?;
 
             let mut total_credit = 0_u32;
             let mut candidates = Vec::<Candidate>::new();
@@ -926,8 +962,13 @@ pub mod cross_chain {
 
             if candidates.len() <= (self.evaluation.selected_number as usize) {
                 // ink::env::debug_println!("{}", "Not Enough");
-                let selected_routers: Vec<AccountId> =
-                    candidates.into_iter().map(|c| c.id).collect();
+                let mut selected_routers: Vec<AccountId> = Vec::new();
+                for (router, _) in self.evaluation.routers.iter() {
+                    if self.malicious_routers.contains(&router) {
+                        continue;
+                    }
+                    selected_routers.push(router.clone());
+                }
                 self.evaluation.current_routers = selected_routers;
             } else {
                 // ink::env::debug_println!("{}", "Enough");
@@ -1072,7 +1113,7 @@ pub mod cross_chain {
 
         #[ink(message)]
         fn register_router(&mut self, router: AccountId) -> Result<(), Error> {
-            self.only_owner()?;
+            // self.only_owner()?;
 
             for r in self.evaluation.routers.iter() {
                 if r.0 == router {
@@ -1089,7 +1130,7 @@ pub mod cross_chain {
 
         #[ink(message)]
         fn unregister_router(&mut self, router: AccountId) -> Result<(), Error> {
-            self.only_owner()?;
+            // self.only_owner()?;
 
             let mut index = 0;
             let mut found = false;
@@ -1231,12 +1272,6 @@ pub mod cross_chain {
         }
 
         #[ink(message)]
-        pub fn change_sqos(&mut self, contract: AccountId, sqos: SQoS) -> Result<(), Error> {
-            self.sqos_table.insert(contract, &sqos);
-            Ok(())
-        }
-
-        #[ink(message)]
         pub fn get_chain_name(&self) -> String {
             self.chain_name.clone()
         }
@@ -1279,10 +1314,8 @@ pub mod cross_chain {
             &self,
             from_chain: String,
             id: u128,
-        ) -> (Vec<(AccountId, Bytes)>, bool) {
-            self.sqos_message
-                .get(&(from_chain, id))
-                .unwrap_or((Vec::new(), false))
+        ) -> Option<(Vec<(AccountId, Bytes)>, bool, SQoS)> {
+            self.sqos_message.get(&(from_chain, id))
         }
 
         #[ink(message)]
@@ -1320,10 +1353,38 @@ pub mod cross_chain {
             if !self.is_router(&malicious_router).0 {
                 return Err(Error::NotRouter);
             }
-            self.internal_receive_message(malicious_router, message)?;
-            self.internal_message_evaluation(key, 1);
+            let sqos = self.sqos_table.get(contract).unwrap();
+            if sqos.t == SQoSType::Challenge {
+                self.sqos_message
+                    .insert(key.clone(), &(Vec::<(AccountId, Bytes)>::new(), true, sqos));
+                self.internal_receive_message(malicious_router, message)?;
+                self.internal_message_evaluation(key, 1);
+            }
             Ok(())
             // received_message_table: Mapping<(String, u128), (Vec<Group>, (bool, u64))>,
+        }
+
+        #[ink(message)]
+        pub fn malicious_router(&mut self, malicious_router: AccountId) {
+            if self.malicious_routers.contains(&malicious_router) {
+                return;
+            }
+            self.malicious_routers.push(malicious_router);
+        }
+
+        #[ink(message)]
+        pub fn get_malicious_router(&mut self) -> Vec<AccountId> {
+            self.malicious_routers.clone()
+        }
+
+        #[ink(message)]
+        pub fn remove_malicious_router(&mut self, malicious_router: AccountId) {
+            let index = self
+                .malicious_routers
+                .iter()
+                .position(|x| *x == malicious_router)
+                .unwrap();
+            self.malicious_routers.remove(index);
         }
     }
 
@@ -1342,7 +1403,11 @@ pub mod cross_chain {
             }
             let key = (from_chain, id);
             if self.sqos_table.contains(contract) {
-                if self.sqos_table.get(contract).unwrap().t == SQoSType::Reveal {
+                let mut sqos_type = self.sqos_table.get(contract).unwrap().t;
+                if let Some((_, _, sqos)) = self.sqos_message.get(&key) {
+                    sqos_type = sqos.t;
+                }
+                if sqos_type == SQoSType::Reveal {
                     match self.sqos_message.get(&key) {
                         Some(mut sqos) => {
                             if sqos.1 {
@@ -1361,11 +1426,29 @@ pub mod cross_chain {
                         }
                         None => {
                             if self.evaluation.current_routers.len() <= 1 {
-                                self.sqos_message
-                                    .insert(key, &(vec![(caller, signature)], true));
+                                self.sqos_message.insert(
+                                    key,
+                                    &(
+                                        vec![(caller, signature)],
+                                        true,
+                                        SQoS {
+                                            t: SQoSType::Reveal,
+                                            v: Bytes::new(),
+                                        },
+                                    ),
+                                );
                             } else {
-                                self.sqos_message
-                                    .insert(key, &(vec![(caller, signature)], false));
+                                self.sqos_message.insert(
+                                    key,
+                                    &(
+                                        vec![(caller, signature)],
+                                        false,
+                                        SQoS {
+                                            t: SQoSType::Reveal,
+                                            v: Bytes::new(),
+                                        },
+                                    ),
+                                );
                             }
                         }
                     }
@@ -1394,7 +1477,11 @@ pub mod cross_chain {
                 if group.message_hash == message_hash {
                     let message = group.message;
                     if let Some(sqos) = self.sqos_table.get(message.contract) {
-                        if sqos.t != SQoSType::Challenge {
+                        let mut sqos_type = sqos.t;
+                        if let Some((_, _, sq)) = self.sqos_message.get(&key) {
+                            sqos_type = sq.t;
+                        }
+                        if sqos_type != SQoSType::Challenge {
                             return Err(Error::WrongSQoSType);
                         }
                         if let Some(mut sqos) = self.sqos_message.get(&key) {
@@ -1408,7 +1495,14 @@ pub mod cross_chain {
                         } else {
                             self.sqos_message.insert(
                                 key.clone(),
-                                &(vec![(caller, credibility.to_be_bytes().to_vec())], true),
+                                &(
+                                    vec![(caller, credibility.to_be_bytes().to_vec())],
+                                    true,
+                                    SQoS {
+                                        t: SQoSType::Challenge,
+                                        v: sqos.v,
+                                    },
+                                ),
                             );
                         }
                     } else {
@@ -1435,7 +1529,7 @@ pub mod cross_chain {
         };
 
         use ink::prelude::vec::Vec as Bytes;
-        use payload::message_define::{IContent, ISQoS, ISession};
+        use payload::message_define::{IContent, ISQoS, ISQoSType, ISession};
 
         fn init_default() -> (CrossChain, DefaultAccounts<DefaultEnvironment>) {
             let accounts = default_accounts::<DefaultEnvironment>();
@@ -1997,15 +2091,13 @@ pub mod cross_chain {
             let (message, _, _) = get_message();
             let selected_routers = register_routers(&mut cross_chain, 50, 13);
             let v = (0u64).to_be_bytes().to_vec();
-            cross_chain
-                .set_sqos(
-                    AccountId::from([0; 32]),
-                    SQoS {
-                        t: SQoSType::Challenge,
-                        v,
-                    },
-                )
-                .unwrap();
+            cross_chain.set_sqos(
+                AccountId::from([0; 32]),
+                ISQoS {
+                    t: ISQoSType::Challenge,
+                    v,
+                },
+            );
             receive_message(&mut cross_chain, &selected_routers, message.clone());
             let unselected_routers = get_unselected_routers(&cross_chain);
             challenge(
@@ -2028,15 +2120,13 @@ pub mod cross_chain {
             let (message, _, _) = get_message();
             let selected_routers = register_routers(&mut cross_chain, 50, 13);
             let v = (0u64).to_be_bytes().to_vec();
-            cross_chain
-                .set_sqos(
-                    AccountId::from([0; 32]),
-                    SQoS {
-                        t: SQoSType::Challenge,
-                        v,
-                    },
-                )
-                .unwrap();
+            cross_chain.set_sqos(
+                AccountId::from([0; 32]),
+                ISQoS {
+                    t: ISQoSType::Challenge,
+                    v,
+                },
+            );
             receive_message(&mut cross_chain, &selected_routers, message.clone());
             let unselected_routers = get_unselected_routers(&cross_chain);
             challenge(
@@ -2055,17 +2145,22 @@ pub mod cross_chain {
         #[ink::test]
         fn test_reveal_sqos() {
             let (mut cross_chain, _) = init_default();
-            let time: u64 = 1 * 60 * 1000;
-            println!("{:?}", time.to_be_bytes());
+            // let time: u64 = 5 * 60 * 1000;
+            // [0, 0, 0, 0, 0, 4, 147, 224]
+            // let value = vec![4, 147, 224];
+            // let len = 8 - value.len();
+            // let mut zero= vec![0; len];
+            // zero.extend(value.iter().copied());
+            // println!("{:?}", zero);
+            // // let confirm_windows = u64::from_be_bytes(sqos.v.try_into().unwrap());
+            // println!("{:?}", time.to_be_bytes());
             let selected_routers = register_routers(&mut cross_chain, 1, 1);
             let (message, _, _) = get_message();
-            let sqos = SQoS {
-                t: SQoSType::Reveal,
+            let sqos = ISQoS {
+                t: ISQoSType::Reveal,
                 v: Bytes::new(),
             };
-            cross_chain
-                .set_sqos(message.contract.clone(), sqos)
-                .unwrap();
+            cross_chain.set_sqos(message.contract.clone(), sqos);
             let imessage = to_ireceive_message(message.clone());
             let caller_bytes: [u8; 32] = *(selected_routers[0].as_ref());
             let data_bytes = ([
