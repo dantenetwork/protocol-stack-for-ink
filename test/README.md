@@ -41,7 +41,8 @@ sudo apt install pkg-config
 
 - Install dylint
 ```
-cargo install cargo-dylint, dylint-link
+cargo install cargo-dylint
+cargo install dylint-link
 ```
 
 - Install binaryen
