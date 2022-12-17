@@ -198,7 +198,7 @@ pub mod cross_chain {
 
         #[ink(message)]
         pub fn remove_sqos(&mut self, contract: AccountId) -> Result<(), Error> {
-            if let Some(_) = self.sqos_table.get(&contract) {
+            if self.sqos_table.get(&contract).is_some() {
                 self.sqos_table.remove(contract);
             }
             Ok(())
@@ -208,8 +208,8 @@ pub mod cross_chain {
         #[ink(message)]
         pub fn get_sqos(&self, contract: AccountId) -> Option<ISQoS> {
             let sqos = self.sqos_table.get(contract);
-            if sqos.is_some() {
-                return Some(SQoS::to(sqos.unwrap()));
+            if let Some(s) = sqos {
+                return Some(SQoS::to(s));
             }
             None
         }
@@ -1410,7 +1410,11 @@ pub mod cross_chain {
                                 }
                             }
                             sqos.0.push((caller, signature));
-                            if sqos.0.len() >= self.evaluation.current_routers.len() {
+                            let mut expected = self.evaluation.current_routers.len();
+                            if expected >= self.evaluation.duplicates as usize {
+                                expected = self.evaluation.duplicates as usize;
+                            }
+                            if sqos.0.len() >= expected {
                                 sqos.1 = true;
                             }
                             self.sqos_message.insert(key, &sqos);
