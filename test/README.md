@@ -91,9 +91,9 @@ We make the test by sending message from NEAR testnet to local POLKADOT testnet.
 
 #### POLKADOT testnet contract address
 
-* Test application contract(GREETING contract): `5D3c1Urz99B9HnWAhRREKCGvStFc4f2NNLRexoEqhKfL6EDJ`
+* Test application contract(GREETING contract): `5GkTXbWDSD9EjCXgy5Tg8WUoaEVTQFfAE8D5UinTEvELmXnX`
 
-* Dante Protocol contract(CROSS CHAIN contract): `5F6m6KNv9tz3EvY6GB25xEdPxnNeiuawGeSj9YFtzX7BgWg4`
+* Dante Protocol contract(CROSS CHAIN contract): `5CTKn5519q9BbCXvERLsBJCVYWhx1F48WxCtJkc486o3vBGE`
  
 * Steps:
     * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  
