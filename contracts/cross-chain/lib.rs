@@ -188,12 +188,34 @@ pub mod cross_chain {
 
         /// Registers SQoS
         #[ink(message)]
-        pub fn set_sqos(&mut self, contract: AccountId, sqos: ISQoS) {
+        pub fn set_sqos(&mut self, contract: AccountId, sqos: ISQoS) -> Result<(), Error> {
             // self.only_owner().unwrap();
             // if self.sqos_table.contains(&contract) {
             //     return Err(Error::AlreadyRegister);
             // }
-            self.sqos_table.insert(contract, &SQoS::from(sqos));
+            let s = SQoS::from(sqos);
+            match s.t {
+                SQoSType::Challenge => {
+                    if s.v.len() > 8 {
+                        return Err(Error::IncorrectValue);
+                    }
+                }
+                SQoSType::Threshold => {
+                    if s.v.len() > 4 {
+                        return Err(Error::IncorrectValue);
+                    } else {
+                        let mut value = vec![0; 4 - s.v.len()];
+                        value.extend(s.v.iter().copied());
+                        let threshold = u32::from_be_bytes(value.try_into().unwrap());
+                        if threshold >= 10000u32 {
+                            return Err(Error::IncorrectValue);
+                        }
+                    }
+                }
+                _ => {}
+            }
+            self.sqos_table.insert(contract, &s);
+            Ok(())
         }
 
         #[ink(message)]
@@ -2141,7 +2163,6 @@ pub mod cross_chain {
         #[ink::test]
         fn test_reveal_sqos() {
             let (mut cross_chain, _) = init_default();
-            // let time: u64 = 5 * 60 * 1000;
             // [0, 0, 0, 0, 0, 4, 147, 224]
             // let value = vec![4, 147, 224];
             // let len = 8 - value.len();
@@ -2149,14 +2170,13 @@ pub mod cross_chain {
             // zero.extend(value.iter().copied());
             // println!("{:?}", zero);
             // // let confirm_windows = u64::from_be_bytes(sqos.v.try_into().unwrap());
-            // println!("{:?}", time.to_be_bytes());
             let selected_routers = register_routers(&mut cross_chain, 1, 1);
             let (message, _, _) = get_message();
             let sqos = ISQoS {
                 t: ISQoSType::Reveal,
                 v: Bytes::new(),
             };
-            cross_chain.set_sqos(message.contract.clone(), sqos);
+            cross_chain.set_sqos(message.contract.clone(), sqos).unwrap();
             let imessage = to_ireceive_message(message.clone());
             let caller_bytes: [u8; 32] = *(selected_routers[0].as_ref());
             let data_bytes = ([

@@ -44,6 +44,7 @@ pub enum Error {
     RevealFailed,
     WrongSQoSType,
     Exist,
+    IncorrectValue,
 }
 
 impl Error {
