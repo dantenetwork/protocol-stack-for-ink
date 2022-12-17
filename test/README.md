@@ -8,17 +8,54 @@ This test guide is related to the features in [Milestone 2 of the grant from W3F
 * [SOoS Item: *error rollback*](./item-error-rollback.md)
 * [SQoS Item: *verification threshold*](./item-threshold.md)
 
+## Prerequisites
+
+- Rust  
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+- Node  
+NVM: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash  
+Node: `nvm install v18`
+
+- Git  
+sudo apt install git
+
 ## Setup
 
 ### Install ink!
 We're building this version with the dev environment of `ink! 4.0.0-alpha.3`. Use the following command to install the environment.  
 ```sh
+$ rustup component add rust-src --toolchain stable-x86_64-unknown-linux-gnu
 $ cargo install cargo-contract --version 2.0.0-alpha.3 --locked --force
 $ cargo contract --version
 cargo-contract 2.0.0-alpha.3-unknown-x86_64-unknown-linux-gnu
 ```
 
 ### Compile contracts
+
+Note: If compilation fails, try executing the following first
+
+- Install pkg-config
+```
+sudo apt install pkg-config
+sudo apt install libssl-dev
+```
+
+- Install dylint
+```
+cargo install cargo-dylint
+cargo install dylint-link
+```
+
+- Install binaryen
+    - Download
+    [binaryen](https://github.com/WebAssembly/binaryen/releases/tag/version_111)
+    - Uncompress
+    ```
+    tar -xf binaryen-version_111-x86_64-linux.tar.gz
+    ```
+    - Add ./bin to ENV path
+
 
 #### For protocol-stack-for-ink
 
@@ -54,9 +91,9 @@ We make the test by sending message from NEAR testnet to local POLKADOT testnet.
 
 #### POLKADOT testnet contract address
 
-* Test application contract(GREETING contract): `5D3c1Urz99B9HnWAhRREKCGvStFc4f2NNLRexoEqhKfL6EDJ`
+* Test application contract(GREETING contract): `5GkTXbWDSD9EjCXgy5Tg8WUoaEVTQFfAE8D5UinTEvELmXnX`
 
-* Dante Protocol contract(CROSS CHAIN contract): `5F6m6KNv9tz3EvY6GB25xEdPxnNeiuawGeSj9YFtzX7BgWg4`
+* Dante Protocol contract(CROSS CHAIN contract): `5CTKn5519q9BbCXvERLsBJCVYWhx1F48WxCtJkc486o3vBGE`
  
 * Steps:
     * Connect to `ws://3.74.157.177:9944` with `https://polkadot.js.org/apps/#/explorer`. If you met the error *`Failed to construct 'WebSocket': An insecure WebSocket connection may not be initiated from a page loaded over HTTPS.`*, just add `polkadot.js.org` to the `allowed unsafe content` of your browser.  

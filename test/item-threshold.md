@@ -17,7 +17,7 @@ Call `setSqos` of `GREETING` contract to set `Threshold` SQoS, the value is 80(i
     ```
 * Use your own near testnet account to send a greeting message to Polkadot:  
     ```sh
-    ​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+    near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
     ```
 
 * Similar result might be found as below:  

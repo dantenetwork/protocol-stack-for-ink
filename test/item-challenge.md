@@ -9,7 +9,7 @@ Note that `Polkadot.js.app` is not very friendly for `getter` methods, so we can
 ![img](../assets/1-1.png)
 <p align="center">Fig.1-1 router information</p>
 
-Call `setSqos` of `GREETING` contract to set `Challenge` SQoS, The challenge window period of challenge SQoS we set to 5 minutes, The value type is `u64`, it needs to be converted to milliseconds and then to bytes, finally value as shown in Fig.1-2. 
+Call `setSqos` of `GREETING` contract to set `Challenge` SQoS, The challenge window period of challenge SQoS we set to 5 minutes(0x0493e0), The value type is `u64`, it needs to be converted to milliseconds and then to bytes, finally value as shown in Fig.1-2. 
 
 ![img](../assets/1-2.png)
 <p align="center">Fig.1-2 set challenge SQoS</p>
@@ -26,7 +26,7 @@ Install near cli `npm install -g near-cli`.
     ```
 * Use your own near testnet account to send a greeting message to Polkadot:  
     ```sh
-    ​near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
+    near call $greeting send_greeting "{\"to_chain\": \"POLKADOTTEST\", \"title\": \"Greeting\", \"content\": \"Hi there\", \"date\": \"`date +'%Y-%m-%d %T'`\"}" --accountId YOU_NEAR_TEST_ACCOUNT
     ```
     * The structure of the above command is determined by `Near`, the keys in the map are argument names of a function, so `to_chain`, `title`, `content`, `data` all cannot be changed. 
     * And as `POLKADOTTEST` is the target chain name, it cannot be changed too. 
