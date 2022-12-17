@@ -4,11 +4,16 @@
 <br>
 The SQoS item `Threshold` is easy to understand, which defines the threshole of the message verification.  
 
-Call `setSqos` of `GREETING` contract to set `Threshold` SQoS, the value is 80(it means only need 80% of the total credibility of all submissions), the value type is `u8`,  and converted to to bytes value is `0x50` , as Fig.3-1 shown. 
+Call `setSqos` of `GREETING` contract to set `Threshold` SQoS, the value is 6000(it means only need 60% of the total credibility of all submissions), the value type is `u32`,  and converted to to bytes value is `0x1770` , as Fig.3-1 shown. 
 
-![img](../assets/3-1.png)
+![img](../assets/3-1-1.png)
 <p align="center">Fig.3-1 change to Threshold SQoS</p>
 
+Check if the setting works:  
+![img](../assets/3-1-2.png)
+<p align="center">Fig.3-1-2 Check the Threshold</p>
+
+You can try the normal working flow with the new `Threshold`.   
 * Send normal greeting message from NEAR testnet. [Prepare a Near Testnet account](https://docs.near.org/concepts/basics/accounts/creating-accounts) before next.
 
 * Export the address of contract `GREETING`, which could be found at [Preparing work](./README.md#polkadot-testnet-contract-address):  
@@ -27,7 +32,7 @@ Call `setSqos` of `GREETING` contract to set `Threshold` SQoS, the value is 80(i
 * When we are testing, the result as shown in Fig.3-3.  
 * Check the received message by calling `getReceivedMessage` of `CROSS CHAIN` contract:  
 ![img](../assets/3-3-2.png)
-<p align="center">Fig.3-3 2 routers recevied message</p>
+<p align="center">Fig.3-3 The recevied message</p>
 
 ## Links
 * [Setup and Unit-Test](./README.md#setup)
