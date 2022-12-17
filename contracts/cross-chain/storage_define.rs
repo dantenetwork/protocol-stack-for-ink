@@ -616,6 +616,7 @@ pub struct Evaluation {
     pub routers: Vec<(AccountId, u32)>,
     pub initial_credibility_value: u32,
     pub selected_number: u8,
+    pub duplicates: u8,
 }
 
 impl Evaluation {
@@ -660,6 +661,7 @@ impl Evaluation {
             routers: Vec::new(),
             initial_credibility_value: 4000,
             selected_number: 13,
+            duplicates: 3,
         }
     }
 }

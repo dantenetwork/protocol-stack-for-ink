@@ -96,9 +96,6 @@ pub mod cross_chain {
         sqos_message: SQoSMessage,
 
         callback: Mapping<(String, u128), bool>,
-
-        // current for test
-        malicious_routers: Vec<AccountId>,
     }
 
     impl CrossChain {
@@ -122,7 +119,6 @@ pub mod cross_chain {
                 sqos_table: Default::default(),
                 sqos_message: Default::default(),
                 callback: Default::default(),
-                malicious_routers: Vec::new(),
             }
         }
 
@@ -134,6 +130,7 @@ pub mod cross_chain {
             evaluation_coefficient: EvaluationCoefficient,
             initial_credibility_value: u32,
             selected_number: u8,
+            duplicates: u8,
         ) -> Self {
             let evaluation = Evaluation {
                 threshold,
@@ -143,6 +140,7 @@ pub mod cross_chain {
                 routers: Vec::new(),
                 initial_credibility_value,
                 selected_number,
+                duplicates,
             };
 
             Self {
@@ -162,7 +160,6 @@ pub mod cross_chain {
                 sqos_table: Default::default(),
                 sqos_message: Default::default(),
                 callback: Default::default(),
-                malicious_routers: Vec::new(),
             }
         }
 
@@ -404,9 +401,16 @@ pub mod cross_chain {
             let mut trusted: Vec<AccountId> = Vec::new();
             let mut untrusted: Vec<AccountId> = Vec::new();
             let mut exeception: Vec<(Vec<AccountId>, u32)> = Vec::new();
-            if groups[0].credibility_weight
-                >= self.evaluation.threshold.credibility_weight_threshold
-            {
+            let mut threshold = self.evaluation.threshold.credibility_weight_threshold;
+
+            if let Some((_, _, sqos)) = self.sqos_message.get(key) {
+                if sqos.t == SQoSType::Threshold {
+                    let mut value = vec![0; 4 - sqos.v.len()];
+                    value.extend(sqos.v.iter().copied());
+                    threshold = u32::from_be_bytes(value.try_into().unwrap());
+                }
+            }
+            if groups[0].credibility_weight >= threshold {
                 self.executable_message_table
                     .insert(key, &groups[0].message_hash);
                 self.executable_key.push(key.clone());
@@ -524,6 +528,7 @@ pub mod cross_chain {
             self.pending_message_key.clone()
         }
 
+        /// Return the routers have been selected.
         #[ink(message)]
         pub fn get_selected(&self) -> Vec<AccountId> {
             self.evaluation.current_routers.clone()
@@ -533,6 +538,21 @@ pub mod cross_chain {
         #[ink(message)]
         pub fn get_executable_message(&self, from_chain: String, id: u128) -> Option<[u8; 32]> {
             self.executable_message_table.get(&(from_chain, id))
+        }
+
+        //         #[ink(message)]
+        // fn renounce_ownership(&mut self) -> Result<(), Error> {
+        //     self.only_owner()?;
+
+        //     self.owner = None;
+
+        //     Ok(())
+        // }
+        #[ink(message)]
+        pub fn set_duplicates(&mut self, duplicates: u8) -> Result<(), Error> {
+            self.only_owner()?;
+            self.evaluation.duplicates = duplicates;
+            Ok(())
         }
 
         // #[ink(message)]
@@ -659,6 +679,9 @@ pub mod cross_chain {
             let msg = Message::new(message.clone());
             let mut expected_routers: u8;
             expected_routers = self.evaluation.current_routers.len() as u8;
+            if self.evaluation.duplicates < expected_routers {
+                expected_routers = self.evaluation.duplicates;
+            }
             let key = (msg.from_chain.clone(), msg.id);
             let mut is_revealer = false;
             // let contract = AccountId::from(msg.contract);
@@ -713,10 +736,6 @@ pub mod cross_chain {
                                 return Err(Error::SQoSNotComplete);
                             }
                         }
-                    }
-                    SQoSType::Threshold => {
-                        // sqos.v[0] value is 0 ~ 100
-                        expected_routers = expected_routers * sqos.v[0] / 100;
                     }
                     _ => {}
                 }
@@ -962,13 +981,8 @@ pub mod cross_chain {
 
             if candidates.len() <= (self.evaluation.selected_number as usize) {
                 // ink::env::debug_println!("{}", "Not Enough");
-                let mut selected_routers: Vec<AccountId> = Vec::new();
-                for (router, _) in self.evaluation.routers.iter() {
-                    if self.malicious_routers.contains(&router) {
-                        continue;
-                    }
-                    selected_routers.push(router.clone());
-                }
+                let selected_routers: Vec<AccountId> =
+                    candidates.into_iter().map(|c| c.id).collect();
                 self.evaluation.current_routers = selected_routers;
             } else {
                 // ink::env::debug_println!("{}", "Enough");
@@ -1363,29 +1377,6 @@ pub mod cross_chain {
             Ok(())
             // received_message_table: Mapping<(String, u128), (Vec<Group>, (bool, u64))>,
         }
-
-        #[ink(message)]
-        pub fn malicious_router(&mut self, malicious_router: AccountId) {
-            if self.malicious_routers.contains(&malicious_router) {
-                return;
-            }
-            self.malicious_routers.push(malicious_router);
-        }
-
-        #[ink(message)]
-        pub fn get_malicious_router(&mut self) -> Vec<AccountId> {
-            self.malicious_routers.clone()
-        }
-
-        #[ink(message)]
-        pub fn remove_malicious_router(&mut self, malicious_router: AccountId) {
-            let index = self
-                .malicious_routers
-                .iter()
-                .position(|x| *x == malicious_router)
-                .unwrap();
-            self.malicious_routers.remove(index);
-        }
     }
 
     impl SQoSBase for CrossChain {
@@ -1571,6 +1562,7 @@ pub mod cross_chain {
                 evaluation_coefficient,
                 initial_credibility_value,
                 13,
+                13,
             );
             test::set_caller::<DefaultEnvironment>(accounts.alice);
             (cross_chain, accounts)
@@ -1674,17 +1666,17 @@ pub mod cross_chain {
             cross_chain.select_routers().unwrap()
         }
 
-        fn get_unselected_routers(cross_chain: &CrossChain) -> Vec<AccountId> {
-            // cross_chain.evaluation.routers.clone().into_iter().map(|(account, _)| if cross_chain.is_selected(account)).collect()
-            let mut accounts: Vec<AccountId> = Vec::new();
-            for (account, _) in cross_chain.evaluation.routers.clone().into_iter() {
-                if cross_chain.is_selected(account) {
-                    continue;
-                }
-                accounts.push(account);
-            }
-            return accounts;
-        }
+        // fn get_unselected_routers(cross_chain: &CrossChain) -> Vec<AccountId> {
+        //     // cross_chain.evaluation.routers.clone().into_iter().map(|(account, _)| if cross_chain.is_selected(account)).collect()
+        //     let mut accounts: Vec<AccountId> = Vec::new();
+        //     for (account, _) in cross_chain.evaluation.routers.clone().into_iter() {
+        //         if cross_chain.is_selected(account) {
+        //             continue;
+        //         }
+        //         accounts.push(account);
+        //     }
+        //     return accounts;
+        // }
 
         fn receive_message(cross_chain: &mut CrossChain, routers: &[AccountId], message: Message) {
             let imessage = to_ireceive_message(message);
@@ -1712,19 +1704,19 @@ pub mod cross_chain {
         //     }
         // }
 
-        fn challenge(
-            cross_chain: &mut CrossChain,
-            from_chain: String,
-            id: u128,
-            routers: &[AccountId],
-        ) {
-            let mut i = 0;
-            for router in routers {
-                test::set_caller::<DefaultEnvironment>(*router);
-                i = i + 1;
-                cross_chain.challenge(from_chain.clone(), id).unwrap();
-            }
-        }
+        // fn challenge(
+        //     cross_chain: &mut CrossChain,
+        //     from_chain: String,
+        //     id: u128,
+        //     routers: &[AccountId],
+        // ) {
+        //     let mut i = 0;
+        //     for router in routers {
+        //         test::set_caller::<DefaultEnvironment>(*router);
+        //         i = i + 1;
+        //         cross_chain.challenge(from_chain.clone(), id).unwrap();
+        //     }
+        // }
 
         /// Tests for trait Ownable
         #[ink::test]
@@ -2085,62 +2077,62 @@ pub mod cross_chain {
             assert_eq!(id, 2);
         }
 
-        #[ink::test]
-        fn test_sqos_challenge_failed() {
-            let (mut cross_chain, _) = init_default();
-            let (message, _, _) = get_message();
-            let selected_routers = register_routers(&mut cross_chain, 50, 13);
-            let v = (0u64).to_be_bytes().to_vec();
-            cross_chain.set_sqos(
-                AccountId::from([0; 32]),
-                ISQoS {
-                    t: ISQoSType::Challenge,
-                    v,
-                },
-            );
-            receive_message(&mut cross_chain, &selected_routers, message.clone());
-            let unselected_routers = get_unselected_routers(&cross_chain);
-            challenge(
-                &mut cross_chain,
-                message.from_chain.clone(),
-                message.id,
-                &unselected_routers,
-            );
-            cross_chain
-                .execute_message(message.from_chain, message.id)
-                .unwrap();
-        }
+        // #[ink::test]
+        // fn test_sqos_challenge_failed() {
+        //     let (mut cross_chain, _) = init_default();
+        //     let (message, _, _) = get_message();
+        //     let selected_routers = register_routers(&mut cross_chain, 50, 13);
+        //     let v = (0u64).to_be_bytes().to_vec();
+        //     cross_chain.set_sqos(
+        //         AccountId::from([0; 32]),
+        //         ISQoS {
+        //             t: ISQoSType::Challenge,
+        //             v,
+        //         },
+        //     );
+        //     receive_message(&mut cross_chain, &selected_routers, message.clone());
+        //     let unselected_routers = get_unselected_routers(&cross_chain);
+        //     challenge(
+        //         &mut cross_chain,
+        //         message.from_chain.clone(),
+        //         message.id,
+        //         &unselected_routers,
+        //     );
+        //     cross_chain
+        //         .execute_message(message.from_chain, message.id)
+        //         .unwrap();
+        // }
 
-        #[ink::test]
-        #[should_panic(
-            expected = "not implemented: off-chain environment does not support contract invocation"
-        )]
-        fn test_sqos_challenge_successed() {
-            let (mut cross_chain, _) = init_default();
-            let (message, _, _) = get_message();
-            let selected_routers = register_routers(&mut cross_chain, 50, 13);
-            let v = (0u64).to_be_bytes().to_vec();
-            cross_chain.set_sqos(
-                AccountId::from([0; 32]),
-                ISQoS {
-                    t: ISQoSType::Challenge,
-                    v,
-                },
-            );
-            receive_message(&mut cross_chain, &selected_routers, message.clone());
-            let unselected_routers = get_unselected_routers(&cross_chain);
-            challenge(
-                &mut cross_chain,
-                message.from_chain.clone(),
-                message.id,
-                &unselected_routers[..2],
-            );
-            // println!("{:?}", cross_chain.evaluation.routers);
-            cross_chain
-                .execute_message(message.from_chain, message.id)
-                .unwrap();
-            assert_eq!(cross_chain.executable_key, Vec::new());
-        }
+        // #[ink::test]
+        // #[should_panic(
+        //     expected = "not implemented: off-chain environment does not support contract invocation"
+        // )]
+        // fn test_sqos_challenge_successed() {
+        //     let (mut cross_chain, _) = init_default();
+        //     let (message, _, _) = get_message();
+        //     let selected_routers = register_routers(&mut cross_chain, 50, 13);
+        //     let v = (0u64).to_be_bytes().to_vec();
+        //     cross_chain.set_sqos(
+        //         AccountId::from([0; 32]),
+        //         ISQoS {
+        //             t: ISQoSType::Challenge,
+        //             v,
+        //         },
+        //     );
+        //     receive_message(&mut cross_chain, &selected_routers, message.clone());
+        //     let unselected_routers = get_unselected_routers(&cross_chain);
+        //     challenge(
+        //         &mut cross_chain,
+        //         message.from_chain.clone(),
+        //         message.id,
+        //         &unselected_routers[..2],
+        //     );
+        //     // println!("{:?}", cross_chain.evaluation.routers);
+        //     cross_chain
+        //         .execute_message(message.from_chain, message.id)
+        //         .unwrap();
+        //     assert_eq!(cross_chain.executable_key, Vec::new());
+        // }
 
         #[ink::test]
         fn test_reveal_sqos() {
