@@ -41,7 +41,10 @@ Call `setSqos` of `GREETING` contract to set `Reveal` SQoS, no need value, as Fi
 
 * Check the final received message by calling `getReceivedMessage` on `CROSS CHAIN` contract on Polkadot:  
 ![img](../assets/2-4-2.png)
-<p align="center">Fig.2-4 all routers revealed message</p>
+<p align="center">Fig.2-4 all routers revealed message</p>  
+
+* Also check it by calling `getRet` on `GREETING` contract on Polkadot:  
+![img](../assets/2-5.png)
 
 ## Links
 * [Setup and Unit-Test](./README.md#setup)
