@@ -52,17 +52,21 @@ mod vv {
 
         /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get_rand(&self) -> [u8; 32] {
-            let t_stamp = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();
+        pub fn get_rand(&self, indicator: u32) -> [u8; 32] {
+            let t_stamp = ink::env::block_timestamp::<ink::env::DefaultEnvironment>().to_be_bytes();
+            let ind_bytes = indicator.to_be_bytes();
+            let mut input_bytes = ink::prelude::vec::Vec::from(t_stamp);
+            input_bytes.append(&mut ink::prelude::vec::Vec::from(ind_bytes));
+
             let mut output = <ink::env::hash::Keccak256 as ink::env::hash::HashOutput>::Type::default();
 
-            ink::env::hash_encoded::<ink::env::hash::Keccak256, _>(&t_stamp, &mut output);
+            ink::env::hash_encoded::<ink::env::hash::Keccak256, _>(&input_bytes, &mut output);
             output
         }
 
         #[ink(message)]
-        pub fn rand_set(&mut self) {
-            let rand_bytes = self.get_rand();
+        pub fn rand_set(&mut self, indicator: u32) {
+            let rand_bytes = self.get_rand(indicator);
             let four_bytes: [u8; 4] = rand_bytes[0..4].try_into().unwrap();
             
             self.random_v = u32::from_be_bytes(four_bytes);
@@ -107,6 +111,20 @@ mod vv {
             assert_eq!(vv.get(), false);
             vv.flip();
             assert_eq!(vv.get(), true);
+        }
+
+        #[ink::test]
+        fn rand_differ() {
+            let t_stamp = ink::env::block_timestamp::<ink::env::DefaultEnvironment>().to_be_bytes();
+            let mut indicator: u32 = 1;
+            let mut n1 = ink::prelude::vec::Vec::from(t_stamp);
+            n1.append(&mut ink::prelude::vec::Vec::from(indicator.to_be_bytes()));
+
+            indicator += 1;
+            let mut n2 = ink::prelude::vec::Vec::from(t_stamp);
+            n2.append(&mut ink::prelude::vec::Vec::from(indicator.to_be_bytes()));
+
+            assert_ne!(n1, n2);
         }
     }
 }
