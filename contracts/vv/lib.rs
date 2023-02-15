@@ -75,6 +75,7 @@ mod vv {
 
         #[ink(message)]
         pub fn time_update(&mut self) {
+            // milliseconds
             self.timestamp = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();
         }
 
