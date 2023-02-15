@@ -13,6 +13,8 @@ mod vv {
         /// Stores a single `bool` value on the storage.
         value: bool,
         random_v: u32,
+        // milliseconds 
+        timestamp: Timestamp,
     }
 
     impl Vv {
@@ -22,6 +24,7 @@ mod vv {
             Self { 
                 value: init_value,
                 random_v: 73,
+                timestamp: ink::env::block_timestamp::<ink::env::DefaultEnvironment>(),
             }
         }
 
@@ -68,6 +71,16 @@ mod vv {
         #[ink(message)]
         pub fn get_rand_v(&self) -> u32 {
             self.random_v
+        }
+
+        #[ink(message)]
+        pub fn time_update(&mut self) {
+            self.timestamp = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();
+        }
+
+        #[ink(message)]
+        pub fn get_time(&self) -> Timestamp {
+            self.timestamp
         }
     }
 
