@@ -87,6 +87,21 @@ mod vv {
         pub fn get_time(&self) -> Timestamp {
             self.timestamp
         }
+
+        #[ink(message)]
+        pub fn submit_vv_message(&self, vv_msg: payload::message_define::IVVMessageRecved) -> bool {
+            let sender = ink::env::caller::<ink::env::DefaultEnvironment>();
+            let sender_in_msg = ink::primitives::AccountId::try_from(vv_msg.recved_msg.sender.as_slice()).unwrap();
+
+            assert!(sender == sender_in_msg);
+
+            vv_msg.signature_verify::<ink::env::hash::Keccak256>(sender_in_msg)
+        }
+
+        #[ink(message)]
+        pub fn get_recv_hash(&self, recv_msg: payload::message_define::IReceivedMessage) -> payload::message_define::IReceivedMessage {
+            recv_msg
+        }
     }
 
     /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`

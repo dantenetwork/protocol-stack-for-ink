@@ -10,7 +10,7 @@ ink = {git = "https://github.com/paritytech/ink", tag = "v4.0.0-alpha.3", defaul
 scale = {package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"]}
 scale-info = {version = "2", default-features = false, features = ["derive", "serde", "decode"]}
 
-payload = {git = "https://github.com/dantenetwork/message-ink", branch = "ink-2.0-alpha.3", default-features = false, features = ["ink-as-dependency"]}
+payload = {git = "https://github.com/dantenetwork/message-ink", branch = "main", default-features = false, features = ["ink-as-dependency"]}
 
 [lib]
 crate-type = [

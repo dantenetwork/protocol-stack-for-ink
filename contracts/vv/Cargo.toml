@@ -5,10 +5,17 @@ authors = ["[your_name] <[your_email]>"]
 edition = "2021"
 
 [dependencies]
-ink = {git = "https://github.com/paritytech/ink", tag = "v4.0.0-alpha.3", default-features = false}
+# ink = {git = "https://github.com/paritytech/ink", tag = "v4.0.0-alpha.3", default-features = false}
+ink = { version = "4.0.0", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"], optional = true }
+
+payload = {git = "https://github.com/dantenetwork/message-ink", branch = "vv", default-features = false, features = ["ink-as-dependency"]}
+# payload = { path = "../../../message-ink/payload/", default-features = false, features = ["ink-as-dependency"] }
+
+[dev-dependencies]
+ink_e2e = "4.0.0"
 
 [lib]
 name = "vv"
