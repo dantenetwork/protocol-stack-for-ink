@@ -99,8 +99,11 @@ mod vv {
         }
 
         #[ink(message)]
-        pub fn get_recv_hash(&self, recv_msg: payload::message_define::IReceivedMessage) -> payload::message_define::IReceivedMessage {
-            recv_msg
+        pub fn get_recv_hash(&self, recv_msg: payload::message_define::IReceivedMessage) -> [u8;32] {
+            let mut msg_hash = <ink::env::hash::Keccak256 as ink::env::hash::HashOutput>::Type::default();
+            ink::env::hash_bytes::<ink::env::hash::Keccak256>(recv_msg.into_raw_data().as_slice(), &mut msg_hash);
+            
+            msg_hash
         }
     }
 
