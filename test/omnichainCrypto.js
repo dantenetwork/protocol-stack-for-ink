@@ -41,8 +41,30 @@ var OmnichainCrypto = /** @class */ (function () {
             return sig;
         };
         this.verify = function (msg, signature) {
+            var sig;
+            if (typeof signature == 'string') {
+                if (signature.length == 130) {
+                    sig = {
+                        r: signature.substring(0, 64),
+                        s: signature.substring(64, 128),
+                        v: signature.substring(128, 130)
+                    };
+                }
+                else if (signature.length == 128) {
+                    sig = {
+                        r: signature.substring(0, 64),
+                        s: signature.substring(64, 128)
+                    };
+                }
+                else {
+                    throw ("Invalid signature length: " + signature.length);
+                }
+            }
+            else {
+                sig = signature;
+            }
             var msgHash = _this.hashFun(msg);
-            return _this.keyPair.verify(msgHash, signature);
+            return _this.keyPair.verify(msgHash, sig);
         };
         this.hashFun = hashFun;
         this.ec = new elliptic.ec(curveName);

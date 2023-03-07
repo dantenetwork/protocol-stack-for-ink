@@ -18,7 +18,8 @@ async function sign(msg, sk, ec_name, hash_name) {
     // console.log(Buffer.from(key.getPublic().encode()).toString('hex'));
 
     const signService = new oc.OmnichainCrypto(hashfunc.hashFuncMap[hash_name], ec_name, sk);
-    console.log(signService.sign2hexstringrecovery(msg));
+    const signature_content = signService.sign2hexstringrecovery(msg);
+    console.log(signature_content);
 
     console.log("Public Key:\n"+signService.getPublic());
 
@@ -27,6 +28,8 @@ async function sign(msg, sk, ec_name, hash_name) {
     const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
     console.log("Polkadot Address: ");
     console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
+    
+    console.log(signService.verify(msg, signature_content));
 }
 
 function list(val) {

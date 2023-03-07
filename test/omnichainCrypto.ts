@@ -75,9 +75,29 @@ export class OmnichainCrypto {
 
     verify = (msg: string | Uint8Array,
             signature: string | elliptic.ec.Signature) => {
-    
+        
+        var sig;
+        if (typeof signature == 'string') {
+            if (signature.length == 130) {
+                sig = {
+                    r: signature.substring(0, 64),
+                    s: signature.substring(64, 128),
+                    v: signature.substring(128, 130)
+                }
+            } else if (signature.length == 128) {
+                sig = {
+                    r: signature.substring(0, 64),
+                    s: signature.substring(64, 128)
+                }
+            } else {
+                throw("Invalid signature length: "+signature.length);
+            }
+        } else {
+            sig = signature;
+        }
+
         const msgHash = this.hashFun(msg);
-        return this.keyPair.verify(msgHash, signature);
+        return this.keyPair.verify(msgHash, sig);
     }
 }
 
