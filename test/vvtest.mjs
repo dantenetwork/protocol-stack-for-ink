@@ -51,7 +51,20 @@ async function activeCall() {
 async function activeQuery() {
     const ibinst = await localInit();
 
-    console.log(await ibinst.contractCall('getRand', 73));
+    const {gasConsumed, result, output} = await ibinst.contractCall('get');
+
+    // The actual result from RPC as `ContractExecResult`
+    console.log(result.toHuman());
+    // gas consumed
+    console.log(gasConsumed.toHuman());
+    // check if the call was successful
+    if (result.isOk) {
+        // should output 123 as per our initial set (output here is an i32)
+        console.log('Success', output.toHuman());
+  
+    } else {
+        console.error('Error', result.asErr);
+    }
 
     console.log("*********************Everything for a transaction query is active.**********************");
 }

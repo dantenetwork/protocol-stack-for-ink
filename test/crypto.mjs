@@ -82,7 +82,7 @@ async function test_ink_base() {
     const ink_base = new ib.InkBase(api, 'ecdsa', new Uint8Array(Buffer.from('d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c', 'hex')));
 }
 
-// decodeData()
+decodeData()
 
 // getPublicKey()
 
@@ -90,4 +90,4 @@ async function test_ink_base() {
 
 // await testKeyring();
 
-await test_ink_base();
+// await test_ink_base();
