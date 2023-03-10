@@ -3,7 +3,10 @@ import { sha256 } from 'js-sha256';
 import keccak256 from 'keccak256';
 import elliptic from 'elliptic';
 import {encodeAddress, blake2AsU8a} from '@polkadot/util-crypto';
+import { ApiPromise, Keyring, WsProvider } from "@polkadot/api";
 import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } from 'scale-ts';
+
+import * as ib from './ink_base.mjs';
 
 const ec = new elliptic.ec('secp256k1');
 
@@ -62,8 +65,29 @@ function checkAddress() {
     console.log(encodeAddress(inputAddress));
 }
 
-decodeData()
+async function testKeyring() {
+    const provider = new WsProvider('ws://127.0.0.1:9944');
+    const api = await ApiPromise.create({ provider });
+
+    const keyring = new Keyring({ type: "ecdsa" });
+    const devtest = keyring.addFromSeed(new Uint8Array(Buffer.from('d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c', 'hex')));
+
+    console.log(keyring.getPairs()[0].address);
+}
+
+async function test_ink_base() {
+    const provider = new WsProvider('ws://127.0.0.1:9944');
+    const api = await ApiPromise.create({ provider });
+
+    const ink_base = new ib.InkBase(api, 'ecdsa', new Uint8Array(Buffer.from('d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c', 'hex')));
+}
+
+// decodeData()
 
 // getPublicKey()
 
 // checkAddress();
+
+// await testKeyring();
+
+await test_ink_base();
