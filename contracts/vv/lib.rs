@@ -3,6 +3,8 @@
 #[ink::contract]
 mod vv {
     // use ink::env::hash::Sha2x256;
+    use payload::message_protocol::InMsgType;
+    use ink::prelude::string::ToString;
 
 
     /// Defines the storage of your contract.
@@ -90,20 +92,49 @@ mod vv {
 
         #[ink(message)]
         pub fn submit_vv_message(&self, vv_msg: payload::message_define::IVVMessageRecved) -> bool {
-            let sender = ink::env::caller::<ink::env::DefaultEnvironment>();
-            let sender_in_msg = ink::primitives::AccountId::try_from(vv_msg.recved_msg.sender.as_slice()).unwrap();
+            // let sender = ink::env::caller::<ink::env::DefaultEnvironment>();
+            // let sender_in_msg = ink::primitives::AccountId::try_from(vv_msg.recved_msg.sender.as_slice()).unwrap();
 
-            assert!(sender == sender_in_msg);
+            // assert!(sender == sender_in_msg);
 
-            vv_msg.signature_verify::<ink::env::hash::Keccak256>(sender_in_msg)
+            let caller = self.env().caller();
+
+            ink::env::debug_println!("receive a call from {:?}", caller);
+
+            vv_msg.signature_verify::<ink::env::hash::Keccak256>(caller)
         }
 
         #[ink(message)]
-        pub fn get_recv_hash(&self, recv_msg: payload::message_define::IReceivedMessage) -> [u8;32] {
+        pub fn get_recv_hash(&self, recv_msg: payload::message_define::IReceivedMessage) -> (ink::prelude::vec::Vec<u8>, [u8;32]) {
             let mut msg_hash = <ink::env::hash::Keccak256 as ink::env::hash::HashOutput>::Type::default();
             ink::env::hash_bytes::<ink::env::hash::Keccak256>(recv_msg.into_raw_data().as_slice(), &mut msg_hash);
             
-            msg_hash
+            (recv_msg.into_raw_data(), msg_hash)
+        }
+
+        #[ink(message)]
+        pub fn test_structure(&self) -> payload::message_define::IVVMessageRecved {
+            let mut msg_pl = payload::message_protocol::MessagePayload::new();
+            msg_pl.push_item("nika".to_string(), ink::prelude::string::String::create_message("hello".to_string()));
+            msg_pl.push_item("number".to_string(), ink::prelude::vec::Vec::<u128>::create_message(ink::prelude::vec![777, 999]));
+
+            let mut sqos = ink::prelude::vec::Vec::new();
+            sqos.push(payload::message_define::ISQoS::new(payload::message_define::ISQoSType::Challenge, ink::prelude::vec::Vec::from((999 as u128).to_be_bytes())));
+            sqos.push(payload::message_define::ISQoS::new(payload::message_define::ISQoSType::ExceptionRollback, ink::prelude::vec::Vec::from((16 as u32).to_be_bytes())));
+
+            let session = payload::message_define::ISession::new(1, 1, ink::prelude::vec![1, 2, 3], ink::prelude::vec![], ink::prelude::vec![]);
+
+            payload::message_define::IVVMessageRecved {
+                recved_msg: payload::message_define::IReceivedMessage::new(1, "Polkadot".to_string(), "Flow".to_string(),
+                                                                            ink::prelude::vec![1 as u8, 2, 3],
+                                                                            ink::prelude::vec![1 as u8, 2, 3],
+                                                                            sqos,
+                                                                            [0; 32],
+                                                                            [0; 4],
+                                                                            msg_pl.to_bytes(),
+                                                                            session),
+                signature: [0; 65],
+            }
         }
     }
 
