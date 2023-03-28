@@ -15,7 +15,7 @@ async function localInit() {
     const api = await ApiPromise.create({ provider });
 
     const abiPath = '../contracts/vv/target/ink/vv.json';
-    const contractAddress = '5H58wigHNZPuGYzGo9zebJA5Ub7rHRrStV4jhkokCkZCLVwL';
+    const contractAddress = '5HkobVJEbBzSeRnY5XTL3vq3wmDSTNCS4DB9EXTXTkG7BT3f';
 
     const ibinst = new ib.InkBase(rawSeed, abiPath, contractAddress);
     await ibinst.init(api);
@@ -47,11 +47,11 @@ async function sign(msg, sk, ec_name, hash_name) {
     const signService = new oc.OmnichainCrypto(hashfunc.hashFuncMap[hash_name], ec_name, sk);
     const signature_content = signService.sign2bufferrecovery(msg);
 
-    // console.log("Public Key:\n"+signService.getPublic());
-    var compressed = signService.getPublicCompressed();
-    // console.log("Compressed Public Key:\n"+compressed);
-    compressed = hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')));
-    console.log(compressed);    // This is just the on-chain account  
+    // // console.log("Public Key:\n"+signService.getPublic());
+    // var compressed = signService.getPublicCompressed();
+    // // console.log("Compressed Public Key:\n"+compressed);
+    // compressed = hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')));
+    // console.log(compressed);    // This is just the on-chain account  
 
     return signature_content;
 }
@@ -106,7 +106,7 @@ async function testStructure() {
     console.log("*********************Everything for a transaction query is active.**********************");
 }
 
-async function testDataHash() {
+async function testVVSignature() {
     let payload = new td.MsgPayload();
     await payload.addItem(new td.MsgItem("hello", td.MsgType.InkString, "nika"));
     await payload.addItem(new td.MsgItem("Alice", td.MsgType.InkU128Array, [BigInt('123456789'), BigInt('987654321')]));
@@ -185,7 +185,7 @@ async function commanders() {
         .option('--active-call', 'Check if everything for a transaction call is OK.', list)
         .option('--active-query', 'Check if everything for a query is OK.', list)
         .option('--test-structure', 'check the data structure in `js`', list)
-        .option('--test-data-hash', 'check the data structure in `js`', list)
+        .option('--test-vv-signature', 'check the data structure in `js`', list)
         .parse(process.argv);
         
     if (program.opts().sign) {
@@ -219,13 +219,13 @@ async function commanders() {
         }
 
         await testStructure();
-    } else if (program.opts().testDataHash) {
-        if (program.opts().testDataHash.length != 0) {
+    } else if (program.opts().testVvSignature) {
+        if (program.opts().testVvSignature.length != 0) {
             console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
             return;
         }
 
-        await testDataHash();
+        await testVVSignature();
     }
 }
 
