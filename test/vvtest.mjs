@@ -1,6 +1,7 @@
 import oc from './omnichainCrypto.js';
 import * as hashfunc from './hashCrypto.mjs';
 import {program} from 'commander';
+import secp266k1 from 'secp256k1';
 
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 
@@ -23,24 +24,31 @@ async function localInit() {
     return ibinst;
 }
 
-async function testSignAndAddress(msg, sk, ec_name, hash_name) {
+async function testSignAndAddress() {
     // const ec = new elliptic.ec('secp256k1');
     // const key = ec.keyFromPrivate(Buffer.from("d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c", 'hex'));
     // console.log(Buffer.from(key.getPublic().encode()).toString('hex'));
+    const msg = 'hello';
 
-    const signService = new oc.OmnichainCrypto(hashfunc.hashFuncMap[hash_name], ec_name, sk);
+    const signService = new oc.OmnichainCrypto(hashfunc.hashFuncMap['Keccak256'], 'secp256k1', rawSeed);
     const signature_content = signService.sign2hexstringrecovery(msg);
     console.log(signature_content);
 
     console.log("Public Key:\n"+signService.getPublic());
 
-    var compressed = signService.getPublicCompressed();
-    console.log("Compressed Public Key:\n"+compressed);
-    const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
-    console.log("Polkadot Address: ");
-    console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
+    // var compressed = signService.getPublicCompressed();
+    // console.log("Compressed Public Key:\n"+compressed);
+    // const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
+    // console.log("Polkadot Address: ");
+    // console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
     
-    console.log(signService.verify(msg, signature_content));
+    // console.log(signService.verify(msg, signature_content));
+
+    let sign_data = new Uint8Array(Buffer.from(signature_content, 'hex'));
+    console.log(sign_data);
+
+    let recover_pk = secp266k1.ecdsaRecover(sign_data.subarray(0, 64), sign_data[64] - 27, hashfunc.hashFuncMap['Keccak256'](msg),false);
+    console.log(Buffer.from(recover_pk).toString('hex'));
 }
 
 async function sign(msg, sk, ec_name, hash_name) {
@@ -186,6 +194,7 @@ async function commanders() {
         .option('--active-query', 'Check if everything for a query is OK.', list)
         .option('--test-structure', 'check the data structure in `js`', list)
         .option('--test-vv-signature', 'check the data structure in `js`', list)
+        .option('--test-sign-aa', 'check the data structure in `js`', list)
         .parse(process.argv);
         
     if (program.opts().sign) {
@@ -226,6 +235,13 @@ async function commanders() {
         }
 
         await testVVSignature();
+    } else if (program.opts().testSignAa) {
+        if (program.opts().testSignAa.length != 0) {
+            console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
+            return;
+        }
+
+        await testSignAndAddress();
     }
 }
 
