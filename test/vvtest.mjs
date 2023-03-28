@@ -4,6 +4,7 @@ import {program} from 'commander';
 import secp266k1 from 'secp256k1';
 
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
+import { extractPublicKey, personalSign, } from '@metamask/eth-sig-util';
 
 import * as ib from './ink_base.mjs';
 import * as td from './typedefines.mjs';
@@ -49,6 +50,19 @@ async function testSignAndAddress() {
 
     let recover_pk = secp266k1.ecdsaRecover(sign_data.subarray(0, 64), sign_data[64] - 27, hashfunc.hashFuncMap['Keccak256'](msg),false);
     console.log(Buffer.from(recover_pk).toString('hex'));
+}
+
+async function testEthSign() {
+    let helloWorldMessage = `0x${Buffer.from('hello', 'utf-8').toString('hex')}`;
+
+    let signature = personalSign({ privateKey: rawSeed, data: helloWorldMessage });
+
+    let pk = extractPublicKey({
+        data: helloWorldMessage,
+        signature: signature,
+    });
+
+    console.log(pk);
 }
 
 async function sign(msg, sk, ec_name, hash_name) {
@@ -194,7 +208,8 @@ async function commanders() {
         .option('--active-query', 'Check if everything for a query is OK.', list)
         .option('--test-structure', 'check the data structure in `js`', list)
         .option('--test-vv-signature', 'check the data structure in `js`', list)
-        .option('--test-sign-aa', 'check the data structure in `js`', list)
+        .option('--test-sign-aa', 'check the signature and recover', list)
+        .option('--test-eth-sign', 'check the eth-sign-util', list)
         .parse(process.argv);
         
     if (program.opts().sign) {
@@ -208,7 +223,7 @@ async function commanders() {
         await sign(program.opts().sign[0], program.opts().sign[1], program.opts().sign[2], program.opts().sign[3]);
     } else if (program.opts().activeCall) {
         if (program.opts().activeCall.length != 0) {
-            console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
+            console.log('0 arguments are needed, but ' + program.opts().activeCall.length + ' provided');
             return;
         }
 
@@ -216,32 +231,39 @@ async function commanders() {
 
     } else if (program.opts().activeQuery) {
         if (program.opts().activeQuery.length != 0) {
-            console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
+            console.log('0 arguments are needed, but ' + program.opts().activeQuery.length + ' provided');
             return;
         }
 
         await activeQuery();
     } else if (program.opts().testStructure) {
         if (program.opts().testStructure.length != 0) {
-            console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
+            console.log('0 arguments are needed, but ' + program.opts().testStructure.length + ' provided');
             return;
         }
 
         await testStructure();
     } else if (program.opts().testVvSignature) {
         if (program.opts().testVvSignature.length != 0) {
-            console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
+            console.log('0 arguments are needed, but ' + program.opts().testVvSignature.length + ' provided');
             return;
         }
 
         await testVVSignature();
     } else if (program.opts().testSignAa) {
         if (program.opts().testSignAa.length != 0) {
-            console.log('0 arguments are needed, but ' + program.opts().sign.length + ' provided');
+            console.log('0 arguments are needed, but ' + program.opts().testSignAa.length + ' provided');
             return;
         }
 
         await testSignAndAddress();
+    } else if (program.opts().testEthSign) {
+        if (program.opts().testEthSign.length != 0) {
+            console.log('0 arguments are needed, but ' + program.opts().testEthSign.length + ' provided');
+            return;
+        }
+
+        await testEthSign();
     }
 }
 
