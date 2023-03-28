@@ -1,4 +1,4 @@
-import {encodeAddress, blake2AsU8a, keccakAsU8a, shaAsU8a} from '@polkadot/util-crypto';
+import {encodeAddress, blake2AsU8a, keccakAsU8a, shaAsU8a, evmToAddress} from '@polkadot/util-crypto';
 
 export function hashKeccak256(msg) {
     return keccakAsU8a(msg, 256);
@@ -29,3 +29,4 @@ export const hashFuncMap = {
 };
 
 export const encodePolkadotAddress = encodeAddress;
+export const evmAddressToAddress = evmToAddress;

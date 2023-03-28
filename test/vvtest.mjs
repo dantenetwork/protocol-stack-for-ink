@@ -3,6 +3,8 @@ import * as hashfunc from './hashCrypto.mjs';
 import {program} from 'commander';
 import secp266k1 from 'secp256k1';
 
+import Web3 from 'web3'
+
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { extractPublicKey, personalSign, } from '@metamask/eth-sig-util';
 
@@ -10,14 +12,15 @@ import * as ib from './ink_base.mjs';
 import * as td from './typedefines.mjs';
 import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } from 'scale-ts';
 
-const rawSeed = 'd9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c';
+// const rawSeed = 'd9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c';
+const rawSeed = '8ebe5d1ff8f4880b5cff6be072441bad28a981c80ffeb755bba028fac13876f5';
 
 async function localInit() {
     const provider = new WsProvider('ws://127.0.0.1:9944');
     const api = await ApiPromise.create({ provider });
 
     const abiPath = '../contracts/vv/target/ink/vv.json';
-    const contractAddress = '5HkobVJEbBzSeRnY5XTL3vq3wmDSTNCS4DB9EXTXTkG7BT3f';
+    const contractAddress = '5Dy6WZ3r8ddtm7Cky4JDqvoP13GnSdqeMCpn1NzH62pvVRb9';
 
     const ibinst = new ib.InkBase(rawSeed, abiPath, contractAddress);
     await ibinst.init(api);
@@ -38,12 +41,21 @@ async function testSignAndAddress() {
     console.log("Public Key:\n"+signService.getPublic());
 
     // var compressed = signService.getPublicCompressed();
-    // console.log("Compressed Public Key:\n"+compressed);
-    // const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
-    // console.log("Polkadot Address: ");
-    // console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
+    var compressed = oc.publicKeyCompress('c8e7118c4c65ba2b832dd77be18a65b3f019d1bff34dcfa3b1879a6e651b32fc047381c98bf48575a181fdb584a80dd872c1e4208736233af12b923b19c1c19a');
+    console.log("Compressed Public Key:\n"+compressed);
+    const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
+    console.log("Polkadot Address: ");
+    console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
+    // console.log(hashfunc.encodePolkadotAddress(compressed, 0));
+
+    console.log("EVM Address: ");
+    const web3 = new Web3();
+    let emv_address = web3.eth.accounts.privateKeyToAccount(rawSeed).address;
+    console.log(emv_address);
+    console.log(hashfunc.evmAddressToAddress(emv_address, 42, 'blake2'));
+
     
-    // console.log(signService.verify(msg, signature_content));
+    console.log(signService.verify(msg, signature_content));
 
     let sign_data = new Uint8Array(Buffer.from(signature_content, 'hex'));
     console.log(sign_data);
