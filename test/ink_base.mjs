@@ -71,7 +71,8 @@ export class InkBase {
     async init(api) {
         this.api = api;
 
-        const keyring = new Keyring({ type: "ecdsa" });
+        // const keyring = new Keyring({ type: "ecdsa" });
+        const keyring = new Keyring({ type: "ethereum" });
         this.devSender = keyring.addFromSeed(new Uint8Array(Buffer.from(this.sk, 'hex')));
 
         const contractABIRaw = fs.readFileSync(this.abiPath);

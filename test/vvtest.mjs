@@ -1,5 +1,6 @@
 import oc from './omnichainCrypto.js';
 import * as hashfunc from './hashCrypto.mjs';
+import * as addrAd from './addressAdapter.mjs';
 import {program} from 'commander';
 import secp266k1 from 'secp256k1';
 
@@ -7,6 +8,9 @@ import Web3 from 'web3'
 
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { extractPublicKey, personalSign, } from '@metamask/eth-sig-util';
+// import { cryptoWaitReady } from '@polkadot/wasm-crypto';
+// import { cryptoWaitReady } from '@polkadot/util-crypto';
+// import { Signer } from '@polkadot/api/types';
 
 import * as ib from './ink_base.mjs';
 import * as td from './typedefines.mjs';
@@ -40,13 +44,16 @@ async function testSignAndAddress() {
 
     console.log("Public Key:\n"+signService.getPublic());
 
+    let pubkey = '0x'+signService.getPublic();
+
     // var compressed = signService.getPublicCompressed();
     var compressed = oc.publicKeyCompress('c8e7118c4c65ba2b832dd77be18a65b3f019d1bff34dcfa3b1879a6e651b32fc047381c98bf48575a181fdb584a80dd872c1e4208736233af12b923b19c1c19a');
     console.log("Compressed Public Key:\n"+compressed);
     const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
     console.log("Polkadot Address: ");
     console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
-    // console.log(hashfunc.encodePolkadotAddress(compressed, 0));
+    console.log(hashfunc.encodePolkadotAddress(`0x${Buffer.from(compressed).toString('hex')}`, 42, 'blake2'));
+    console.log(await addrAd.polkadotAddressFromPubKey(pubkey));
 
     console.log("EVM Address: ");
     const web3 = new Web3();
@@ -77,7 +84,19 @@ async function testEthSign() {
     console.log(pk);
 }
 
-async function sign(msg, sk, ec_name, hash_name) {
+async function testPolkadotSign() {
+
+    let inbs = await localInit();
+
+    // Create a message to sign
+    const message = 'hello';
+
+    const signature = inbs.devSender.sign(message);
+
+    console.log(Buffer.from(signature).toString('hex'));
+}
+
+async function signLocal(msg, sk, ec_name, hash_name) {
     const signService = new oc.OmnichainCrypto(hashfunc.hashFuncMap[hash_name], ec_name, sk);
     const signature_content = signService.sign2bufferrecovery(msg);
 
@@ -180,7 +199,7 @@ async function testVVSignature() {
         // should output 123 as per our initial set (output here is an i32)
         console.log('Success', output.toHuman());
         
-        let signature = await sign(output.toHuman().Ok[0], rawSeed, 'secp256k1', 'Keccak256');
+        let signature = await signLocal(output.toHuman().Ok[0], rawSeed, 'secp256k1', 'Keccak256');
 
         let vv_message = {
             recved_msg: recved_message,
@@ -215,24 +234,25 @@ function list_line(val) {
 async function commanders() {
     program
         .version('Test Tools for VV Stage. v0.0.1')
-        .option('--sign <message>,<private key>,<elliptic name>,<hash func name>', 'sign a message with designated elliptic name and hash function name.', list)
+        .option('--sign-local <message>,<private key>,<elliptic name>,<hash func name>', 'sign a message with designated elliptic name and hash function name.', list)
         .option('--active-call', 'Check if everything for a transaction call is OK.', list)
         .option('--active-query', 'Check if everything for a query is OK.', list)
         .option('--test-structure', 'check the data structure in `js`', list)
         .option('--test-vv-signature', 'check the data structure in `js`', list)
         .option('--test-sign-aa', 'check the signature and recover', list)
         .option('--test-eth-sign', 'check the eth-sign-util', list)
+        .option('--test-polkadot-sign', 'check the eth-sign-util', list)
         .parse(process.argv);
         
-    if (program.opts().sign) {
-        if (program.opts().sign.length != 4) {
-            console.log('4 arguments are needed, but ' + program.opts().sign.length + ' provided');
+    if (program.opts().signLocal) {
+        if (program.opts().signLocal.length != 4) {
+            console.log('4 arguments are needed, but ' + program.opts().signLocal.length + ' provided');
             return;
         }
 
         console.log('sign a message: '+program.opts().sign[0]);
 
-        await sign(program.opts().sign[0], program.opts().sign[1], program.opts().sign[2], program.opts().sign[3]);
+        await signLocal(program.opts().sign[0], program.opts().sign[1], program.opts().sign[2], program.opts().sign[3]);
     } else if (program.opts().activeCall) {
         if (program.opts().activeCall.length != 0) {
             console.log('0 arguments are needed, but ' + program.opts().activeCall.length + ' provided');
@@ -276,6 +296,13 @@ async function commanders() {
         }
 
         await testEthSign();
+    } else if (program.opts().testPolkadotSign) {
+        if (program.opts().testPolkadotSign.length != 0) {
+            console.log('0 arguments are needed, but ' + program.opts().testPolkadotSign.length + ' provided');
+            return;
+        }
+
+        await testPolkadotSign();
     }
 }
 

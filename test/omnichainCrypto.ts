@@ -120,4 +120,3 @@ export function publicKeyCompress(pubKey: string) {
         throw("Invalid public key length!" + pubKey.length);
     }
 }
-
