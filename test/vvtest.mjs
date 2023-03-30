@@ -18,7 +18,6 @@ import * as ib from './ink_base.mjs';
 import * as td from './typedefines.mjs';
 import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enum, Struct, Vector, Option, Bytes } from 'scale-ts';
 
-// const rawSeed = 'd9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c';
 const rawSeed = '8ebe5d1ff8f4880b5cff6be072441bad28a981c80ffeb755bba028fac13876f5';
 
 async function localInit() {
