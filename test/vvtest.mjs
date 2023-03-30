@@ -8,6 +8,8 @@ import Web3 from 'web3'
 
 import {ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { extractPublicKey, personalSign, } from '@metamask/eth-sig-util';
+import {cryptoWaitReady, decodeAddress, signatureVerify} from '@polkadot/util-crypto';
+import { stringToHex, u8aToHex } from "@polkadot/util";
 // import { cryptoWaitReady } from '@polkadot/wasm-crypto';
 // import { cryptoWaitReady } from '@polkadot/util-crypto';
 // import { Signer } from '@polkadot/api/types';
@@ -38,6 +40,8 @@ async function testSignAndAddress() {
     // console.log(Buffer.from(key.getPublic().encode()).toString('hex'));
     const msg = 'hello';
 
+    // console.log(Buffer.from(msg, 'utf8').toString('hex'));
+
     const signService = new oc.OmnichainCrypto(hashfunc.hashFuncMap['Keccak256'], 'secp256k1', rawSeed);
     const signature_content = signService.sign2hexstringrecovery(msg);
     console.log(signature_content);
@@ -65,9 +69,11 @@ async function testSignAndAddress() {
     console.log(signService.verify(msg, signature_content));
 
     let sign_data = new Uint8Array(Buffer.from(signature_content, 'hex'));
+    // let sign_data = new Uint8Array(Buffer.from('6926054a3cc91712de704af9a588bcf5bd2e74d02a2dc0dcfdda1a929bcb7f1951d12c9cd620a10532479cc763983353b893706589e2ae4f5304bf1149a2226301', 'hex'));
     console.log(sign_data);
 
     let recover_pk = secp266k1.ecdsaRecover(sign_data.subarray(0, 64), sign_data[64] - 27, hashfunc.hashFuncMap['Keccak256'](msg),false);
+    // let recover_pk = secp266k1.ecdsaRecover(sign_data.subarray(0, 64), sign_data[64], hashfunc.hashFuncMap['Blake2_256'](msg),true);
     console.log(Buffer.from(recover_pk).toString('hex'));
 }
 
@@ -94,6 +100,27 @@ async function testPolkadotSign() {
     const signature = inbs.devSender.sign(message);
 
     console.log(Buffer.from(signature).toString('hex'));
+
+    const s2 = inbs.devSender.sign(message);
+    console.log(Buffer.from(s2).toString('hex'));
+
+    const isValidSignature = (signedMessage, signature, address) => {
+        const publicKey = decodeAddress(address);
+        const hexPublicKey = u8aToHex(publicKey);
+
+        console.log(address);
+        console.log(hexPublicKey);
+      
+        return signatureVerify(signedMessage, signature, hexPublicKey).isValid;
+    };
+
+    await cryptoWaitReady();
+    const isValid = isValidSignature(
+        message,
+        signature,
+        inbs.devSender.address
+    );
+    console.log(isValid)
 }
 
 async function signLocal(msg, sk, ec_name, hash_name) {
