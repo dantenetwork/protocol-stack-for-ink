@@ -62,17 +62,30 @@ export async function contractCall(api, contract, method, from, args) {
 }
 
 export class InkBase {
-    constructor(sk, abiPath, c_address) {
+    constructor(sk, abiPath, c_address, signAl = 'ethereum') {
         this.sk = sk;
         this.abiPath = abiPath;
         this.contractAddress = c_address;
+        this.signAl = signAl;
     }
 
     async init(api) {
         this.api = api;
 
+        const keyring = new Keyring({ type: this.signAl });
+
+        // `ecdsa` will be the same as browser, that is, the hash is `blake2`
         // const keyring = new Keyring({ type: "ecdsa" });
-        const keyring = new Keyring({ type: "ethereum" });
+        
+        // `ethereum` will be the same as Ethereum, that is, the hash is `keccak`
+        // const keyring = new Keyring({ type: "ethereum" });
+
+        // The signature result of `sr25519` will be different every time
+        // const keyring = new Keyring({ type: "sr25519" });
+
+        // 
+        // const keyring = new Keyring({ type: "ed25519" });
+
         this.devSender = keyring.addFromSeed(new Uint8Array(Buffer.from(this.sk, 'hex')));
 
         const contractABIRaw = fs.readFileSync(this.abiPath);

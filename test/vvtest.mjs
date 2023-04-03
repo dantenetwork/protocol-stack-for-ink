@@ -20,23 +20,20 @@ import { bool, _void, str, u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Enu
 
 const rawSeed = '8ebe5d1ff8f4880b5cff6be072441bad28a981c80ffeb755bba028fac13876f5';
 
-async function localInit() {
+async function localInit(signAl = 'ethereum') {
     const provider = new WsProvider('ws://127.0.0.1:9944');
     const api = await ApiPromise.create({ provider });
 
     const abiPath = '../contracts/vv/target/ink/vv.json';
     const contractAddress = '5Dy6WZ3r8ddtm7Cky4JDqvoP13GnSdqeMCpn1NzH62pvVRb9';
 
-    const ibinst = new ib.InkBase(rawSeed, abiPath, contractAddress);
+    const ibinst = new ib.InkBase(rawSeed, abiPath, contractAddress, signAl);
     await ibinst.init(api);
 
     return ibinst;
 }
 
 async function testSignAndAddress() {
-    // const ec = new elliptic.ec('secp256k1');
-    // const key = ec.keyFromPrivate(Buffer.from("d9fb0917e1d83e2d42f14f6ac5588e755901150f0aa0953bbf529752e786f50c", 'hex'));
-    // console.log(Buffer.from(key.getPublic().encode()).toString('hex'));
     const msg = 'hello';
 
     // console.log(Buffer.from(msg, 'utf8').toString('hex'));
@@ -49,13 +46,13 @@ async function testSignAndAddress() {
 
     let pubkey = '0x'+signService.getPublic();
 
-    // var compressed = signService.getPublicCompressed();
-    var compressed = oc.publicKeyCompress('c8e7118c4c65ba2b832dd77be18a65b3f019d1bff34dcfa3b1879a6e651b32fc047381c98bf48575a181fdb584a80dd872c1e4208736233af12b923b19c1c19a');
+    var compressed = signService.getPublicCompressed();
+    // var compressed = oc.publicKeyCompress('c8e7118c4c65ba2b832dd77be18a65b3f019d1bff34dcfa3b1879a6e651b32fc047381c98bf48575a181fdb584a80dd872c1e4208736233af12b923b19c1c19a');
     console.log("Compressed Public Key:\n"+compressed);
     const pkArray = new Uint8Array(Buffer.from(compressed, 'hex'));
     console.log("Polkadot Address: ");
     console.log(hashfunc.encodePolkadotAddress(hashfunc.hashFuncMap['Blake2_256'](new Uint8Array(Buffer.from(compressed, 'hex')))));
-    console.log(hashfunc.encodePolkadotAddress(`0x${Buffer.from(compressed).toString('hex')}`, 42, 'blake2'));
+    // console.log(hashfunc.encodePolkadotAddress(`0x${Buffer.from(compressed).toString('hex')}`, 42, 'blake2'));
     console.log(await addrAd.polkadotAddressFromPubKey(pubkey));
 
     console.log("EVM Address: ");
@@ -94,7 +91,8 @@ async function testPolkadotSign() {
     let inbs = await localInit();
 
     // Create a message to sign
-    const message = 'hello';
+    // const message = '<Bytes>hello</Bytes>';
+    const message = '\x19Ethereum Signed Message:\nhello';
 
     const signature = inbs.devSender.sign(message);
 
