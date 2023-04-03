@@ -86,13 +86,23 @@ async function testEthSign() {
     console.log(pk);
 }
 
-async function testPolkadotSign() {
+async function testPolkadotSign(signAl, wrapType) {
 
-    let inbs = await localInit();
+    let inbs = await localInit(signAl);
+
+    let message;
+
+    if (wrapType === 'ethereum') {
+        message = '\x19Ethereum Signed Message:\nhello';
+    } else if (wrapType === 'polkadot') {
+        message = '<Bytes>hello</Bytes>';
+    } else {
+        message = 'hello';
+    }
 
     // Create a message to sign
     // const message = '<Bytes>hello</Bytes>';
-    const message = '\x19Ethereum Signed Message:\nhello';
+    // const message = '\x19Ethereum Signed Message:\nhello';
 
     const signature = inbs.devSender.sign(message);
 
@@ -265,7 +275,7 @@ async function commanders() {
         .option('--test-vv-signature', 'check the data structure in `js`', list)
         .option('--test-sign-aa', 'check the signature and recover', list)
         .option('--test-eth-sign', 'check the eth-sign-util', list)
-        .option('--test-polkadot-sign', 'check the eth-sign-util', list)
+        .option('--test-polkadot-sign <sign algorithem>,<wrap type>', 'check the polkadot sign with wallet. <sign algorithm>: `ethereum`, `ecdsa`, `sr25519`, `ed25519`. <wrap type>: `polkadot`, `ethereum`.', list)
         .parse(process.argv);
         
     if (program.opts().signLocal) {
@@ -321,12 +331,12 @@ async function commanders() {
 
         await testEthSign();
     } else if (program.opts().testPolkadotSign) {
-        if (program.opts().testPolkadotSign.length != 0) {
-            console.log('0 arguments are needed, but ' + program.opts().testPolkadotSign.length + ' provided');
+        if (program.opts().testPolkadotSign.length != 2) {
+            console.log('2 arguments are needed, but ' + program.opts().testPolkadotSign.length + ' provided');
             return;
         }
 
-        await testPolkadotSign();
+        await testPolkadotSign(program.opts().testPolkadotSign[0], program.opts().testPolkadotSign[1]);
     }
 }
 
