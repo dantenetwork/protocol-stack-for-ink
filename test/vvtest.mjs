@@ -90,14 +90,12 @@ async function testPolkadotSign(signAl, wrapType) {
 
     let inbs = await localInit(signAl);
 
-    let message;
+    let message = 'hello';
 
     if (wrapType === 'ethereum') {
-        message = '\x19Ethereum Signed Message:\nhello';
+        message = `\x19Ethereum Signed Message:\n${message.length}hello`;
     } else if (wrapType === 'polkadot') {
         message = '<Bytes>hello</Bytes>';
-    } else {
-        message = 'hello';
     }
 
     // Create a message to sign
